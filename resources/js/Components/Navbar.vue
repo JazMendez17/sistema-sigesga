@@ -58,7 +58,7 @@ const menuGroups = computed(() => [
   },
   {
     title: 'Operación',
-    roles: ['admin', 'cotizador'],
+    roles: ['admin', 'cotizador', 'operador'],
     items: [
       { label: 'Cotizaciones', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01', route: 'panel.cotizaciones.index', roles: ['admin', 'cotizador'] },
       { label: 'Servicios', icon: 'M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2-1m3 1V9m4 8l2-1m-8-4h.01', route: 'panel.servicios.index', roles: ['admin', 'cotizador', 'operador'] },

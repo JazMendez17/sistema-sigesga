@@ -10,7 +10,7 @@ import Badge from '@/Components/Badge.vue'
 const filtroActivo = ref('todas')
 const busqueda = ref('')
 
-const filtros = ['todas', 'pendientes', 'aprobadas', 'rechazadas']
+const filtros = ['todas', 'pendiente', 'aprobada', 'rechazada']
 
 function eliminarCotizacion(id) {
   if (confirm('¿Eliminar esta cotización?')) {
@@ -19,6 +19,15 @@ function eliminarCotizacion(id) {
 }
 
 const columns = [
+  { key: 'folio', label: 'Folio' },
+  { key: 'cliente', label: 'Cliente' },
+  { key: 'tipo', label: 'Tipo' },
+  { key: 'origen', label: 'Origen' },
+  { key: 'destino', label: 'Destino' },
+  { key: 'total', label: 'Total' },
+  { key: 'estatus', label: 'Estatus' },
+  { key: 'fecha', label: 'Fecha' },
+]
 
 const page = usePage()
 const cotizaciones = computed(() => page.props.cotizaciones || [])
@@ -70,7 +79,11 @@ const filteredCotizaciones = computed(() => {
       <div class="rounded-3xl bg-[#EEF2F7] p-6 shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
         <DataTable :columns="columns" :data="filteredCotizaciones" @rowClick="(row) => router.visit(route('panel.cotizaciones.show', { id: row.id }))">
           <template #cell-estatus="{ row }">
-            <Badge :variant="row.estatus">{{ row.estatus }}</Badge>
+            <Badge
+              :variant="row.estatus === 'aprobada' ? 'success' : row.estatus === 'rechazada' ? 'danger' : row.estatus === 'pendiente' ? 'warning' : 'neutral'"
+            >
+              {{ row.estatus }}
+            </Badge>
           </template>
           <template #cell-total="{ row }">
             ${{ row.total?.toFixed(2) }}

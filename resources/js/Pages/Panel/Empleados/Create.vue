@@ -62,6 +62,8 @@ function submit() {
     })
   }
 }
+
+const onSubmit = val.handleSubmit(submit)
 </script>
 
 <template>
@@ -73,7 +75,7 @@ function submit() {
       </div>
 
       <div class="neumorphic-card p-6 max-w-4xl">
-        <form @submit.prevent="val.handleSubmit(submit)" class="space-y-6">
+        <form @submit.prevent="onSubmit" class="space-y-6">
           <h2 class="text-lg font-semibold text-[var(--color-text)] border-b border-[var(--neumorphic-dark)]/20 pb-2">Datos personales</h2>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
             <NeumorphicInput v-model="form.nombre" label="Nombre(s)*" placeholder="Ej: Juan Carlos" required :error="val.getError('nombre')" @input="val.handleInput('nombre')" />
