@@ -23,7 +23,7 @@ function eliminarTipo(id) {
     <div class="space-y-6">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 class="text-2xl font-bold text-gray-800">Tipos de Servicio</h1>
-        <NeumorphicButton disabled title="Próximamente">
+        <NeumorphicButton @click="router.visit(route('panel.tipos-servicio.create'))">
           + Nuevo Tipo
         </NeumorphicButton>
       </div>

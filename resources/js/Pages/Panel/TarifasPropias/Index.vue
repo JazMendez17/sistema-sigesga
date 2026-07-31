@@ -21,6 +21,16 @@ const columns = [
 const page = usePage()
 const tarifas = computed(() => page.props.tarifas || [])
 
+const tarifasFiltradas = computed(() => {
+  if (!busqueda.value) return tarifas.value
+  const q = busqueda.value.toLowerCase()
+  return tarifas.value.filter(t =>
+    t.nombre?.toLowerCase().includes(q) ||
+    t.tipo_servicio?.toLowerCase().includes(q) ||
+    t.ruta?.toLowerCase().includes(q)
+  )
+})
+
 function eliminarTarifa(id) {
   if (confirm('¿Eliminar esta tarifa?')) {
     router.delete(route('panel.tarifas-propias.destroy', { id }))
@@ -48,7 +58,7 @@ function eliminarTarifa(id) {
       </div>
 
       <div class="rounded-3xl bg-[#EEF2F7] p-6 shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
-        <DataTable :columns="columns" :data="tarifas">
+        <DataTable :columns="columns" :data="tarifasFiltradas">
           <template #cell-activo="{ row }">
             <Badge :variant="row.activo ? 'success' : 'neutral'">{{ row.activo ? 'Sí' : 'No' }}</Badge>
           </template>

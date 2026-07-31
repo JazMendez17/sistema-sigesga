@@ -151,7 +151,7 @@ const statusColors = {
             <div class="rounded-3xl bg-[var(--color-surface)] p-6 shadow-[8px_8px_16px_var(--neumorphic-dark),-8px_-8px_16px_var(--neumorphic-light)]">
               <h3 class="mb-4 text-lg font-semibold text-gray-700">Disponibilidad</h3>
               <button
-                @click="disponible = !disponible"
+                @click="disponible = !disponible; router.put(route('panel.operadores.update', { id: 'me' }), { disponible: disponible }, { preserveScroll: true })"
                 class="flex w-full items-center justify-between rounded-2xl p-4 transition-all duration-300"
                 :class="disponible ? 'bg-[var(--color-bg)] shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]' : 'bg-[var(--color-bg)] shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]'"
               >

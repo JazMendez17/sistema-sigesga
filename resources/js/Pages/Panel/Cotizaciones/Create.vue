@@ -1,9 +1,14 @@
 <script setup>
-import { router, useForm } from '@inertiajs/vue3'
+import { computed } from 'vue'
+import { router, useForm, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Pages/Panel/AppLayout.vue'
 import NeumorphicInput from '@/Components/NeumorphicInput.vue'
 import NeumorphicButton from '@/Components/NeumorphicButton.vue'
 import { useFormValidation } from '@/Composables/useFormValidation'
+
+const page = usePage()
+const clientes = computed(() => page.props.clientes ?? [])
+const tiposServicio = computed(() => page.props.tiposServicio ?? [])
 
 const form = useForm({
   cliente_id: '',
@@ -45,11 +50,19 @@ function submit() {
           <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Cliente</label>
-              <NeumorphicInput v-model="form.cliente_id" placeholder="ID del cliente" :error="val.getError('cliente_id')" @input="val.handleInput('cliente_id')" />
+              <select v-model="form.cliente_id" @change="val.handleInput('cliente_id')" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                <option value="">Seleccionar cliente...</option>
+                <option v-for="c in clientes" :key="c.id" :value="c.id">{{ c.nombre }} {{ c.apellido_paterno ?? '' }}</option>
+              </select>
+              <p v-if="val.getError('cliente_id')" class="text-sm text-red-500 mt-1">{{ val.getError('cliente_id') }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Tipo de Servicio</label>
-              <NeumorphicInput v-model="form.tipo_servicio_id" placeholder="ID del tipo de servicio" :error="val.getError('tipo_servicio_id')" @input="val.handleInput('tipo_servicio_id')" />
+              <select v-model="form.tipo_servicio_id" @change="val.handleInput('tipo_servicio_id')" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                <option value="">Seleccionar tipo de servicio...</option>
+                <option v-for="ts in tiposServicio" :key="ts.id" :value="ts.id">{{ ts.nombre }}</option>
+              </select>
+              <p v-if="val.getError('tipo_servicio_id')" class="text-sm text-red-500 mt-1">{{ val.getError('tipo_servicio_id') }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Origen</label>

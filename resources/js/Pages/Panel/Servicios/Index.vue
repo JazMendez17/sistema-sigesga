@@ -57,8 +57,8 @@ function eliminarServicio(id) {
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 class="text-2xl font-bold text-gray-800">Servicios</h1>
         <div class="flex gap-3">
-          <NeumorphicButton variant="secondary" @click="alert('Exportando...')">
-            Exportar
+          <NeumorphicButton variant="secondary" @click="router.visit(route('panel.reportes.index'))">
+            Reportes
           </NeumorphicButton>
           <NeumorphicButton @click="router.visit(route('panel.servicios.create'))">
             + Nuevo Servicio
