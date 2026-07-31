@@ -100,7 +100,10 @@ function submit() {
           </div>
 
           <div class="flex gap-3 pt-2">
-            <NeumorphicButton type="submit" :loading="form.processing" @click="console.log('CLICK EN BOTON GUARDAR')">{{ isEdit ? 'Actualizar Usuario' : 'Guardar Usuario' }}</NeumorphicButton>
+            <button type="submit" :disabled="form.processing" class="inline-flex items-center justify-center gap-2 font-medium rounded-2xl transition-all duration-200 disabled:opacity-50 cursor-pointer px-5 py-2.5 text-sm text-white" :style="{ backgroundColor: 'var(--color-primary)' }" @click="console.log('CLICK BOTON NATIVO')">
+              <svg v-if="form.processing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" /><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+              {{ isEdit ? 'Actualizar Usuario' : 'Guardar Usuario' }}
+            </button>
             <NeumorphicButton variant="secondary" @click="router.visit(route('panel.usuarios.index'))">Cancelar</NeumorphicButton>
           </div>
         </form>
