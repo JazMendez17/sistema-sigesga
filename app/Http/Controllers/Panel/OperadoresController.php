@@ -1,0 +1,113 @@
+<?php
+
+namespace App\Http\Controllers\Panel;
+
+use App\Http\Controllers\Controller;
+use App\Models\Operadore;
+use App\Models\Empleado;
+use App\Http\Requests\Panel\StoreOperadorRequest;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+
+class OperadoresController extends Controller
+{
+    public function index()
+    {
+        $user = Auth::user();
+        $empresaId = $user->empresa_id;
+
+        $operadores = Operadore::with('empleado')
+            ->where('empresa_id', $empresaId)
+            ->latest()
+            ->get()
+            ->map(fn ($o) => [
+                'id' => $o->id,
+                'nombre' => $o->empleado?->nombre ?? '—',
+                'tipo_licencia' => $o->tipo_licencia ?? '—',
+                'numero_licencia' => $o->numero_licencia ?? '—',
+                'fecha_expedicion' => $o->fecha_expedicion?->format('Y-m-d') ?? '—',
+                'fecha_vigencia' => $o->fecha_vigencia?->format('Y-m-d') ?? '—',
+                'disponible' => $o->disponible ?? true,
+            ]);
+
+        $licenciasProximas = $operadores->filter(fn ($o) => $o['fecha_vigencia'] !== '—')->take(10)->map(fn ($o) => [
+            'nombre' => $o['nombre'],
+            'licencia' => $o['numero_licencia'],
+            'vigencia' => $o['fecha_vigencia'],
+            'dias' => now()->diffInDays(\Carbon\Carbon::parse($o['fecha_vigencia']), false) ?? 0,
+        ])->filter(fn ($l) => $l['dias'] > 0 && $l['dias'] <= 30)->values();
+
+        return Inertia::render('Panel/Operadores/Index', [
+            'operadores' => $operadores,
+            'licenciasProximas' => $licenciasProximas,
+        ]);
+    }
+
+    public function create()
+    {
+        $user = Auth::user();
+        $empresaId = $user->empresa_id;
+
+        return Inertia::render('Panel/Operadores/Create', [
+            'empleados' => Empleado::where('empresa_id', $empresaId)->get(['id', 'nombre', 'apellido_paterno']),
+        ]);
+    }
+
+    public function store(StoreOperadorRequest $request)
+    {
+        $user = Auth::user();
+
+        $data = $request->validated();
+        $data['empresa_id'] = $user->empresa_id;
+        $data['disponible'] = $request->boolean('disponible');
+
+        Operadore::create($data);
+
+        return redirect()->route('panel.operadores.index')
+            ->with('success', 'Operador creado correctamente');
+    }
+
+    public function show($id)
+    {
+        return Inertia::render('Panel/Operadores/Show', [
+            'operador' => Operadore::with('empleado', 'unidad')->where('empresa_id', auth()->user()->empresa_id)->findOrFail($id),
+        ]);
+    }
+
+    public function edit($id)
+    {
+        $user = Auth::user();
+        $empresaId = $user->empresa_id;
+
+        return Inertia::render('Panel/Operadores/Create', [
+            'operador' => Operadore::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id),
+            'empleados' => Empleado::where('empresa_id', $empresaId)->get(['id', 'nombre', 'apellido_paterno']),
+        ]);
+    }
+
+    public function update(StoreOperadorRequest $request, $id)
+    {
+        $operador = Operadore::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+
+        $data = $request->validated();
+        $data['disponible'] = $request->boolean('disponible');
+        $operador->update($data);
+
+        return redirect()->route('panel.operadores.index')
+            ->with('success', 'Operador actualizado correctamente');
+    }
+
+    public function destroy($id)
+    {
+        $operadore = Operadore::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+
+        if ($operadore->servicios()->whereIn('estado', ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino'])->count() > 0) {
+            return redirect()->back()->with('error', 'No se puede eliminar el operador porque tiene servicios activos asignados.');
+        }
+
+        $operadore->delete();
+
+        return redirect()->route('panel.operadores.index')
+            ->with('success', 'Operador eliminado correctamente');
+    }
+}

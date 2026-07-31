@@ -1,0 +1,54 @@
+<script setup>
+import { Head } from '@inertiajs/vue3'
+import { ref } from 'vue'
+
+const codigo = ref('')
+const busquedaRealizada = ref(false)
+
+const buscar = () => {
+    busquedaRealizada.value = true
+}
+</script>
+
+<template>
+    <Head title="Rastrear Servicio - SIGESGA" />
+
+    <div class="min-h-screen bg-[#E8EDF2] flex items-center justify-center p-4">
+        <div class="max-w-lg w-full">
+            <div class="p-8 rounded-3xl bg-[#E8EDF2] shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
+                <div class="text-center mb-8">
+                    <h1 class="text-3xl font-bold text-gray-800 mb-2">Rastrear Servicio</h1>
+                    <p class="text-gray-500">Ingresa tu número de seguimiento para conocer el estado de tu servicio.</p>
+                </div>
+
+                <form @submit.prevent="buscar" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-2">Código de Seguimiento</label>
+                        <input v-model="codigo" type="text" required
+                               class="w-full px-5 py-3.5 rounded-2xl bg-[#E8EDF2] shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] text-gray-700 placeholder-gray-400 focus:outline-none"
+                               placeholder="Ej: SIG-2024-001" />
+                    </div>
+                    <button type="submit"
+                            class="w-full py-3.5 rounded-2xl text-sm font-semibold text-white transition-all duration-200 shadow-[6px_6px_12px_#d0d5da,-6px_-6px_12px_#ffffff] hover:shadow-[8px_8px_16px_#c9ced3,-8px_-8px_16px_#ffffff]"
+                            style="background-color: #2563eb">
+                        Rastrear
+                    </button>
+                </form>
+
+                <div v-if="busquedaRealizada" class="mt-6 p-6 rounded-2xl bg-[#E8EDF2] shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff]">
+                    <p class="text-center text-gray-500">
+                        No se encontró información para el código proporcionado.
+                        <br>
+                        <span class="text-sm">Por favor verifica el código e intenta de nuevo.</span>
+                    </p>
+                </div>
+
+                <div class="mt-6 text-center">
+                    <a href="/" class="text-sm text-gray-500 hover:text-gray-700 transition-colors">
+                        ← Volver al inicio
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
