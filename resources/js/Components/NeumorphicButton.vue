@@ -4,7 +4,9 @@ import { computed } from 'vue'
 const props = defineProps({
   variant: { type: String, default: 'primary' },
   size: { type: String, default: 'md' },
-  loading: Boolean,
+  type: { type: String, default: 'submit' },
+  disabled: { type: Boolean, default: false },
+  loading: { type: Boolean, default: false },
 })
 
 defineEmits(['click'])
@@ -38,8 +40,9 @@ const variantClass = computed(() => {
 
 <template>
   <button
+    :type="type"
     @click="$emit('click')"
-    :disabled="loading"
+    :disabled="disabled || loading"
     :style="variantStyle"
     :class="[
       variantClass,

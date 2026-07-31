@@ -24,18 +24,23 @@ export function useFormValidation(form, rules) {
   }
 
   function trimAll() {
-    const data = form.data()
-    for (const key of Object.keys(data)) {
-      if (typeof data[key] === 'string') {
-        form[key] = data[key].trim()
-      }
-    }
-    if (form.direccion) {
-      for (const key of Object.keys(form.direccion)) {
-        if (typeof form.direccion[key] === 'string') {
-          form.direccion[key] = form.direccion[key].trim()
+    try {
+      const data = form.data()
+      if (!data) return
+      for (const key of Object.keys(data)) {
+        if (typeof data[key] === 'string') {
+          form[key] = data[key].trim()
         }
       }
+      if (form.direccion) {
+        for (const key of Object.keys(form.direccion)) {
+          if (typeof form.direccion[key] === 'string') {
+            form.direccion[key] = form.direccion[key].trim()
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[useFormValidation] Error en trimAll:', e)
     }
   }
 
@@ -43,6 +48,7 @@ export function useFormValidation(form, rules) {
     submitted.value = true
     const errors = {}
     const data = form.data()
+    if (!data) return Object.keys(errors).length === 0
 
     for (const [field, fieldRules] of Object.entries(rules)) {
       const value = getFieldValue(data, field)
@@ -203,18 +209,30 @@ export function useFormValidation(form, rules) {
 
   function handleInput(field) {
     clearFieldError(field)
-    form.clearErrors(field)
+    if (typeof form.clearErrors === 'function') {
+      form.clearErrors(field)
+    }
   }
 
   function handleSubmit(callback) {
     return function () {
-      trimAll()
-      if (!validate()) {
-        const all = Object.values(clientErrors.value).filter(Boolean)
-        if (all.length > 0) showValidationErrors(all)
-        return
+      try {
+        trimAll()
+        if (!validate()) {
+          const all = Object.values(clientErrors.value).filter(Boolean)
+          if (all.length > 0) {
+            try {
+              showValidationErrors(all)
+            } catch (notifError) {
+              console.error('[useFormValidation] Error al mostrar errores:', notifError)
+            }
+          }
+          return
+        }
+        callback()
+      } catch (err) {
+        console.error('[useFormValidation] Error en handleSubmit:', err)
       }
-      callback()
     }
   }
 
