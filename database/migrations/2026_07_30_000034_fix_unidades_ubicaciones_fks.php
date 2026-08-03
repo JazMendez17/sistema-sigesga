@@ -9,6 +9,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('unidades_ubicaciones', function (Blueprint $table) {
+            $table->dropForeign(['unidad_id']);
+            $table->dropForeign(['servicio_id']);
             $table->dropIndex(['unidad_id', 'registrado_en']);
         });
 

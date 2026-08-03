@@ -63,6 +63,20 @@ body {
     background-color: var(--color-surface, #EEF2F7) !important;
 }
 
+.neumorphic-card,
+.neumorphic-raised,
+.neumorphic-raised-sm,
+.neumorphic-pressed,
+.neumorphic-pressed-sm {
+    transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.neumorphic-raised:hover,
+.neumorphic-card:hover,
+.neumorphic-raised-sm:hover {
+    box-shadow: 12px 12px 24px var(--neumorphic-dark, #d0d5da), -12px -12px 24px var(--neumorphic-light, #ffffff);
+}
+
 [class*="shadow-[8px_8px_16px_#d0d5da"] {
     box-shadow: 8px 8px 16px var(--neumorphic-dark, #d0d5da), -8px -8px 16px var(--neumorphic-light, #ffffff) !important;
 }

@@ -11,12 +11,12 @@ class UsuarioSeeder extends Seeder
     public function run(): void
     {
         $empresaId = DB::table('empresas')->first()->id;
-        $password = Hash::make('123456');
+        $password = Hash::make('12345678');
 
         $usuarios = [
             [
                 'empleado_puesto' => 'Administrador',
-                'name' => 'Juan Carlos Pérez',
+                'name' => 'administrador admin admin',
                 'email' => 'admin@sigesga.com',
                 'rol' => 'admin',
             ],
