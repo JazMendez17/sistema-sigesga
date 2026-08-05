@@ -96,6 +96,14 @@ const fonts = [
   'Epilogue', 'Barlow', 'Rubik', 'Nunito Sans', 'Mulish',
   'Public Sans', 'Chakra Petch', 'Prompt', 'Karla', 'IBM Plex Sans',
   'Hanken Grotesk', 'Cabinet Grotesk', 'General Sans',
+  'Clash Display', 'Satoshi', 'Switzer', 'Gambarino', 'Excon',
+  'Sentient', 'Amulya', 'Boska', 'Gambetta', 'Synonym',
+  'Archivo', 'Chillax', 'Supreme', 'Ambit',
+  'Grostino', 'Khand', 'Chivo', 'Bricolage Grotesque', 'Familjen Grotesk',
+  'Red Hat Display', 'Red Hat Text', 'Albert Sans', 'Readex Pro',
+  'League Spartan', 'Fraunces', 'Ysabeau', 'Mohave', 'Crimson Pro',
+  'Geist', 'Geist Mono', 'Georama', 'Instrument Sans', 'Instrument Serif',
+  'Schibsted Grotesk', 'Sometype Mono', 'Wittgenstein', 'Zodiak',
 ]
 
 function uploadFile(type) {
@@ -170,7 +178,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
             ? 'bg-[var(--color-surface)] text-[var(--color-primary)] shadow-[4px_4px_8px_var(--neumorphic-dark),-4px_-4px_8px_var(--neumorphic-light)]'
             : 'bg-transparent text-gray-500 hover:text-gray-700'"
         >
-          {{ tab === 'nosotros' ? 'Nosotros' : tab === 'servicios' ? 'Servicios (landing)' : tab === 'modulos' ? 'Módulos' : tab }}
+          {{ tab === 'nosotros' ? 'Nosotros' : tab === 'servicios' ? 'Servicios' : tab === 'modulos' ? 'Módulos' : tab }}
         </button>
       </div>
 
@@ -279,10 +287,26 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
 
       <!-- Nosotros -->
       <div v-if="activeTab === 'nosotros'" class="rounded-3xl bg-[var(--color-surface)] p-6 shadow-[8px_8px_16px_var(--neumorphic-dark),-8px_-8px_16px_var(--neumorphic-light)] space-y-5">
-        <div v-for="(_, key) in nosotros" :key="key" class="space-y-2">
-          <label class="block text-sm font-medium text-[var(--color-text)] capitalize">{{ key.replace('_', ' ') }}</label>
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-[var(--color-text)] capitalize">Quiénes Somos</label>
           <textarea
-            v-model="nosotros[key]"
+            v-model="nosotros.quienes_somos"
+            rows="4"
+            class="w-full rounded-2xl bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] shadow-[inset_6px_6px_12px_var(--neumorphic-dark),inset_-6px_-6px_12px_var(--neumorphic-light)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] resize-none"
+          ></textarea>
+        </div>
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-[var(--color-text)] capitalize">Misión</label>
+          <textarea
+            v-model="nosotros.mision"
+            rows="4"
+            class="w-full rounded-2xl bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] shadow-[inset_6px_6px_12px_var(--neumorphic-dark),inset_-6px_-6px_12px_var(--neumorphic-light)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] resize-none"
+          ></textarea>
+        </div>
+        <div class="space-y-2">
+          <label class="block text-sm font-medium text-[var(--color-text)] capitalize">Visión</label>
+          <textarea
+            v-model="nosotros.vision"
             rows="4"
             class="w-full rounded-2xl bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] shadow-[inset_6px_6px_12px_var(--neumorphic-dark),inset_-6px_-6px_12px_var(--neumorphic-light)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] resize-none"
           ></textarea>

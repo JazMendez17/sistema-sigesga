@@ -170,10 +170,7 @@ const perfilData = empleado || cliente || null
               <span class="text-sm opacity-60" style="color: var(--color-text)">Rol</span>
               <span class="text-sm font-semibold px-3 py-0.5 rounded-xl" :style="{ backgroundColor: 'var(--color-primary)', color: '#ffffff' }">{{ rolLabel[usuario.rol] || usuario.rol }}</span>
             </div>
-            <div class="flex justify-between">
-              <span class="text-sm opacity-60" style="color: var(--color-text)">Empresa</span>
-              <span class="text-sm font-medium text-right max-w-[180px]" style="color: var(--color-text)">{{ usuario.empresa }}</span>
-            </div>
+
             <div v-if="empleado?.puesto" class="flex justify-between">
               <span class="text-sm opacity-60" style="color: var(--color-text)">Puesto</span>
               <span class="text-sm font-medium" style="color: var(--color-text)">{{ empleado.puesto }}</span>

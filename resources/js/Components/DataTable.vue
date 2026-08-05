@@ -1,10 +1,12 @@
 <script setup>
 import { ref, computed } from 'vue'
+import SkeletonLoader from '@/Components/SkeletonLoader.vue'
 
 const props = defineProps({
   columns: { type: Array, required: true },
   data: { type: Array, default: () => [] },
   pagination: { type: Object, default: null },
+  loading: { type: Boolean, default: false },
 })
 
 defineEmits(['sort', 'pageChange', 'rowClick'])
@@ -46,25 +48,35 @@ function sortIcon(key) {
                 </svg>
               </div>
             </th>
-            <th v-if="$slots.actions" class="px-4 py-3 text-right text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Acciones</th>
+            <th v-if="$slots.actions || $slots['cell-acciones']" class="px-4 py-3 text-right text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Acciones</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-[var(--neumorphic-dark)]/20">
-          <tr v-for="(row, i) in data" :key="i" @click="$emit('rowClick', row)" class="cursor-pointer hover:bg-white/30 transition-colors">
-            <td v-for="col in columns" :key="col.key" class="px-4 py-3 text-sm text-[var(--color-text)] whitespace-nowrap">
-              <slot :name="`cell-${col.key}`" :row="row" :value="row[col.key]">
-                {{ row[col.key] }}
-              </slot>
-            </td>
-            <td v-if="$slots.actions" class="px-4 py-3 text-right whitespace-nowrap">
-              <slot name="actions" :row="row" />
-            </td>
-          </tr>
-          <tr v-if="data.length === 0">
-            <td :colspan="columns.length + ($slots.actions ? 1 : 0)" class="px-4 py-12 text-center text-[var(--color-text-muted)]">
-              No hay datos disponibles
-            </td>
-          </tr>
+          <template v-if="loading">
+            <tr v-for="n in 5" :key="'sk-' + n">
+              <td :colspan="columns.length + 1" class="px-4 py-2">
+                <SkeletonLoader type="table-row" :height="'2.5rem'" />
+              </td>
+            </tr>
+          </template>
+          <template v-else>
+            <tr v-for="(row, i) in data" :key="i" @click="$emit('rowClick', row)" class="cursor-pointer hover:bg-white/30 transition-colors">
+              <td v-for="col in columns" :key="col.key" class="px-4 py-3 text-sm text-[var(--color-text)] whitespace-nowrap">
+                <slot :name="`cell-${col.key}`" :row="row" :value="row[col.key]">
+                  {{ row[col.key] }}
+                </slot>
+              </td>
+              <td v-if="$slots.actions || $slots['cell-acciones']" class="px-4 py-3 text-right whitespace-nowrap">
+                <slot name="actions" :row="row" />
+                <slot name="cell-acciones" :row="row" />
+              </td>
+            </tr>
+            <tr v-if="data.length === 0">
+              <td :colspan="columns.length + ($slots.actions || $slots['cell-acciones'] ? 1 : 0)" class="px-4 py-12 text-center text-[var(--color-text-muted)]">
+                No hay datos disponibles
+              </td>
+            </tr>
+          </template>
         </tbody>
       </table>
     </div>

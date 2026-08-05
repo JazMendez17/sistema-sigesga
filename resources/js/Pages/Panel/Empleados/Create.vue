@@ -131,7 +131,7 @@ const onSubmit = val.handleSubmit(submit)
               <label class="block text-sm font-medium text-[var(--color-text)] mb-2">Puesto</label>
               <select v-model="form.puesto" class="w-full bg-[var(--color-bg)] text-[var(--color-text)] rounded-2xl p-3 shadow-[inset_6px_6px_12px_var(--neumorphic-dark),inset_-6px_-6px_12px_var(--neumorphic-light)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]">
                 <option value="">Seleccionar puesto...</option>
-                <option value="admin">Admin</option>
+                <option value="admin">Administrador</option>
                 <option value="cotizador">Cotizador</option>
                 <option value="operador">Operador</option>
               </select>

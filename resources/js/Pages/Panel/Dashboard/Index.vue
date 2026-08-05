@@ -130,15 +130,15 @@ const statusColors = {
             <div class="space-y-3">
               <div class="rounded-[22px] bg-[var(--color-bg)] p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]">
                 <p class="text-xs uppercase tracking-[0.2em] text-[var(--color-text-muted)]">Asignados</p>
-                <p class="mt-2 text-2xl font-bold text-[var(--color-text)]">28</p>
+                <p class="mt-2 min-h-[2rem] text-2xl font-bold text-[var(--color-text)]"></p>
               </div>
               <div class="rounded-[22px] bg-[var(--color-bg)] p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]">
                 <p class="text-xs uppercase tracking-[0.2em] text-[var(--color-text-muted)]">En tránsito</p>
-                <p class="mt-2 text-2xl font-bold text-[var(--color-text)]">12</p>
+                <p class="mt-2 min-h-[2rem] text-2xl font-bold text-[var(--color-text)]"></p>
               </div>
               <div class="rounded-[22px] bg-[var(--color-bg)] p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]">
                 <p class="text-xs uppercase tracking-[0.2em] text-[var(--color-text-muted)]">Finalizados</p>
-                <p class="mt-2 text-2xl font-bold text-[var(--color-text)]">96</p>
+                <p class="mt-2 min-h-[2rem] text-2xl font-bold text-[var(--color-text)]"></p>
               </div>
             </div>
           </div>
