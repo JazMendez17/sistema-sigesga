@@ -17,11 +17,29 @@ class LoginRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'email' => is_string($this->email) ? trim(strip_tags($this->email)) : $this->email,
+            'password' => is_string($this->password) ? trim($this->password) : $this->password,
+        ]);
+    }
+
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
-            'password' => ['required', 'string'],
+            'email' => ['required', 'string', 'email:rfc,dns', 'max:254'],
+            'password' => ['required', 'string', 'min:6', 'max:128'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'email.required' => 'El correo electrónico es obligatorio.',
+            'email.email' => 'Credenciales incorrectas.',
+            'password.required' => 'La contraseña es obligatoria.',
+            'password.min' => 'Credenciales incorrectas.',
         ];
     }
 
@@ -32,15 +50,16 @@ class LoginRequest extends FormRequest
         $user = Usuario::where('email', $this->email)->first();
 
         if ($user && $user->cuenta_bloqueada && $user->rol !== 'admin') {
+            $this->hitRateLimiter();
             throw ValidationException::withMessages([
-                'email' => 'Tu cuenta está bloqueada. Contacta al administrador para desbloquearla.',
+                'email' => 'Credenciales incorrectas.',
             ]);
         }
 
         if (!Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             if ($user && $user->rol !== 'admin') {
                 $user->increment('intentos_fallidos');
-                if ($user->intentos_fallidos >= 3) {
+                if ($user->intentos_fallidos >= 5) {
                     $user->update([
                         'cuenta_bloqueada' => true,
                         'bloqueada_en' => now(),
@@ -48,10 +67,10 @@ class LoginRequest extends FormRequest
                 }
             }
 
-            RateLimiter::hit($this->throttleKey());
+            $this->hitRateLimiter();
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'email' => 'Credenciales incorrectas.',
             ]);
         }
 
@@ -78,6 +97,17 @@ class LoginRequest extends FormRequest
                 'minutes' => ceil($seconds / 60),
             ]),
         ]);
+    }
+
+    protected function hitRateLimiter(): void
+    {
+        RateLimiter::hit($this->throttleKey(), 300);
+
+        $ipKey = 'login-ip:' . $this->ip();
+        RateLimiter::hit($ipKey, 900);
+
+        $emailKey = 'login-email:' . Str::lower($this->email);
+        RateLimiter::hit($emailKey, 300);
     }
 
     public function throttleKey(): string

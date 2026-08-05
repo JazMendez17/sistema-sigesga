@@ -1,10 +1,13 @@
 <script setup>
-import { Head, Link, useForm } from '@inertiajs/vue3'
-import { usePage } from '@inertiajs/vue3'
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3'
+import { usePasswordStrength } from '@/Composables/usePasswordStrength'
+import PasswordStrengthIndicator from '@/Components/PasswordStrengthIndicator.vue'
 
 const page = usePage()
 const empresa = computed(() => page.props.empresa)
+
+const submitted = ref(false)
 
 const form = useForm({
     name: '',
@@ -13,24 +16,16 @@ const form = useForm({
     password_confirmation: '',
 })
 
-const strength = computed(() => {
-    const pwd = form.password
-    if (!pwd) return { level: 0, label: '', color: '', bg: '', width: '0%' }
-
-    let score = 0
-    if (pwd.length >= 8) score++
-    if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) score++
-    if (/\d/.test(pwd)) score++
-    if (/[^a-zA-Z0-9]/.test(pwd)) score++
-
-    if (score <= 1) return { level: 1, label: 'Baja', color: 'text-red-600', bg: 'bg-red-500', width: '25%' }
-    if (score <= 3) return { level: 2, label: 'Media', color: 'text-yellow-600', bg: 'bg-yellow-400', width: '60%' }
-    return { level: 3, label: 'Segura', color: 'text-green-600', bg: 'bg-green-500', width: '100%' }
-})
+const { resultados, level, isValid, errores } = usePasswordStrength(computed(() => form.password))
 
 const submit = () => {
+    submitted.value = true
+    if (!isValid.value) return
     form.post(route('register'), {
-        onFinish: () => form.reset('password', 'password_confirmation'),
+        onFinish: () => {
+            form.reset('password', 'password_confirmation')
+            submitted.value = false
+        },
     })
 }
 </script>
@@ -91,10 +86,13 @@ const submit = () => {
                                 class="w-full bg-[var(--color-bg)] text-[var(--color-text)] placeholder-[var(--color-text-placeholder)] rounded-2xl py-3 pl-12 pr-4 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]" />
                         </div>
                         <div v-if="form.password" class="mt-3">
-                            <div class="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
-                                <div :class="strength.bg" class="h-full rounded-full transition-all duration-300" :style="{ width: strength.width }"></div>
-                            </div>
-                            <p :class="strength.color" class="mt-1 text-xs font-medium">{{ strength.label }}</p>
+                            <PasswordStrengthIndicator
+                                :password="form.password"
+                                :resultados="resultados"
+                                :level="level"
+                                :errores="errores"
+                                :submitted="submitted"
+                            />
                         </div>
                         <p v-if="form.errors.password" class="mt-2 text-sm text-red-500">{{ form.errors.password }}</p>
                     </div>

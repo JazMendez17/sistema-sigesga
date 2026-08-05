@@ -28,7 +28,7 @@ class UpdatePasswordRequest extends FormRequest
     {
         return [
             'actual' => 'required|current_password',
-            'nueva' => 'required|string|min:8|confirmed',
+            'nueva' => ['required', 'string', 'min:8', 'confirmed', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/', 'regex:/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?~]/'],
             'nueva_confirmation' => 'required',
         ];
     }
@@ -41,6 +41,7 @@ class UpdatePasswordRequest extends FormRequest
             'nueva.required' => 'La nueva contraseña es obligatoria.',
             'nueva.min' => 'La nueva contraseña debe tener al menos 8 caracteres.',
             'nueva.confirmed' => 'La confirmación de la nueva contraseña no coincide.',
+            'nueva.regex' => 'La contraseña debe contener al menos una mayúscula, una minúscula, un número y un carácter especial (!@#$%^&*()_+-=[]{}|;:,.<>?~).',
             'nueva_confirmation.required' => 'La confirmación de la nueva contraseña es obligatoria.',
         ];
     }

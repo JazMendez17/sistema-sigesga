@@ -40,10 +40,10 @@ class StoreUsuarioRequest extends FormRequest
         ];
 
         if ($id) {
-            $rules['password'] = 'nullable|string|min:8';
+            $rules['password'] = ['nullable', 'string', 'min:8', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/', 'regex:/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?~]/'];
             $rules['cuenta_bloqueada'] = 'nullable|boolean';
         } else {
-            $rules['password'] = 'required|string|min:8';
+            $rules['password'] = ['required', 'string', 'min:8', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/', 'regex:/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?~]/'];
         }
 
         return $rules;
@@ -60,6 +60,7 @@ class StoreUsuarioRequest extends FormRequest
             'email.unique' => 'El correo electrónico ya está registrado en el sistema.',
             'password.required' => 'La contraseña es obligatoria.',
             'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+            'password.regex' => 'La contraseña debe contener al menos una mayúscula, una minúscula, un número y un carácter especial (!@#$%^&*()_+-=[]{}|;:,.<>?~).',
             'password.string' => 'La contraseña debe ser una cadena de texto.',
             'rol.required' => 'El rol es obligatorio.',
             'rol.in' => 'El rol debe ser admin, cotizador, operador o cliente.',

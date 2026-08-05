@@ -1,15 +1,18 @@
 <script setup>
+import { ref, computed } from 'vue'
 import { router, useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Pages/Panel/AppLayout.vue'
 import NeumorphicInput from '@/Components/NeumorphicInput.vue'
 import NeumorphicButton from '@/Components/NeumorphicButton.vue'
 import { useFormValidation } from '@/Composables/useFormValidation'
+import { usePasswordStrength } from '@/Composables/usePasswordStrength'
+import PasswordStrengthIndicator from '@/Components/PasswordStrengthIndicator.vue'
 
 const props = defineProps({
   usuario: Object,
   empleados: { type: Array, default: () => [] },
   roles: { type: Array, default: () => [
-    { value: 'admin', label: 'Admin' },
+    { value: 'admin', label: 'Administrador' },
     { value: 'cotizador', label: 'Cotizador' },
     { value: 'operador', label: 'Operador' },
     { value: 'cliente', label: 'Cliente' },
@@ -17,6 +20,7 @@ const props = defineProps({
 })
 
 const isEdit = !!props.usuario
+const passwordSubmitted = ref(false)
 
 const form = useForm({
   name: props.usuario?.name ?? '',
@@ -28,6 +32,8 @@ const form = useForm({
   cuenta_bloqueada: props.usuario?.cuenta_bloqueada ?? false,
 })
 
+const { resultados, level, isValid, errores } = usePasswordStrength(computed(() => form.password))
+
 const rules = {
   name: ['required', 'min:2', 'max:255'],
   email: ['required', 'email', 'max:255'],
@@ -37,7 +43,11 @@ const rules = {
 }
 const val = useFormValidation(form, rules)
 
-function submit() {
+function doSubmit() {
+  if (!isEdit && form.password) {
+    passwordSubmitted.value = true
+    if (!isValid.value) return
+  }
   if (isEdit) {
     form.put(route('panel.usuarios.update', props.usuario.id), {
       onSuccess: () => form.reset(),
@@ -49,7 +59,7 @@ function submit() {
   }
 }
 
-const onSubmit = val.handleSubmit(submit)
+const onSubmit = val.handleSubmit(doSubmit)
 </script>
 
 <template>
@@ -74,6 +84,15 @@ const onSubmit = val.handleSubmit(submit)
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">{{ isEdit ? 'Contraseña (dejar vacío para mantener)' : 'Contraseña' }}</label>
               <NeumorphicInput v-model="form.password" type="password" placeholder="Mínimo 8 caracteres" :error="val.getError('password')" @input="val.handleInput('password')" />
+              <div v-if="!isEdit && form.password" class="mt-3">
+                <PasswordStrengthIndicator
+                  :password="form.password"
+                  :resultados="resultados"
+                  :level="level"
+                  :errores="errores"
+                  :submitted="passwordSubmitted"
+                />
+              </div>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Rol</label>

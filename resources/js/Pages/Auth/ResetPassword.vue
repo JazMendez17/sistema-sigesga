@@ -1,7 +1,8 @@
 <script setup>
-import { Head, useForm } from '@inertiajs/vue3'
-import { usePage } from '@inertiajs/vue3'
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
+import { Head, useForm, usePage } from '@inertiajs/vue3'
+import { usePasswordStrength } from '@/Composables/usePasswordStrength'
+import PasswordStrengthIndicator from '@/Components/PasswordStrengthIndicator.vue'
 
 const props = defineProps({
     token: String,
@@ -11,6 +12,8 @@ const props = defineProps({
 const page = usePage()
 const empresa = computed(() => page.props.empresa)
 
+const submitted = ref(false)
+
 const form = useForm({
     token: props.token,
     email: props.email,
@@ -18,7 +21,18 @@ const form = useForm({
     password_confirmation: '',
 })
 
-const submit = () => { form.post(route('password.store'), { onFinish: () => form.reset('password', 'password_confirmation') }) }
+const { resultados, level, isValid, errores } = usePasswordStrength(computed(() => form.password))
+
+const submit = () => {
+    submitted.value = true
+    if (!isValid.value) return
+    form.post(route('password.store'), {
+        onFinish: () => {
+            form.reset('password', 'password_confirmation')
+            submitted.value = false
+        },
+    })
+}
 </script>
 
 <template>
@@ -58,6 +72,15 @@ const submit = () => { form.post(route('password.store'), { onFinish: () => form
                             </div>
                             <input v-model="form.password" type="password" placeholder="••••••••" required autocomplete="new-password"
                                 class="w-full bg-[var(--color-bg)] text-[var(--color-text)] placeholder-[var(--color-text-placeholder)] rounded-2xl py-3 pl-12 pr-4 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]" />
+                        </div>
+                        <div v-if="form.password" class="mt-3">
+                            <PasswordStrengthIndicator
+                                :password="form.password"
+                                :resultados="resultados"
+                                :level="level"
+                                :errores="errores"
+                                :submitted="submitted"
+                            />
                         </div>
                         <p v-if="form.errors.password" class="mt-2 text-sm text-red-500">{{ form.errors.password }}</p>
                     </div>

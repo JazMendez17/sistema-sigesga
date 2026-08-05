@@ -35,7 +35,6 @@ const form = useForm({
   folio_ine: empleado?.folio_ine ?? '',
   nacionalidad: empleado?.nacionalidad ?? 'Mexicana',
   puesto: empleado?.puesto ?? '',
-  sueldo_diario: empleado?.sueldo_diario ?? '',
   oficina_id: empleado?.oficina_id ?? '',
   direccion: {
     calle: empleado?.direccion?.calle ?? '',
@@ -63,7 +62,6 @@ const rules = {
   telefono: ['phone'],
   telefono_local: ['phone'],
   correo: ['email'],
-  sueldo_diario: ['numeric', 'min_value:0'],
 }
 const val = useFormValidation(form, rules)
 
@@ -139,7 +137,6 @@ const onSubmit = val.handleSubmit(submit)
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <NeumorphicInput v-model="form.sueldo_diario" label="Sueldo diario ($)" type="number" step="0.01" placeholder="0.00" :error="val.getError('sueldo_diario')" @input="val.handleInput('sueldo_diario')" />
             <div>
               <label class="block text-sm font-medium text-[var(--color-text)] mb-2">Oficina</label>
               <select v-model="form.oficina_id" class="w-full bg-[var(--color-bg)] text-[var(--color-text)] rounded-2xl p-3 shadow-[inset_6px_6px_12px_var(--neumorphic-dark),inset_-6px_-6px_12px_var(--neumorphic-light)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]">

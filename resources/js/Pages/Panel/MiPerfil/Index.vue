@@ -1,7 +1,9 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { router, useForm, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Pages/Panel/AppLayout.vue'
+import { usePasswordStrength } from '@/Composables/usePasswordStrength'
+import PasswordStrengthIndicator from '@/Components/PasswordStrengthIndicator.vue'
 
 const page = usePage()
 const usuario = page.props.usuario
@@ -14,6 +16,7 @@ const uploading = ref(false)
 const previewUrl = ref(null)
 const previewFile = ref(null)
 const deleting = ref(false)
+const passwordSubmitted = ref(false)
 
 const telefonoForm = useForm({
   telefono: usuario.telefono || '',
@@ -22,8 +25,10 @@ const telefonoForm = useForm({
 const passwordForm = useForm({
   actual: '',
   nueva: '',
-  confirmar: '',
+  nueva_confirmation: '',
 })
+
+const { resultados, level, isValid, errores } = usePasswordStrength(computed(() => passwordForm.nueva))
 
 function actualizarTelefono() {
   telefonoForm.put(route('panel.mi-perfil.telefono'), {
@@ -35,15 +40,18 @@ function actualizarTelefono() {
 }
 
 function cambiarPassword() {
-  if (passwordForm.nueva !== passwordForm.confirmar) {
-    passwordForm.setError('confirmar', 'Las contraseñas no coinciden')
+  passwordSubmitted.value = true
+  if (passwordForm.nueva !== passwordForm.nueva_confirmation) {
+    passwordForm.setError('nueva_confirmation', 'Las contraseñas no coinciden')
     return
   }
+  if (!isValid.value) return
   passwordForm.put(route('panel.mi-perfil.password'), {
     preserveScroll: true,
     onSuccess: () => {
       passwordForm.reset()
       editingPassword.value = false
+      passwordSubmitted.value = false
     },
   })
 }
@@ -332,11 +340,20 @@ const perfilData = empleado || cliente || null
               <div>
                 <label class="text-xs opacity-60 uppercase tracking-wider mb-1.5 block" style="color: var(--color-text)">Nueva Contraseña</label>
                 <input v-model="passwordForm.nueva" type="password" class="w-full px-4 py-2.5 rounded-xl text-sm shadow-[inset_3px_3px_6px_var(--neumorphic-dark),inset_-3px_-3px_6px_var(--neumorphic-light)] focus:outline-none" style="background-color: var(--color-bg); color: var(--color-text)" placeholder="Nueva contraseña" />
+                <div v-if="passwordForm.nueva" class="mt-3">
+                  <PasswordStrengthIndicator
+                    :password="passwordForm.nueva"
+                    :resultados="resultados"
+                    :level="level"
+                    :errores="errores"
+                    :submitted="passwordSubmitted"
+                  />
+                </div>
               </div>
               <div>
                 <label class="text-xs opacity-60 uppercase tracking-wider mb-1.5 block" style="color: var(--color-text)">Confirmar Nueva Contraseña</label>
-                <input v-model="passwordForm.confirmar" type="password" class="w-full px-4 py-2.5 rounded-xl text-sm shadow-[inset_3px_3px_6px_var(--neumorphic-dark),inset_-3px_-3px_6px_var(--neumorphic-light)] focus:outline-none" style="background-color: var(--color-bg); color: var(--color-text)" placeholder="Confirmar contraseña" />
-                <p v-if="passwordForm.errors.confirmar" class="text-sm text-red-500 mt-1">{{ passwordForm.errors.confirmar }}</p>
+                <input v-model="passwordForm.nueva_confirmation" type="password" class="w-full px-4 py-2.5 rounded-xl text-sm shadow-[inset_3px_3px_6px_var(--neumorphic-dark),inset_-3px_-3px_6px_var(--neumorphic-light)] focus:outline-none" style="background-color: var(--color-bg); color: var(--color-text)" placeholder="Confirmar contraseña" />
+                <p v-if="passwordForm.errors.nueva_confirmation" class="text-sm text-red-500 mt-1">{{ passwordForm.errors.nueva_confirmation }}</p>
               </div>
               <div class="flex items-center gap-2 pt-1">
                 <button @click="cambiarPassword" :disabled="passwordForm.processing" class="text-sm font-medium px-5 py-2 rounded-xl text-white transition-all disabled:opacity-50" :style="{ backgroundColor: 'var(--color-primary)' }">
