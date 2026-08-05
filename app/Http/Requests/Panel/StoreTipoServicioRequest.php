@@ -31,11 +31,16 @@ class StoreTipoServicioRequest extends FormRequest
     {
         $id = $this->route('id');
 
-        return [
-            'nombre' => 'required|string|max:255|unique:catalogo_servicios,nombre,' . $id,
+        $rules = [
             'requiere_maniobra' => 'nullable|boolean',
             'activo' => 'nullable|boolean',
         ];
+
+        if (!$id || $this->has('nombre')) {
+            $rules['nombre'] = 'required|string|max:255|unique:catalogo_servicios,nombre,' . $id;
+        }
+
+        return $rules;
     }
 
     public function messages(): array

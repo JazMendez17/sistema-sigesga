@@ -106,6 +106,7 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
 
     Route::middleware('role:admin')->group(function () {
         Route::get('/tipos-servicio', [TiposServicioController::class, 'index'])->name('tipos-servicio.index');
+        Route::get('/tipos-servicio/create', [TiposServicioController::class, 'create'])->name('tipos-servicio.create');
         Route::post('/tipos-servicio', [TiposServicioController::class, 'store'])->name('tipos-servicio.store');
         Route::get('/tipos-servicio/{id}/edit', [TiposServicioController::class, 'edit'])->name('tipos-servicio.edit');
         Route::put('/tipos-servicio/{id}', [TiposServicioController::class, 'update'])->name('tipos-servicio.update');

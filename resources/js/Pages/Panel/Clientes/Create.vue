@@ -1,14 +1,25 @@
 <script setup>
+import { ref, watch } from 'vue'
 import { router, useForm, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Pages/Panel/AppLayout.vue'
 import NeumorphicInput from '@/Components/NeumorphicInput.vue'
 import NeumorphicButton from '@/Components/NeumorphicButton.vue'
 import { useFormValidation } from '@/Composables/useFormValidation'
+import { ESTADOS, municipiosPorEstado } from '@/Data/estadosMunicipios'
 
 const page = usePage()
 const cliente = page.props.cliente
 const aseguradoras = page.props.aseguradoras ?? []
 const editMode = !!cliente
+
+const municipios = ref([])
+
+function actualizarMunicipios() {
+  municipios.value = municipiosPorEstado(form.estado)
+  if (form.estado && !municipios.value.includes(form.municipio_alcaldia)) {
+    form.municipio_alcaldia = ''
+  }
+}
 
 const form = useForm({
   nombre: cliente?.nombre ?? '',
@@ -39,8 +50,14 @@ const form = useForm({
   referencias: cliente?.direccion?.referencias ?? '',
 })
 
+if (form.estado) {
+  municipios.value = municipiosPorEstado(form.estado)
+}
+
 const rules = {
   nombre: ['required', 'min:2', 'max:255'],
+  tipo_cliente: ['selectRequired'],
+  nacionalidad: ['selectRequired'],
   curp: ['curp'],
   fecha_nacimiento: ['date'],
   telefono: ['phone'],
@@ -184,16 +201,22 @@ function submit() {
                 <NeumorphicInput v-model="form.codigo_postal" placeholder="Código postal" />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">Municipio / Alcaldía</label>
-                <NeumorphicInput v-model="form.municipio_alcaldia" placeholder="Municipio o alcaldía" />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">Ciudad</label>
-                <NeumorphicInput v-model="form.ciudad" placeholder="Ciudad" />
-              </div>
-              <div>
                 <label class="block text-sm font-medium text-gray-600 mb-1">Estado</label>
-                <NeumorphicInput v-model="form.estado" placeholder="Estado" />
+                <select v-model="form.estado" @change="actualizarMunicipios()" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                  <option value="">Seleccionar estado...</option>
+                  <option v-for="e in ESTADOS" :key="e" :value="e">{{ e }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">Municipio / Alcaldía</label>
+                <select v-model="form.municipio_alcaldia" :disabled="!form.estado" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:opacity-50">
+                  <option value="">Seleccionar municipio...</option>
+                  <option v-for="m in municipios" :key="m" :value="m">{{ m }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">Localidad</label>
+                <NeumorphicInput v-model="form.ciudad" placeholder="Localidad" />
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-600 mb-1">País</label>

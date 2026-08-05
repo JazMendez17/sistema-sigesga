@@ -32,10 +32,16 @@ const etiquetaFiltro = (f) => {
   return map[f] || f
 }
 
+const estadosActivos = ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino']
+
 const filteredServicios = computed(() => {
   let result = servicios.value
   if (filtroActivo.value !== 'todos') {
-    result = result.filter(s => s.estatus === filtroActivo.value)
+    if (filtroActivo.value === 'en_curso') {
+      result = result.filter(s => estadosActivos.includes(s.estatus))
+    } else {
+      result = result.filter(s => s.estatus === filtroActivo.value)
+    }
   }
   if (busqueda.value) {
     const q = busqueda.value.toLowerCase()
@@ -90,7 +96,9 @@ function eliminarServicio(id) {
       <div class="rounded-3xl bg-[#EEF2F7] p-6 shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
         <DataTable :columns="columns" :data="filteredServicios">
           <template #cell-estatus="{ row }">
-            <Badge :variant="row.estatus">{{ row.estatus === 'en_curso' ? 'En Curso' : row.estatus }}</Badge>
+            <Badge :variant="row.estatus === 'finalizado' ? 'success' : row.estatus === 'cancelado' ? 'danger' : estadosActivos.includes(row.estatus) ? 'warning' : 'neutral'">
+              {{ row.estatus === 'asignado' ? 'Asignado' : row.estatus === 'inicio_servicio' ? 'Inicio Servicio' : row.estatus === 'en_sitio_origen' ? 'En Sitio Origen' : row.estatus === 'salida_destino' ? 'Salida a Destino' : row.estatus === 'en_destino' ? 'En Destino' : row.estatus === 'finalizado' ? 'Finalizado' : row.estatus === 'solicitud_cancelacion' ? 'Solicitud Cancelación' : row.estatus === 'cancelado' ? 'Cancelado' : row.estatus }}
+            </Badge>
           </template>
           <template #cell-acciones="{ row }">
             <div class="flex items-center gap-2">

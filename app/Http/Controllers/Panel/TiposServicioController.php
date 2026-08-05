@@ -30,6 +30,11 @@ class TiposServicioController extends Controller
         ]);
     }
 
+    public function create()
+    {
+        return Inertia::render('Panel/TiposServicio/Create');
+    }
+
     public function store(StoreTipoServicioRequest $request)
     {
         $user = Auth::user();
@@ -57,7 +62,14 @@ class TiposServicioController extends Controller
 
         $data = $request->validated();
         $data['requiere_maniobra'] = $request->boolean('requiere_maniobra');
-        $tipo->update($data);
+        $data['activo'] = $request->boolean('activo', !array_key_exists('activo', $request->all()) ? null : false);
+
+        if (array_key_exists('nombre', $data)) {
+            $tipo->update($data);
+        } else {
+            unset($data['nombre']);
+            $tipo->update($data);
+        }
 
         return back()->with('success', 'Tipo de servicio actualizado correctamente');
     }

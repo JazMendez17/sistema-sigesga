@@ -269,6 +269,48 @@ const perfilData = empleado || cliente || null
                 <p class="text-xs opacity-60 uppercase tracking-wider" style="color: var(--color-text)">Dirección</p>
                 <p class="text-sm font-medium mt-0.5" style="color: var(--color-text)">{{ perfilData.direccion }}</p>
               </div>
+              <template v-if="empleado?.calle || empleado?.colonia">
+                <div v-if="empleado?.calle" class="rounded-2xl p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]" style="background-color: var(--color-bg)">
+                  <p class="text-xs opacity-60 uppercase tracking-wider" style="color: var(--color-text)">Calle</p>
+                  <p class="text-sm font-medium mt-0.5" style="color: var(--color-text)">{{ empleado.calle || '---' }}</p>
+                </div>
+                <div v-if="empleado?.numero_exterior" class="rounded-2xl p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]" style="background-color: var(--color-bg)">
+                  <p class="text-xs opacity-60 uppercase tracking-wider" style="color: var(--color-text)">Número Exterior</p>
+                  <p class="text-sm font-medium mt-0.5" style="color: var(--color-text)">{{ empleado.numero_exterior || '---' }}</p>
+                </div>
+                <div v-if="empleado?.numero_interior" class="rounded-2xl p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]" style="background-color: var(--color-bg)">
+                  <p class="text-xs opacity-60 uppercase tracking-wider" style="color: var(--color-text)">Número Interior</p>
+                  <p class="text-sm font-medium mt-0.5" style="color: var(--color-text)">{{ empleado.numero_interior }}</p>
+                </div>
+                <div v-if="empleado?.colonia" class="rounded-2xl p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]" style="background-color: var(--color-bg)">
+                  <p class="text-xs opacity-60 uppercase tracking-wider" style="color: var(--color-text)">Colonia</p>
+                  <p class="text-sm font-medium mt-0.5" style="color: var(--color-text)">{{ empleado.colonia || '---' }}</p>
+                </div>
+                <div v-if="empleado?.codigo_postal" class="rounded-2xl p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]" style="background-color: var(--color-bg)">
+                  <p class="text-xs opacity-60 uppercase tracking-wider" style="color: var(--color-text)">Código Postal</p>
+                  <p class="text-sm font-medium mt-0.5" style="color: var(--color-text)">{{ empleado.codigo_postal || '---' }}</p>
+                </div>
+                <div v-if="empleado?.localidad" class="rounded-2xl p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]" style="background-color: var(--color-bg)">
+                  <p class="text-xs opacity-60 uppercase tracking-wider" style="color: var(--color-text)">Localidad</p>
+                  <p class="text-sm font-medium mt-0.5" style="color: var(--color-text)">{{ empleado.localidad || '---' }}</p>
+                </div>
+                <div v-if="empleado?.municipio_alcaldia" class="rounded-2xl p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]" style="background-color: var(--color-bg)">
+                  <p class="text-xs opacity-60 uppercase tracking-wider" style="color: var(--color-text)">Municipio / Alcaldía</p>
+                  <p class="text-sm font-medium mt-0.5" style="color: var(--color-text)">{{ empleado.municipio_alcaldia || '---' }}</p>
+                </div>
+                <div v-if="empleado?.estado" class="rounded-2xl p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]" style="background-color: var(--color-bg)">
+                  <p class="text-xs opacity-60 uppercase tracking-wider" style="color: var(--color-text)">Estado</p>
+                  <p class="text-sm font-medium mt-0.5" style="color: var(--color-text)">{{ empleado.estado || '---' }}</p>
+                </div>
+                <div v-if="empleado?.pais" class="rounded-2xl p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]" style="background-color: var(--color-bg)">
+                  <p class="text-xs opacity-60 uppercase tracking-wider" style="color: var(--color-text)">País</p>
+                  <p class="text-sm font-medium mt-0.5" style="color: var(--color-text)">{{ empleado.pais || '---' }}</p>
+                </div>
+                <div v-if="empleado?.referencias" class="rounded-2xl p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)] md:col-span-2" style="background-color: var(--color-bg)">
+                  <p class="text-xs opacity-60 uppercase tracking-wider" style="color: var(--color-text)">Referencias</p>
+                  <p class="text-sm font-medium mt-0.5" style="color: var(--color-text)">{{ empleado.referencias || '---' }}</p>
+                </div>
+              </template>
             </div>
           </div>
 

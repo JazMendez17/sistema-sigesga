@@ -92,6 +92,12 @@ export function useFormValidation(form, rules) {
         }
         return ''
       }
+      case 'selectRequired': {
+        if (value === '' || value === null || value === undefined || value === 'Seleccionar...' || value === 'Seleccionar... ' || value === 'Sin aseguradora') {
+          return customMessage || 'Debes seleccionar una opción válida'
+        }
+        return ''
+      }
       case 'min': {
         const min = parseInt(param)
         if (value !== '' && typeof value === 'string' && value.length < min) {

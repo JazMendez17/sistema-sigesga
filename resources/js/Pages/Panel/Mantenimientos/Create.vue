@@ -65,7 +65,7 @@ function submit() {
               <label class="block text-sm font-medium text-gray-600 mb-1">Unidad</label>
               <select v-model="form.unidad_id" @change="val.handleInput('unidad_id')" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
                 <option value="" disabled>Seleccionar unidad</option>
-                <option v-for="u in unidades" :key="u.id" :value="u.id">{{ u.nombre }} ({{ u.placa }})</option>
+                <option v-for="u in unidades" :key="u.id" :value="u.id">{{ u.nombre }}</option>
               </select>
               <p v-if="val.getError('unidad_id')" class="text-sm text-red-500 mt-1">{{ val.getError('unidad_id') }}</p>
             </div>

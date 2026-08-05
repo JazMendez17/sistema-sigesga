@@ -7,6 +7,7 @@ use App\Models\Servicio;
 use App\Models\Cotizacione;
 use App\Models\Operadore;
 use App\Models\Unidade;
+use App\Models\Oficina;
 use App\Http\Requests\Panel\StoreServicioRequest;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -47,7 +48,8 @@ class ServiciosController extends Controller
         return Inertia::render('Panel/Servicios/Create', [
             'cotizaciones' => Cotizacione::where('empresa_id', $empresaId)->where('estatus', 'aprobada')->get(['id', 'folio']),
             'operadores' => Operadore::with('empleado')->where('empresa_id', $empresaId)->get(),
-            'unidades' => Unidade::where('empresa_id', $empresaId)->get(['id', 'nombre', 'placa']),
+            'unidades' => Unidade::where('empresa_id', $empresaId)->get(['id', 'placas', 'numero_economico']),
+            'oficinas' => Oficina::where('empresa_id', $empresaId)->get(['id', 'nombre']),
         ]);
     }
 
@@ -76,7 +78,7 @@ class ServiciosController extends Controller
         }
 
         $data['empresa_id'] = $user->empresa_id;
-        $data['estado'] = 'pendiente';
+        $data['estado'] = 'asignado';
 
         Servicio::create($data);
 
@@ -99,22 +101,21 @@ class ServiciosController extends Controller
                 'fecha' => $servicio->created_at?->format('d/m/Y'),
                 'tipo' => $servicio->cotizacion?->tipoServicio?->nombre ?? '—',
                 'operador' => $servicio->operador?->empleado?->nombre ?? '—',
-                'unidad' => $servicio->unidad?->nombre ?? '—',
+                'unidad' => $servicio->unidad?->placas ?? '—',
                 'origen' => $servicio->cotizacion?->origen_direccion ?? '—',
                 'destino' => $servicio->cotizacion?->destino_direccion ?? '—',
-                'estatus' => $servicio->estado ?? 'pendiente',
+                'estatus' => $servicio->estado ?? 'asignado',
                 'observaciones' => $servicio->observaciones ?? '—',
                 'kms_salida' => $servicio->kms_salida,
                 'kms_llegada_cliente' => $servicio->kms_llegada_cliente,
                 'kms_termino_servicio' => $servicio->kms_termino_servicio,
                 'kms_regreso_base' => $servicio->kms_regreso_base,
+                'kms_cobrados_reales' => $servicio->kms_cobrados_reales,
                 'bitacora' => $servicio->bitacoraTiemposServicio ? [
-                    'hora_asignado' => $servicio->bitacoraTiemposServicio->hora_asignado,
-                    'hora_inicio_servicio' => $servicio->bitacoraTiemposServicio->hora_inicio_servicio,
-                    'hora_en_sitio_origen' => $servicio->bitacoraTiemposServicio->hora_en_sitio_origen,
-                    'hora_salida_destino' => $servicio->bitacoraTiemposServicio->hora_salida_destino,
-                    'hora_en_destino' => $servicio->bitacoraTiemposServicio->hora_en_destino,
-                    'hora_finalizado' => $servicio->bitacoraTiemposServicio->hora_finalizado,
+                    'salida' => $servicio->bitacoraTiemposServicio->hora_asignado,
+                    'llegada' => $servicio->bitacoraTiemposServicio->hora_inicio_servicio,
+                    'termino' => $servicio->bitacoraTiemposServicio->hora_finalizado,
+                    'regreso' => $servicio->bitacoraTiemposServicio->hora_regreso_base ?? null,
                 ] : null,
             ],
         ]);
@@ -122,10 +123,17 @@ class ServiciosController extends Controller
 
     public function edit($id)
     {
+        $user = Auth::user();
+        $empresaId = $user->empresa_id;
+
         $servicio = Servicio::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
 
         return Inertia::render('Panel/Servicios/Create', [
             'servicio' => $servicio,
+            'cotizaciones' => Cotizacione::where('empresa_id', $empresaId)->get(['id', 'folio']),
+            'operadores' => Operadore::with('empleado')->where('empresa_id', $empresaId)->get(),
+            'unidades' => Unidade::where('empresa_id', $empresaId)->get(['id', 'placas', 'numero_economico']),
+            'oficinas' => Oficina::where('empresa_id', $empresaId)->get(['id', 'nombre']),
         ]);
     }
 

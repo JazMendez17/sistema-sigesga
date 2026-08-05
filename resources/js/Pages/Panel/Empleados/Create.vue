@@ -1,14 +1,26 @@
 <script setup>
+import { ref, watch } from 'vue'
 import { router, useForm, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Pages/Panel/AppLayout.vue'
 import NeumorphicInput from '@/Components/NeumorphicInput.vue'
 import NeumorphicButton from '@/Components/NeumorphicButton.vue'
 import { useFormValidation } from '@/Composables/useFormValidation'
+import { ESTADOS, municipiosPorEstado } from '@/Data/estadosMunicipios'
 
 const page = usePage()
 const empleado = page.props.empleado
 const oficinas = page.props.oficinas ?? []
 const editMode = !!empleado
+
+const municipios = ref([])
+
+function actualizarMunicipios() {
+  municipios.value = municipiosPorEstado(form.direccion.estado)
+  const estado = form.direccion.estado
+  if (estado && !municipios.value.includes(form.direccion.municipio_alcaldia)) {
+    form.direccion.municipio_alcaldia = ''
+  }
+}
 
 const form = useForm({
   nombre: empleado?.nombre ?? '',
@@ -38,6 +50,10 @@ const form = useForm({
     referencias: empleado?.direccion?.referencias ?? '',
   },
 })
+
+if (form.direccion.estado) {
+  municipios.value = municipiosPorEstado(form.direccion.estado)
+}
 
 const rules = {
   nombre: ['required', 'min:2', 'max:255'],
@@ -142,11 +158,23 @@ const onSubmit = val.handleSubmit(submit)
           <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
             <NeumorphicInput v-model="form.direccion.colonia" label="Colonia" placeholder="Ej: Centro" />
             <NeumorphicInput v-model="form.direccion.codigo_postal" label="Código postal" placeholder="Ej: 06600" />
-            <NeumorphicInput v-model="form.direccion.municipio_alcaldia" label="Municipio / Alcaldía" placeholder="Ej: Cuauhtémoc" />
+            <div>
+              <label class="block text-sm font-medium text-[var(--color-text)] mb-2">Estado</label>
+              <select v-model="form.direccion.estado" @change="actualizarMunicipios()" class="w-full bg-[var(--color-bg)] text-[var(--color-text)] rounded-2xl p-3 shadow-[inset_6px_6px_12px_var(--neumorphic-dark),inset_-6px_-6px_12px_var(--neumorphic-light)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]">
+                <option value="">Seleccionar estado...</option>
+                <option v-for="e in ESTADOS" :key="e" :value="e">{{ e }}</option>
+              </select>
+            </div>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <NeumorphicInput v-model="form.direccion.ciudad" label="Ciudad" placeholder="Ej: Ciudad de México" />
-            <NeumorphicInput v-model="form.direccion.estado" label="Estado" placeholder="Ej: CDMX" />
+            <div>
+              <label class="block text-sm font-medium text-[var(--color-text)] mb-2">Municipio / Alcaldía</label>
+              <select v-model="form.direccion.municipio_alcaldia" :disabled="!form.direccion.estado" class="w-full bg-[var(--color-bg)] text-[var(--color-text)] rounded-2xl p-3 shadow-[inset_6px_6px_12px_var(--neumorphic-dark),inset_-6px_-6px_12px_var(--neumorphic-light)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] disabled:opacity-50">
+                <option value="">Seleccionar municipio...</option>
+                <option v-for="m in municipios" :key="m" :value="m">{{ m }}</option>
+              </select>
+            </div>
+            <NeumorphicInput v-model="form.direccion.ciudad" label="Localidad" placeholder="Ej: Centro Histórico" />
             <NeumorphicInput v-model="form.direccion.pais" label="País" placeholder="México" />
           </div>
           <div class="grid grid-cols-1 gap-5">

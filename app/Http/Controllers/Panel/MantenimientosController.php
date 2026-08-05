@@ -20,13 +20,13 @@ class MantenimientosController extends Controller
 
         $mantenimientos = UnidadMantenimiento::with('unidad')
             ->whereIn('unidad_id', $unidadIds)
-            ->latest()
+            ->orderBy('fecha', 'desc')
             ->get()
             ->map(fn ($m) => [
                 'id' => $m->id,
                 'unidad' => $m->unidad?->nombre ?? '—',
                 'tipo' => $m->tipo ?? '—',
-                'fecha' => $m->fecha ?? $m->created_at?->format('d/m/Y'),
+                'fecha' => $m->fecha,
                 'kilometraje' => $m->kilometraje ?? '—',
                 'costo' => (float) ($m->costo ?? 0),
                 'proximo_mantenimiento_fecha' => $m->proximo_mantenimiento_fecha,
@@ -46,7 +46,7 @@ class MantenimientosController extends Controller
 
         return Inertia::render('Panel/Mantenimientos/Index', [
             'mantenimientos' => $mantenimientos,
-            'unidades' => Unidade::where('empresa_id', $empresaId)->get(['id', 'nombre']),
+            'unidades' => Unidade::where('empresa_id', $empresaId)->get(['id', 'placas', 'numero_economico']),
             'alertas' => $alertas,
         ]);
     }
@@ -57,7 +57,7 @@ class MantenimientosController extends Controller
         $empresaId = $user->empresa_id;
 
         return Inertia::render('Panel/Mantenimientos/Create', [
-            'unidades' => Unidade::where('empresa_id', $empresaId)->get(['id', 'nombre', 'placa']),
+            'unidades' => Unidade::where('empresa_id', $empresaId)->get(['id', 'placas', 'numero_economico']),
         ]);
     }
 
@@ -81,8 +81,12 @@ class MantenimientosController extends Controller
 
     public function edit($id)
     {
+        $user = Auth::user();
+        $empresaId = $user->empresa_id;
+
         return Inertia::render('Panel/Mantenimientos/Create', [
             'mantenimiento' => UnidadMantenimiento::with('unidad')->whereHas('unidad', fn($q) => $q->where('empresa_id', auth()->user()->empresa_id))->findOrFail($id),
+            'unidades' => Unidade::where('empresa_id', $empresaId)->get(['id', 'placas', 'numero_economico']),
         ]);
     }
 

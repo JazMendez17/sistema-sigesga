@@ -26,6 +26,13 @@ class Unidade extends Model
         'activo',
     ];
 
+    protected $appends = ['nombre'];
+
+    public function getNombreAttribute(): string
+    {
+        return $this->placas . ($this->numero_economico ? ' - ' . $this->numero_economico : '');
+    }
+
     public function empresa()
     {
         return $this->belongsTo(Empresa::class, 'empresa_id');

@@ -47,6 +47,16 @@ class PerfilController extends Controller
                     'nacionalidad' => $empleado->nacionalidad,
                     'puesto' => $empleado->puesto,
                     'direccion' => $empleado->direccion ? trim($empleado->direccion->calle . ' ' . $empleado->direccion->colonia . ', ' . $empleado->direccion->ciudad) : null,
+                    'calle' => $empleado->direccion?->calle,
+                    'numero_exterior' => $empleado->direccion?->numero_exterior,
+                    'numero_interior' => $empleado->direccion?->numero_interior,
+                    'colonia' => $empleado->direccion?->colonia,
+                    'codigo_postal' => $empleado->direccion?->codigo_postal,
+                    'localidad' => $empleado->direccion?->ciudad,
+                    'municipio_alcaldia' => $empleado->direccion?->municipio_alcaldia,
+                    'estado' => $empleado->direccion?->estado,
+                    'pais' => $empleado->direccion?->pais,
+                    'referencias' => $empleado->direccion?->referencias,
                 ];
             }
         }

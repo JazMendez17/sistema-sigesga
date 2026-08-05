@@ -23,7 +23,17 @@ class UnidadMantenimiento extends Model
         'proximo_mantenimiento_fecha',
         'proximo_mantenimiento_km',
         'observaciones',
+        'created_at',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function ($model) {
+            if (!$model->created_at) {
+                $model->created_at = now();
+            }
+        });
+    }
 
     public function unidad()
     {

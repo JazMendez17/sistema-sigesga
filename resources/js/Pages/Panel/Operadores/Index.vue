@@ -8,8 +8,8 @@ import Badge from '@/Components/Badge.vue'
 
 const columns = [
   { key: 'nombre', label: 'Nombre' },
-  { key: 'licencia', label: 'Licencia' },
-  { key: 'vigencia', label: 'Vigencia' },
+  { key: 'numero_licencia', label: 'Licencia' },
+  { key: 'fecha_vigencia', label: 'Vigencia' },
   { key: 'disponible', label: 'Disponible' },
 ]
 
