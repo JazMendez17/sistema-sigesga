@@ -1,6 +1,6 @@
 <script setup>
+import { ref, computed } from 'vue'
 import { router, useForm, usePage } from '@inertiajs/vue3'
-import { computed } from 'vue'
 import AppLayout from '@/Pages/Panel/AppLayout.vue'
 import NeumorphicInput from '@/Components/NeumorphicInput.vue'
 import NeumorphicButton from '@/Components/NeumorphicButton.vue'
@@ -12,6 +12,7 @@ const props = defineProps({
 
 const page = usePage()
 const unidades = computed(() => page.props.unidades ?? [])
+const submitted = ref(false)
 
 const isEdit = !!props.mantenimiento
 
@@ -28,16 +29,18 @@ const form = useForm({
 
 const rules = {
   unidad_id: ['required'],
-  tipo: ['required', 'min:2', 'max:255'],
-  fecha: ['date'],
-  kilometraje: ['numeric', 'min_value:0'],
-  costo: ['numeric', 'min_value:0'],
+  tipo: ['required', 'min:2', 'max:100'],
+  fecha: ['required', 'date'],
+  kilometraje: ['required', 'numeric', 'min:0'],
+  costo: ['required', 'numeric', 'min:0'],
   proximo_mantenimiento_fecha: ['date'],
-  proximo_mantenimiento_km: ['numeric', 'min_value:0'],
+  proximo_mantenimiento_km: ['numeric', 'min:0'],
 }
 const val = useFormValidation(form, rules)
 
-function submit() {
+function doSubmit() {
+  submitted.value = true
+  if (!val.validate()) return
   if (isEdit) {
     form.put(route('panel.mantenimientos.update', props.mantenimiento.id), {
       onSuccess: () => form.reset(),
@@ -60,22 +63,22 @@ function submit() {
       </div>
 
       <div class="neumorphic-card p-6 max-w-2xl">
-        <form @submit.prevent="val.handleSubmit(submit)" class="space-y-5">
+        <form @submit.prevent="doSubmit" class="space-y-5">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Unidad</label>
               <select v-model="form.unidad_id" @change="val.handleInput('unidad_id')" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
-                <option value="" disabled>Seleccionar unidad</option>
+                <option value="">Seleccionar unidad...</option>
                 <option v-for="u in unidades" :key="u.id" :value="u.id">{{ u.nombre }}</option>
               </select>
-              <p v-if="val.getError('unidad_id')" class="text-sm text-red-500 mt-1">{{ val.getError('unidad_id') }}</p>
+              <p v-if="submitted && val.getError('unidad_id')" class="text-sm text-red-500 mt-1">{{ val.getError('unidad_id') }}</p>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-600 mb-1">Tipo</label>
+              <label class="block text-sm font-medium text-gray-600 mb-1">Tipo de Mantenimiento</label>
               <NeumorphicInput v-model="form.tipo" placeholder="Ej: Preventivo, Correctivo" :error="val.getError('tipo')" @input="val.handleInput('tipo')" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-600 mb-1">Fecha</label>
+              <label class="block text-sm font-medium text-gray-600 mb-1">Fecha del Mantenimiento</label>
               <NeumorphicInput v-model="form.fecha" type="date" :error="val.getError('fecha')" @input="val.handleInput('fecha')" />
             </div>
             <div>
@@ -83,15 +86,15 @@ function submit() {
               <NeumorphicInput v-model="form.costo" type="number" step="0.01" placeholder="0.00" :error="val.getError('costo')" @input="val.handleInput('costo')" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-600 mb-1">Kilometraje</label>
+              <label class="block text-sm font-medium text-gray-600 mb-1">Kilometraje Actual</label>
               <NeumorphicInput v-model="form.kilometraje" type="number" placeholder="0" :error="val.getError('kilometraje')" @input="val.handleInput('kilometraje')" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-600 mb-1">Próximo Mantenimiento (Fecha)</label>
+              <label class="block text-sm font-medium text-gray-600 mb-1">Fecha del Próximo Mantenimiento</label>
               <NeumorphicInput v-model="form.proximo_mantenimiento_fecha" type="date" :error="val.getError('proximo_mantenimiento_fecha')" @input="val.handleInput('proximo_mantenimiento_fecha')" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-600 mb-1">Próximo Mantenimiento (Km)</label>
+              <label class="block text-sm font-medium text-gray-600 mb-1">Km del Próximo Mantenimiento</label>
               <NeumorphicInput v-model="form.proximo_mantenimiento_km" type="number" placeholder="0" :error="val.getError('proximo_mantenimiento_km')" @input="val.handleInput('proximo_mantenimiento_km')" />
             </div>
           </div>

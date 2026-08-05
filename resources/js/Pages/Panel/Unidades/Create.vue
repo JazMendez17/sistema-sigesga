@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { router, useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Pages/Panel/AppLayout.vue'
 import NeumorphicInput from '@/Components/NeumorphicInput.vue'
@@ -14,6 +14,7 @@ const props = defineProps({
 })
 
 const isEdit = !!props.unidad
+const submitted = ref(false)
 
 // Fecha mínima para seguro (mañana)
 const tomorrow = computed(() => {
@@ -46,7 +47,9 @@ const rules = {
 }
 const val = useFormValidation(form, rules)
 
-function submit() {
+function doSubmit() {
+  submitted.value = true
+  if (!val.validate()) return
   if (isEdit) {
     form.put(route('panel.unidades.update', props.unidad.id), {
       onSuccess: () => form.reset(),
@@ -69,7 +72,7 @@ function submit() {
       </div>
 
       <div class="neumorphic-card p-6 max-w-2xl">
-        <form @submit.prevent="val.handleSubmit(submit)" class="space-y-5">
+        <form @submit.prevent="doSubmit" class="space-y-5">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Marca</label>
@@ -91,7 +94,8 @@ function submit() {
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Placas</label>
-              <NeumorphicInput v-model="form.placas" placeholder="Placas" :error="val.getError('placas')" @input="val.handleInput('placas')" />
+              <NeumorphicInput v-model="form.placas" placeholder="Ej: ABC1234" :error="val.getError('placas')" @input="val.handleInput('placas')" />
+              <p class="text-xs text-gray-400 mt-1">Formato: 3 a 8 caracteres, solo letras y números (ABC1234, 1234ABC)</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Número Económico</label>

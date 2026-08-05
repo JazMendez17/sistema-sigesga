@@ -28,8 +28,8 @@ class OperadoresController extends Controller
                 'nombre' => $o->empleado?->nombre ?? '—',
                 'tipo_licencia' => $o->tipo_licencia ?? '—',
                 'numero_licencia' => $o->numero_licencia ?? '—',
-                'fecha_expedicion' => $o->fecha_expedicion?->format('Y-m-d') ?? '—',
-                'fecha_vigencia' => $o->fecha_vigencia?->format('Y-m-d') ?? '—',
+                'fecha_expedicion' => $o->fecha_expedicion ? \Carbon\Carbon::parse($o->fecha_expedicion)->format('Y-m-d') : '—',
+                'fecha_vigencia' => $o->fecha_vigencia ? \Carbon\Carbon::parse($o->fecha_vigencia)->format('Y-m-d') : '—',
                 'disponible' => $o->disponible ?? true,
             ]);
 
@@ -53,7 +53,7 @@ class OperadoresController extends Controller
         $empresaId = $user->empresa_id;
 
         return Inertia::render('Panel/Operadores/Create', [
-            'empleados' => Empleado::where('empresa_id', $empresaId)->get(['id', 'nombre', 'apellido_paterno']),
+            'empleados' => Empleado::where('empresa_id', $empresaId)->where('puesto', 'operador')->get(['id', 'nombre', 'apellido_paterno', 'apellido_materno']),
         ]);
     }
 
@@ -88,7 +88,7 @@ class OperadoresController extends Controller
 
         return Inertia::render('Panel/Operadores/Create', [
             'operador' => Operadore::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id),
-            'empleados' => Empleado::where('empresa_id', $empresaId)->get(['id', 'nombre', 'apellido_paterno']),
+            'empleados' => Empleado::where('empresa_id', $empresaId)->where('puesto', 'operador')->get(['id', 'nombre', 'apellido_paterno', 'apellido_materno']),
         ]);
     }
 

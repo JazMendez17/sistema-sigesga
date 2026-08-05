@@ -38,10 +38,33 @@ class StoreOperadorRequest extends FormRequest
 
         return [
             'empleado_id' => 'required|exists:empleados,id|unique:operadores,empleado_id,' . $id,
-            'tipo_licencia' => 'nullable|string|max:255',
-            'numero_licencia' => 'nullable|string|max:255',
+            'tipo_licencia' => 'required|string|max:255',
+            'numero_licencia' => 'required|string|max:255',
             'fecha_expedicion' => 'nullable|date',
-            'fecha_vigencia' => 'nullable|date|after_or_equal:fecha_expedicion',
+            'fecha_vigencia' => ['nullable', 'date', 'after_or_equal:fecha_expedicion', function ($attribute, $value, $fail) {
+                $expedicion = $this->input('fecha_expedicion');
+                if (!$expedicion || !$value) return;
+                try {
+                    $exp = \Carbon\Carbon::parse($expedicion);
+                    $vig = \Carbon\Carbon::parse($value);
+                } catch (\Exception $e) {
+                    $fail('Error en la vigencia: ingrese un formato válido.');
+                    return;
+                }
+                if (!$vig->gt($exp)) {
+                    $fail('La fecha de vigencia debe ser posterior a la fecha de expedición.');
+                    return;
+                }
+                $diffYears = $exp->diffInYears($vig);
+                if ($diffYears < 2 || $diffYears > 4) {
+                    $fail('Error en la vigencia: ingrese un formato válido, solo años exactos (2, 3 o 4 años).');
+                    return;
+                }
+                $expected = $exp->copy()->addYears($diffYears);
+                if (!$vig->isSameDay($expected)) {
+                    $fail('Error en la vigencia: la fecha debe ser exactamente ' . $diffYears . ' años después (' . $expected->format('d/m/Y') . ').');
+                }
+            }],
             'disponible' => 'nullable|boolean',
         ];
     }
@@ -53,11 +76,14 @@ class StoreOperadorRequest extends FormRequest
             'empleado_id.required' => 'El empleado es obligatorio.',
             'empleado_id.exists' => 'El empleado seleccionado no existe.',
             'empleado_id.unique' => 'El empleado ya está registrado como operador.',
+            'tipo_licencia.required' => 'El tipo de licencia es obligatorio.',
             'tipo_licencia.max' => 'El tipo de licencia no debe exceder los 255 caracteres.',
+            'numero_licencia.required' => 'El número de licencia es obligatorio.',
             'numero_licencia.max' => 'El número de licencia no debe exceder los 255 caracteres.',
             'fecha_expedicion.date' => 'La fecha de expedición no tiene un formato válido.',
             'fecha_vigencia.date' => 'La fecha de vigencia no tiene un formato válido.',
             'fecha_vigencia.after_or_equal' => 'La fecha de vigencia debe ser posterior o igual a la fecha de expedición.',
+            'fecha_vigencia.after' => 'La licencia no puede estar vencida. La fecha de vigencia debe ser posterior a hoy.',
             'disponible.boolean' => 'El campo disponible debe ser verdadero o falso.',
         ];
     }

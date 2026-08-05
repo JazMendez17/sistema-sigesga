@@ -1,6 +1,6 @@
 <script setup>
+import { ref, computed } from 'vue'
 import { router, useForm, usePage } from '@inertiajs/vue3'
-import { computed } from 'vue'
 import AppLayout from '@/Pages/Panel/AppLayout.vue'
 import NeumorphicInput from '@/Components/NeumorphicInput.vue'
 import NeumorphicButton from '@/Components/NeumorphicButton.vue'
@@ -12,8 +12,17 @@ const props = defineProps({
 
 const page = usePage()
 const empleados = computed(() => page.props.empleados ?? [])
+const submitted = ref(false)
 
 const isEdit = !!props.operador
+
+// Fecha de hoy para validar vigencia no vencida
+const today = computed(() => new Date().toISOString().split('T')[0])
+
+// Nombre completo del empleado
+function nombreCompleto(e) {
+  return [e.nombre, e.apellido_paterno, e.apellido_materno].filter(Boolean).join(' ')
+}
 
 const form = useForm({
   empleado_id: props.operador?.empleado_id ?? '',
@@ -26,13 +35,17 @@ const form = useForm({
 
 const rules = {
   empleado_id: ['required'],
+  tipo_licencia: ['selectRequired'],
+  numero_licencia: ['required', 'min:5', 'max:50'],
   fecha_expedicion: ['date'],
-  fecha_vigencia: ['date', 'after_or_equal:fecha_expedicion'],
+  fecha_vigencia: ['date', { rule: 'exact_years_after:fecha_expedicion', message: 'Error en la vigencia: ingrese un formato válido, solo años exactos (2, 3 o 4 años).' }],
   disponible: ['boolean'],
 }
 const val = useFormValidation(form, rules)
 
-function submit() {
+function doSubmit() {
+  submitted.value = true
+  if (!val.validate()) return
   if (isEdit) {
     form.put(route('panel.operadores.update', props.operador.id), {
       onSuccess: () => form.reset(),
@@ -55,23 +68,33 @@ function submit() {
       </div>
 
       <div class="neumorphic-card p-6 max-w-2xl">
-        <form @submit.prevent="val.handleSubmit(submit)" class="space-y-5">
+        <form @submit.prevent="doSubmit" class="space-y-5">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Empleado</label>
               <select v-model="form.empleado_id" @change="val.handleInput('empleado_id')" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
-                <option value="" disabled>Seleccionar empleado</option>
-                <option v-for="e in empleados" :key="e.id" :value="e.id">{{ e.nombre }} {{ e.apellido_paterno }}</option>
+                <option value="">Seleccionar empleado...</option>
+                <option v-for="e in empleados" :key="e.id" :value="e.id">{{ nombreCompleto(e) }}</option>
               </select>
-              <p v-if="val.getError('empleado_id')" class="text-sm text-red-500 mt-1">{{ val.getError('empleado_id') }}</p>
+              <p v-if="submitted && val.getError('empleado_id')" class="text-sm text-red-500 mt-1">{{ val.getError('empleado_id') }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Tipo de Licencia</label>
-              <NeumorphicInput v-model="form.tipo_licencia" placeholder="Tipo de licencia" />
+              <select v-model="form.tipo_licencia" @change="val.handleInput('tipo_licencia')" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                <option value="">Seleccionar tipo...</option>
+                <option value="Tipo C - Carga Federal">Tipo C - Carga Federal</option>
+                <option value="Tipo C - Carga Estatal">Tipo C - Carga Estatal</option>
+                <option value="Tipo E - Carga Especializada Federal">Tipo E - Carga Especializada Federal</option>
+                <option value="Tipo E - Carga Especializada Estatal">Tipo E - Carga Especializada Estatal</option>
+                <option value="Tipo B - Chofer Federal">Tipo B - Chofer Federal</option>
+                <option value="Tipo B - Chofer Estatal">Tipo B - Chofer Estatal</option>
+                <option value="Tipo A - Automovilista">Tipo A - Automovilista</option>
+              </select>
+              <p v-if="submitted && val.getError('tipo_licencia')" class="text-sm text-red-500 mt-1">{{ val.getError('tipo_licencia') }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Número de Licencia</label>
-              <NeumorphicInput v-model="form.numero_licencia" placeholder="Número de licencia" />
+              <NeumorphicInput v-model="form.numero_licencia" placeholder="Número de licencia" :error="val.getError('numero_licencia')" @input="val.handleInput('numero_licencia')" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Fecha de Expedición</label>
@@ -79,7 +102,7 @@ function submit() {
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Fecha de Vigencia</label>
-              <NeumorphicInput v-model="form.fecha_vigencia" type="date" placeholder="Fecha de vigencia" :error="val.getError('fecha_vigencia')" @input="val.handleInput('fecha_vigencia')" />
+              <NeumorphicInput v-model="form.fecha_vigencia" type="date" :min="today" placeholder="Fecha de vigencia" :error="val.getError('fecha_vigencia')" @input="val.handleInput('fecha_vigencia')" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Disponible</label>

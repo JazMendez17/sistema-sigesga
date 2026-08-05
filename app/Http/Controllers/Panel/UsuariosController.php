@@ -64,6 +64,32 @@ class UsuariosController extends Controller
             ->with('success', 'Usuario creado correctamente');
     }
 
+    // Ver detalle de usuario
+    public function show($id)
+    {
+        $usuario = Usuario::with('empleado')->where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+
+        return Inertia::render('Panel/Usuarios/Show', [
+            'usuario' => [
+                'id' => $usuario->id,
+                'name' => $usuario->name,
+                'email' => $usuario->email,
+                'rol' => $usuario->rol,
+                'telefono' => $usuario->telefono,
+                'foto' => $usuario->foto,
+                'intentos_fallidos' => $usuario->intentos_fallidos,
+                'cuenta_bloqueada' => $usuario->cuenta_bloqueada,
+                'bloqueada_en' => $usuario->bloqueada_en?->format('d/m/Y H:i'),
+                'empleado' => $usuario->empleado ? [
+                    'nombre_completo' => trim($usuario->empleado->nombre . ' ' . $usuario->empleado->apellido_paterno . ' ' . $usuario->empleado->apellido_materno),
+                    'puesto' => $usuario->empleado->puesto,
+                    'telefono' => $usuario->empleado->telefono,
+                    'correo' => $usuario->empleado->correo,
+                ] : null,
+            ],
+        ]);
+    }
+
     // Formulario para editar usuario
     public function edit($id)
     {

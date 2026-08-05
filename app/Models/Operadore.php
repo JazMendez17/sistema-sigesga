@@ -23,6 +23,15 @@ class Operadore extends Model
         'disponible',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'fecha_expedicion' => 'date',
+            'fecha_vigencia' => 'date',
+            'disponible' => 'boolean',
+        ];
+    }
+
     // Relación con empresa
     public function empresa()
     {

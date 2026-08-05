@@ -112,7 +112,8 @@ export function useFormValidation(form, rules) {
         if (value !== '' && typeof value === 'string' && value.length < min) {
           return customMessage || `Mínimo ${min} caracteres`
         }
-        if (value !== '' && typeof value === 'number' && value < min) {
+        const numVal = parseFloat(value)
+        if (value !== '' && !isNaN(numVal) && numVal < min) {
           return customMessage || `El valor mínimo es ${min}`
         }
         return ''
@@ -185,7 +186,7 @@ export function useFormValidation(form, rules) {
       }
       case 'placas': {
         if (value !== '' && !/^[A-Z0-9]{3,8}$/.test(value.toUpperCase())) {
-          return customMessage || 'Formato de placas inválido'
+          return customMessage || 'Formato de placas inválido. Ejemplo: ABC1234 o 1234ABC'
         }
         return ''
       }
@@ -219,6 +220,27 @@ export function useFormValidation(form, rules) {
           const curDate = new Date(value)
           if (curDate < refDate) {
             return customMessage || `Debe ser igual o posterior a la fecha de ${param.replace(/_/g, ' ')}`
+          }
+        }
+        return ''
+      }
+      case 'exact_years_after': {
+        if (value && data[param]) {
+          const refDate = new Date(data[param] + 'T00:00:00')
+          const curDate = new Date(value + 'T00:00:00')
+          if (curDate <= refDate) return customMessage || 'La fecha debe ser posterior.'
+          const diffMs = curDate - refDate
+          const diffDays = diffMs / (1000 * 60 * 60 * 24)
+          const diffYears = diffDays / 365.25
+          const rounded = Math.round(diffYears)
+          if (rounded < 2 || rounded > 4) {
+            return 'La vigencia debe ser de 2, 3 o 4 años exactos a partir de la fecha de expedición.'
+          }
+          const expectedDate = new Date(refDate)
+          expectedDate.setFullYear(expectedDate.getFullYear() + rounded)
+          const expectedStr = expectedDate.toISOString().split('T')[0]
+          if (value !== expectedStr) {
+            return `La vigencia debe ser exactamente ${rounded} años después. Fecha esperada: ${expectedStr.split('-').reverse().join('/')}.`
           }
         }
         return ''
