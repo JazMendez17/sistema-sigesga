@@ -46,6 +46,7 @@ function generarCalificaciones() {
 </script>
 
 <template>
+  <!-- Panel de generación de reportes -->
   <AppLayout>
     <div class="space-y-6">
       <div class="flex items-center justify-between">

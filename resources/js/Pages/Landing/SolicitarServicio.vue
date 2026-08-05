@@ -14,6 +14,7 @@ const submitForm = () => {
 </script>
 
 <template>
+    <!-- Formulario público de solicitud de servicio -->
     <Head title="Solicitar Servicio - SIGESGA" />
 
     <div class="min-h-screen bg-[var(--color-bg)] flex items-center justify-center p-4">

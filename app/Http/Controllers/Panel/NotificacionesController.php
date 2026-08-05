@@ -1,5 +1,7 @@
 <?php
 
+// Controlador de notificaciones
+
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
@@ -10,6 +12,7 @@ use Inertia\Inertia;
 
 class NotificacionesController extends Controller
 {
+    // Lista de notificaciones enviadas
     public function index()
     {
         $user = Auth::user();
@@ -34,6 +37,7 @@ class NotificacionesController extends Controller
         ]);
     }
 
+    // Reenviar notificación fallida
     public function reenviar($id)
     {
         $notificacion = Notificacione::findOrFail($id);

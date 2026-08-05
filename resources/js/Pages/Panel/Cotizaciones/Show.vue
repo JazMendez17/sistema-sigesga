@@ -10,6 +10,7 @@ const props = defineProps({
 </script>
 
 <template>
+  <!-- Detalle de cotización -->
   <AppLayout>
     <div class="space-y-6">
       <div class="flex items-center justify-between">

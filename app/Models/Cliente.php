@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+// Modelo de Cliente
 class Cliente extends Model
 {
     use HasFactory, SoftDeletes;
@@ -34,36 +35,43 @@ class Cliente extends Model
         'tipo_cobertura_poliza',
     ];
 
+    // Relación con empresa
     public function empresa(): BelongsTo
     {
         return $this->belongsTo(Empresa::class);
     }
 
+    // Relación con usuario
     public function usuario(): BelongsTo
     {
         return $this->belongsTo(Usuario::class);
     }
 
+    // Relación con aseguradora
     public function aseguradora(): BelongsTo
     {
         return $this->belongsTo(Aseguradora::class);
     }
 
+    // Relación con dirección
     public function direccion(): BelongsTo
     {
         return $this->belongsTo(Direccion::class);
     }
 
+    // Relación con cotizaciones
     public function cotizaciones(): HasMany
     {
         return $this->hasMany(Cotizacione::class);
     }
 
+    // Relación con facturas
     public function facturas(): HasMany
     {
         return $this->hasMany(Factura::class);
     }
 
+    // Relación con calificaciones de servicio
     public function calificacionesServicio(): HasMany
     {
         return $this->hasMany(CalificacionesServicio::class);

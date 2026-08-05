@@ -47,6 +47,7 @@ function submit() {
 </script>
 
 <template>
+  <!-- Formulario de registro / edición de tarifa propia -->
   <AppLayout>
     <div class="space-y-6">
       <div>

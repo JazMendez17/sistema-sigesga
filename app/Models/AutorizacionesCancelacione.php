@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+// Modelo de Autorizaciones y Cancelaciones
 class AutorizacionesCancelacione extends Model
 {
     use HasFactory;
@@ -25,16 +26,19 @@ class AutorizacionesCancelacione extends Model
         'fecha_resolucion',
     ];
 
+    // Relación con servicio
     public function servicio(): BelongsTo
     {
         return $this->belongsTo(Servicio::class);
     }
 
+    // Relación con usuario solicitante
     public function usuarioSolicitante(): BelongsTo
     {
         return $this->belongsTo(Usuario::class, 'usuario_solicitante_id');
     }
 
+    // Relación con usuario resolutor
     public function usuarioResolutor(): BelongsTo
     {
         return $this->belongsTo(Usuario::class, 'usuario_resolutor_id');

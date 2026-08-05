@@ -33,13 +33,16 @@ function eliminarEmpleado(id) {
 </script>
 
 <template>
+  <!-- Listado de empleados registrados -->
   <AppLayout>
     <div class="space-y-6">
+      <!-- Encabezado con botón de nuevo empleado -->
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 class="text-2xl font-bold text-gray-800">Empleados</h1>
         <NeumorphicButton @click="router.visit(route('panel.empleados.create'))">+ Nuevo Empleado</NeumorphicButton>
       </div>
 
+      <!-- Barra de búsqueda -->
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <NeumorphicInput
           v-model="busqueda"
@@ -48,6 +51,7 @@ function eliminarEmpleado(id) {
         />
       </div>
 
+      <!-- Tabla de empleados -->
       <div class="rounded-3xl bg-[#EEF2F7] p-6 shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
         <DataTable :columns="columns" :data="empleadosFiltrados">
           <template #actions="{ row }">

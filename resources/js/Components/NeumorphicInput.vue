@@ -11,17 +11,23 @@ defineProps({
 })
 </script>
 
+<!-- Campo de entrada con estilo neumórfico, etiqueta, ícono y mensaje de error -->
 <template>
+  <!-- Campo de formulario -->
   <div>
+    <!-- Etiqueta del campo -->
     <label v-if="label" class="block text-sm font-medium text-[var(--color-text)] mb-2">
       {{ label }}<span v-if="required" class="text-[var(--color-danger)] ml-1">*</span>
     </label>
+    <!-- Contenedor del input con ícono -->
     <div class="relative">
+      <!-- Ícono decorativo -->
       <div v-if="icon" class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
         <svg class="w-5 h-5 text-[var(--color-text-placeholder)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
           <path stroke-linecap="round" stroke-linejoin="round" :d="icon" />
         </svg>
       </div>
+      <!-- Campo de entrada neumórfico -->
       <input
         :type="type"
         :placeholder="placeholder"
@@ -35,6 +41,7 @@ defineProps({
         ]"
       />
     </div>
+    <!-- Mensaje de error -->
     <p v-if="error" class="mt-1 text-sm text-red-500">{{ error }}</p>
   </div>
 </template>

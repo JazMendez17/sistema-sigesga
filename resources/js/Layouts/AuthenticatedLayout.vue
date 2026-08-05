@@ -1,3 +1,4 @@
+<!-- Layout principal para páginas que requieren autenticación -->
 <script setup>
 import { ref } from 'vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
@@ -7,6 +8,7 @@ import NavLink from '@/Components/NavLink.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
 import { Link } from '@inertiajs/vue3';
 
+// Controla la visibilidad del menú de navegación responsive
 const showingNavigationDropdown = ref(false);
 </script>
 

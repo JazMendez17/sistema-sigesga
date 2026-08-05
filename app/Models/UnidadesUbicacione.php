@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+// Modelo de Ubicación de Unidad
 class UnidadesUbicacione extends Model
 {
     public $timestamps = false;
@@ -28,11 +29,13 @@ class UnidadesUbicacione extends Model
         ];
     }
 
+    // Relación con unidad
     public function unidad(): BelongsTo
     {
         return $this->belongsTo(Unidade::class);
     }
 
+    // Relación con servicio
     public function servicio(): BelongsTo
     {
         return $this->belongsTo(Servicio::class);

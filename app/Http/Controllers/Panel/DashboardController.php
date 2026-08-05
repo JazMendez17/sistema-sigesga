@@ -1,5 +1,7 @@
 <?php
 
+// Controlador del dashboard principal
+
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
@@ -12,6 +14,7 @@ use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
+    // Mostrar dashboard con KPIs según rol del usuario
     public function index()
     {
         $user = Auth::user();

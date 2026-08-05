@@ -46,6 +46,7 @@ function rechazar(id) {
 </script>
 
 <template>
+  <!-- Panel de autorizaciones de cancelación de servicios -->
   <AppLayout>
     <div class="space-y-6">
       <div class="flex items-center justify-between">

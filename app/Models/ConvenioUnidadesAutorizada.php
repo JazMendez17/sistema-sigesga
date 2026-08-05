@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+// Modelo de Unidad Autorizada de Convenio
 class ConvenioUnidadesAutorizada extends Model
 {
     use HasFactory;
@@ -19,6 +20,7 @@ class ConvenioUnidadesAutorizada extends Model
         'equipamiento',
     ];
 
+    // Relación con convenio
     public function convenio(): BelongsTo
     {
         return $this->belongsTo(Convenio::class);

@@ -19,6 +19,7 @@ function eliminarTipo(id) {
 </script>
 
 <template>
+  <!-- Catálogo de tipos de servicio -->
   <AppLayout>
     <div class="space-y-6">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

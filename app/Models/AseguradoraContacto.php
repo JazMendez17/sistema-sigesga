@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+// Modelo de Contacto de Aseguradora
 class AseguradoraContacto extends Model
 {
     use HasFactory, SoftDeletes;
@@ -22,6 +23,7 @@ class AseguradoraContacto extends Model
         'red_social',
     ];
 
+    // Relación con aseguradora
     public function aseguradora(): BelongsTo
     {
         return $this->belongsTo(Aseguradora::class);

@@ -85,7 +85,9 @@ function canShowItem(item) {
 }
 </script>
 
+<!-- Barra lateral de navegación con menú agrupado por roles y responsive -->
 <template>
+  <!-- Barra lateral fija -->
   <aside
     :class="[
       'fixed inset-y-0 left-0 z-40 w-64 bg-[var(--color-bg)] transform transition-transform duration-300 lg:translate-x-0',
@@ -93,6 +95,7 @@ function canShowItem(item) {
     ]"
   >
     <div class="flex flex-col h-full p-4">
+      <!-- Logo y nombre de la empresa -->
       <div class="flex items-center gap-4 px-4 py-6 mb-6 neumorphic-raised rounded-2xl">
         <div v-if="empresa?.logo" class="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 shadow-[inset_2px_2px_4px_var(--neumorphic-dark),inset_-2px_-2px_4px_var(--neumorphic-light)]">
           <img :src="'/storage/' + empresa.logo" class="w-full h-full object-contain" alt="Logo" />
@@ -106,6 +109,7 @@ function canShowItem(item) {
         </div>
       </div>
 
+      <!-- Navegación agrupada por secciones -->
       <nav class="flex-1 overflow-y-auto space-y-6">
         <div v-for="group in menuGroups" :key="group.title">
           <div v-if="canShow(group)">
@@ -133,6 +137,7 @@ function canShowItem(item) {
         </div>
       </nav>
 
+      <!-- Pie de barra lateral con derechos reservados -->
       <div class="mt-auto pt-4">
         <div class="neumorphic-raised rounded-2xl p-3">
           <p class="text-[var(--color-text)] opacity-60 text-xs text-center">{{ empresa?.texto_derechos || '© 2026 SIGESGA' }}</p>

@@ -1,5 +1,7 @@
 <?php
 
+// Controlador de cotizaciones
+
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
@@ -12,6 +14,7 @@ use Inertia\Inertia;
 
 class CotizacionesController extends Controller
 {
+    // Lista de cotizaciones
     public function index()
     {
         $user = Auth::user();
@@ -38,6 +41,7 @@ class CotizacionesController extends Controller
         ]);
     }
 
+    // Formulario para crear cotización
     public function create()
     {
         $user = Auth::user();
@@ -49,6 +53,7 @@ class CotizacionesController extends Controller
         ]);
     }
 
+    // Guardar cotización en base de datos
     public function store(StoreCotizacionRequest $request)
     {
         $user = Auth::user();
@@ -64,6 +69,7 @@ class CotizacionesController extends Controller
             ->with('success', 'Cotización creada correctamente');
     }
 
+    // Ver detalle de cotización
     public function show($id)
     {
         $cotizacion = Cotizacione::with(['cliente', 'tipoServicio', 'usuarioCreador', 'servicio'])->where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
@@ -86,6 +92,7 @@ class CotizacionesController extends Controller
         ]);
     }
 
+    // Formulario para editar cotización
     public function edit($id)
     {
         $user = Auth::user();
@@ -99,6 +106,7 @@ class CotizacionesController extends Controller
         ]);
     }
 
+    // Actualizar datos de cotización
     public function update(StoreCotizacionRequest $request, $id)
     {
         $cotizacion = Cotizacione::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
@@ -111,6 +119,7 @@ class CotizacionesController extends Controller
             ->with('success', 'Cotización actualizada correctamente');
     }
 
+    // Eliminar cotización
     public function destroy($id)
     {
         Cotizacione::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id)->delete();

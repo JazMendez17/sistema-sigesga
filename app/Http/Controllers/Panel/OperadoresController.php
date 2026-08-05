@@ -1,5 +1,7 @@
 <?php
 
+// Controlador de operadores
+
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
@@ -11,6 +13,7 @@ use Inertia\Inertia;
 
 class OperadoresController extends Controller
 {
+    // Lista de operadores con alertas de licencias
     public function index()
     {
         $user = Auth::user();
@@ -43,6 +46,7 @@ class OperadoresController extends Controller
         ]);
     }
 
+    // Formulario para crear operador
     public function create()
     {
         $user = Auth::user();
@@ -53,6 +57,7 @@ class OperadoresController extends Controller
         ]);
     }
 
+    // Guardar operador en base de datos
     public function store(StoreOperadorRequest $request)
     {
         $user = Auth::user();
@@ -67,6 +72,7 @@ class OperadoresController extends Controller
             ->with('success', 'Operador creado correctamente');
     }
 
+    // Ver detalle de operador
     public function show($id)
     {
         return Inertia::render('Panel/Operadores/Show', [
@@ -74,6 +80,7 @@ class OperadoresController extends Controller
         ]);
     }
 
+    // Formulario para editar operador
     public function edit($id)
     {
         $user = Auth::user();
@@ -85,6 +92,7 @@ class OperadoresController extends Controller
         ]);
     }
 
+    // Actualizar datos del operador
     public function update(StoreOperadorRequest $request, $id)
     {
         $operador = Operadore::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
@@ -97,6 +105,7 @@ class OperadoresController extends Controller
             ->with('success', 'Operador actualizado correctamente');
     }
 
+    // Eliminar operador
     public function destroy($id)
     {
         $operadore = Operadore::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);

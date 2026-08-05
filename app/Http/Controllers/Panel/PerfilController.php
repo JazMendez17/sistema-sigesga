@@ -1,5 +1,7 @@
 <?php
 
+// Controlador de perfil de usuario
+
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
@@ -13,6 +15,7 @@ use Inertia\Inertia;
 
 class PerfilController extends Controller
 {
+    // Mostrar perfil del usuario autenticado
     public function index()
     {
         $user = auth()->user()->load('empresa');
@@ -90,6 +93,7 @@ class PerfilController extends Controller
         return Inertia::render('Panel/MiPerfil/Index', $data);
     }
 
+    // Actualizar número de teléfono
     public function updateTelefono(Request $request)
     {
         $validated = $request->validate([
@@ -101,6 +105,7 @@ class PerfilController extends Controller
         return back()->with('success', 'Teléfono actualizado correctamente');
     }
 
+    // Cambiar contraseña del usuario
     public function updatePassword(UpdatePasswordRequest $request)
     {
         $user = auth()->user();
@@ -116,6 +121,7 @@ class PerfilController extends Controller
         return back()->with('success', 'Contraseña actualizada correctamente');
     }
 
+    // Actualizar foto de perfil
     public function updateFoto(Request $request)
     {
         $request->validate([
@@ -134,6 +140,7 @@ class PerfilController extends Controller
         return back()->with('success', 'Foto de perfil actualizada correctamente');
     }
 
+    // Eliminar foto de perfil
     public function destroyFoto()
     {
         $user = auth()->user();

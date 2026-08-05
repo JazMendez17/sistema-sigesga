@@ -20,7 +20,9 @@ const sizes = {
 }
 </script>
 
+<!-- Componente de insignia/etiqueta para mostrar estados (éxito, advertencia, error, etc.) -->
 <template>
+  <!-- Etiqueta de estado -->
   <span :class="[variants[variant], sizes[size], 'inline-flex items-center font-medium rounded-xl']">
     <slot />
   </span>

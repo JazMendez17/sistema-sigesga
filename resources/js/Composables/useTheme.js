@@ -1,6 +1,9 @@
+// Composable para gestionar la tematización dinámica (colores, tipografía, modo oscuro)
+
 import { computed, watch, onMounted } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 
+// Colores por defecto para cada módulo del panel
 const defaultModuloColores = {
   dashboard: '#4F46E5',
   cotizaciones: '#059669',
@@ -14,6 +17,7 @@ const defaultModuloColores = {
   reportes: '#0D9488',
 }
 
+// Aclara un color hexadecimal según un factor dado (0-1)
 function lighten(hex, amount) {
   const num = parseInt(hex.replace('#', ''), 16)
   const r = Math.min(255, Math.round((num >> 16) + (255 - (num >> 16)) * amount))
@@ -22,6 +26,7 @@ function lighten(hex, amount) {
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`
 }
 
+// Retorna propiedades reactivas del tema basado en configuración de empresa
 export function useTheme() {
   const page = usePage()
 
@@ -31,20 +36,24 @@ export function useTheme() {
 
   const fontFamily = computed(() => empresa.value?.tipografia || 'Roboto')
 
+  // Colores principales del tema
   const primaryColor = computed(() => empresa.value?.color_primario || '#4F46E5')
   const secondaryColor = computed(() => empresa.value?.color_secundario || '#7C3AED')
   const bgColor = computed(() => isDark.value ? '#111827' : (empresa.value?.color_fondo || '#E8EDF2'))
   const textColor = computed(() => isDark.value ? '#F3F4F6' : (empresa.value?.color_texto || '#1F2937'))
 
+  // Colores por módulo, combinando los por defecto con los personalizados
   const moduloColores = computed(() => ({
     ...defaultModuloColores,
     ...(empresa.value?.modulo_colores || {}),
   }))
 
+  // Obtiene el color asociado a un módulo específico
   function getModuloColor(modulo) {
     return moduloColores.value[modulo] || defaultModuloColores[modulo] || primaryColor.value
   }
 
+  // Carga dinámicamente una fuente de Google Fonts
   function loadGoogleFont(fontName) {
     if (!fontName || fontName === 'Roboto' || fontName === 'System Default') return
 
@@ -59,6 +68,7 @@ export function useTheme() {
     document.head.appendChild(link)
   }
 
+  // Aplica todas las variables CSS personalizadas al documento
   function applyCSSVariables() {
     const p = primaryColor.value
     const s = secondaryColor.value
@@ -119,6 +129,7 @@ export function useTheme() {
   }
 }
 
+// Lista de fuentes disponibles para seleccionar en la configuración
 export const availableFonts = [
   'Roboto', 'Inter', 'Poppins', 'Montserrat', 'Nunito', 'Lato',
   'Open Sans', 'Raleway', 'Work Sans', 'Quicksand', 'Manrope',

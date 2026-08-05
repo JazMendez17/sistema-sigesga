@@ -1,5 +1,7 @@
 <?php
 
+// Controlador para actualizar la contraseña del usuario autenticado
+
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
@@ -10,9 +12,7 @@ use Illuminate\Validation\Rules\Password;
 
 class PasswordController extends Controller
 {
-    /**
-     * Update the user's password.
-     */
+    // Actualiza la contraseña del usuario
     public function update(Request $request): RedirectResponse
     {
         $validated = $request->validate([

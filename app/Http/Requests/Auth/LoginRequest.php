@@ -1,5 +1,7 @@
 <?php
 
+// FormRequest para validar y procesar el inicio de sesión
+
 namespace App\Http\Requests\Auth;
 
 use App\Models\Usuario;
@@ -12,11 +14,13 @@ use Illuminate\Validation\ValidationException;
 
 class LoginRequest extends FormRequest
 {
+    // Autoriza la petición de login
     public function authorize(): bool
     {
         return true;
     }
 
+    // Limpia los campos de entrada antes de validar
     protected function prepareForValidation(): void
     {
         $this->merge([
@@ -25,6 +29,7 @@ class LoginRequest extends FormRequest
         ]);
     }
 
+    // Reglas de validación para el login
     public function rules(): array
     {
         return [
@@ -33,6 +38,7 @@ class LoginRequest extends FormRequest
         ];
     }
 
+    // Mensajes de error personalizados en español
     public function messages(): array
     {
         return [
@@ -43,6 +49,7 @@ class LoginRequest extends FormRequest
         ];
     }
 
+    // Intenta autenticar al usuario con bloqueo progresivo de cuenta
     public function authenticate(): void
     {
         $this->ensureIsNotRateLimited();
@@ -81,6 +88,7 @@ class LoginRequest extends FormRequest
         RateLimiter::clear($this->throttleKey());
     }
 
+    // Verifica que no se exceda el límite de intentos de inicio de sesión
     public function ensureIsNotRateLimited(): void
     {
         if (!RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
@@ -99,6 +107,7 @@ class LoginRequest extends FormRequest
         ]);
     }
 
+    // Registra un intento fallido en el limitador de tasa
     protected function hitRateLimiter(): void
     {
         RateLimiter::hit($this->throttleKey(), 300);
@@ -110,6 +119,7 @@ class LoginRequest extends FormRequest
         RateLimiter::hit($emailKey, 300);
     }
 
+    // Genera la clave única para el limitador de tasa (email + IP)
     public function throttleKey(): string
     {
         return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());

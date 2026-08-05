@@ -29,10 +29,13 @@ function sortIcon(key) {
 }
 </script>
 
+<!-- Tabla de datos reutilizable con ordenamiento, paginación y carga con esqueleto -->
 <template>
   <div class="neumorphic-raised rounded-3xl bg-[var(--color-surface)] overflow-hidden">
     <div class="overflow-x-auto">
+      <!-- Tabla de datos -->
       <table class="w-full">
+        <!-- Cabecera de la tabla -->
         <thead>
           <tr class="border-b border-[var(--neumorphic-dark)]/30">
             <th
@@ -51,7 +54,9 @@ function sortIcon(key) {
             <th v-if="$slots.actions || $slots['cell-acciones']" class="px-4 py-3 text-right text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Acciones</th>
           </tr>
         </thead>
+        <!-- Cuerpo de la tabla -->
         <tbody class="divide-y divide-[var(--neumorphic-dark)]/20">
+          <!-- Esqueleto de carga -->
           <template v-if="loading">
             <tr v-for="n in 5" :key="'sk-' + n">
               <td :colspan="columns.length + 1" class="px-4 py-2">
@@ -59,6 +64,7 @@ function sortIcon(key) {
               </td>
             </tr>
           </template>
+          <!-- Filas de datos -->
           <template v-else>
             <tr v-for="(row, i) in data" :key="i" @click="$emit('rowClick', row)" class="cursor-pointer hover:bg-white/30 transition-colors">
               <td v-for="col in columns" :key="col.key" class="px-4 py-3 text-sm text-[var(--color-text)] whitespace-nowrap">
@@ -81,6 +87,7 @@ function sortIcon(key) {
       </table>
     </div>
 
+    <!-- Paginación -->
     <div v-if="pagination" class="flex items-center justify-between px-4 py-3 border-t border-[var(--neumorphic-dark)]/30">
       <p class="text-sm text-[var(--color-text-muted)]">
         Mostrando {{ pagination.from || 0 }} - {{ pagination.to || 0 }} de {{ pagination.total || 0 }}

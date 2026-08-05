@@ -1,5 +1,7 @@
 <?php
 
+// Controlador de usuarios del sistema
+
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
@@ -12,6 +14,7 @@ use Inertia\Inertia;
 
 class UsuariosController extends Controller
 {
+    // Lista de usuarios
     public function index()
     {
         $user = Auth::user();
@@ -35,6 +38,7 @@ class UsuariosController extends Controller
         ]);
     }
 
+    // Formulario para crear usuario
     public function create()
     {
         $user = Auth::user();
@@ -45,6 +49,7 @@ class UsuariosController extends Controller
         ]);
     }
 
+    // Guardar usuario en base de datos
     public function store(StoreUsuarioRequest $request)
     {
         $user = Auth::user();
@@ -59,6 +64,7 @@ class UsuariosController extends Controller
             ->with('success', 'Usuario creado correctamente');
     }
 
+    // Formulario para editar usuario
     public function edit($id)
     {
         return Inertia::render('Panel/Usuarios/Create', [
@@ -66,6 +72,7 @@ class UsuariosController extends Controller
         ]);
     }
 
+    // Actualizar datos del usuario
     public function update(StoreUsuarioRequest $request, $id)
     {
         $usuario = Usuario::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
@@ -85,6 +92,7 @@ class UsuariosController extends Controller
             ->with('success', 'Usuario actualizado correctamente');
     }
 
+    // Eliminar usuario
     public function destroy($id)
     {
         $usuario = Usuario::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);

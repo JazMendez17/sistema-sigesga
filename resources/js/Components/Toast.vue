@@ -63,8 +63,11 @@ watch(validationErrors, (errors) => {
 })
 </script>
 
+<!-- Notificación emergente tipo toast para mensajes de éxito, error y validación -->
 <template>
+  <!-- Teleport al body para overlay global -->
   <Teleport to="body">
+    <!-- Transición de entrada/salida -->
     <Transition
       enter-active-class="transition-all duration-300 ease-out"
       enter-from-class="opacity-0 scale-90 translate-y-4"
@@ -73,14 +76,17 @@ watch(validationErrors, (errors) => {
       leave-from-class="opacity-100 scale-100"
       leave-to-class="opacity-0 scale-90"
     >
+      <!-- Overlay centrado -->
       <div
         v-if="visible"
         class="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none"
       >
+        <!-- Tarjeta del toast -->
         <div
           class="pointer-events-auto max-w-sm w-full mx-4 rounded-3xl p-6 shadow-[12px_12px_24px_var(--neumorphic-dark,#b0b5ba),-12px_-12px_24px_var(--neumorphic-light,#ffffff)] text-center relative"
           :class="type === 'error' ? 'bg-red-50' : 'bg-[var(--color-surface,#EEF2F7)]'"
         >
+          <!-- Ícono de estado -->
           <div
             class="w-14 h-14 mx-auto mb-3 rounded-2xl flex items-center justify-center"
             :class="type === 'error' ? 'bg-red-100' : ''"
@@ -93,15 +99,18 @@ watch(validationErrors, (errors) => {
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
+          <!-- Botón de cierre -->
           <button @click="close" class="absolute top-4 right-4 w-7 h-7 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-[var(--color-bg)] transition-all">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
+          <!-- Título y mensaje del toast -->
           <h3 class="text-lg font-bold" :class="type === 'error' ? 'text-red-800' : 'text-[var(--color-text,#1F2937)]'">
             {{ type === 'error' ? 'Errores de validación' : getLabel() }}
           </h3>
           <p v-if="message" class="text-sm mt-1 opacity-70" :class="type === 'error' ? 'text-red-600' : 'text-[var(--color-text,#1F2937)]'">{{ message }}</p>
+          <!-- Lista de errores de validación -->
           <ul v-else-if="errorsList.length > 0" class="mt-2 space-y-1 text-left">
             <li v-for="(err, i) in errorsList" :key="i" class="text-sm text-red-600 flex items-start gap-2">
               <span class="mt-0.5 w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0"></span>

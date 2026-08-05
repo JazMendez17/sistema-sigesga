@@ -15,6 +15,7 @@ import NeumorphicButton from '@/Components/NeumorphicButton.vue'
     </script>
 
     <template>
+      <!-- Detalle de servicio con bitácora -->
       <AppLayout>
         <div class="space-y-6">
           <div class="flex items-center justify-between">
@@ -25,6 +26,7 @@ import NeumorphicButton from '@/Components/NeumorphicButton.vue'
             <NeumorphicButton @click="router.visit(route('panel.servicios.index'))">Volver</NeumorphicButton>
           </div>
 
+          <!-- Tarjeta principal con datos del servicio -->
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="neumorphic-card p-6 lg:col-span-2 space-y-5">
               <div class="grid grid-cols-2 gap-4">
@@ -67,6 +69,7 @@ import NeumorphicButton from '@/Components/NeumorphicButton.vue'
               </div>
             </div>
 
+            <!-- Bitácora de tiempos -->
             <div class="space-y-4">
               <div class="neumorphic-card p-6">
                 <h3 class="font-semibold text-gray-800 mb-3">Bitácora de Tiempos</h3>
@@ -78,6 +81,7 @@ import NeumorphicButton from '@/Components/NeumorphicButton.vue'
                 </div>
               </div>
 
+              <!-- Kilometraje -->
               <div class="neumorphic-card p-6">
                 <h3 class="font-semibold text-gray-800 mb-3">Kilometraje</h3>
                 <div class="space-y-2 text-sm">

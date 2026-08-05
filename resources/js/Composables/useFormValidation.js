@@ -1,3 +1,4 @@
+// Composable para validación de formularios del lado cliente
 import { ref, computed } from 'vue'
 import { showValidationErrors } from '@/stores/notification'
 
@@ -5,6 +6,7 @@ export function useFormValidation(form, rules) {
   const clientErrors = ref({})
   const submitted = ref(false)
 
+  // Fusiona errores del servidor con errores del cliente
   const mergeErrors = computed(() => {
     const all = { ...form.errors }
     for (const key of Object.keys(clientErrors.value)) {
@@ -15,14 +17,17 @@ export function useFormValidation(form, rules) {
     return all
   })
 
+  // Obtiene el mensaje de error para un campo específico
   function getError(field) {
     return mergeErrors.value[field] || ''
   }
 
+  // Limpia el error de un campo específico
   function clearFieldError(field) {
     delete clientErrors.value[field]
   }
 
+  // Recorta espacios de todos los campos de texto
   function trimAll() {
     try {
       const data = form.data()
@@ -44,6 +49,7 @@ export function useFormValidation(form, rules) {
     }
   }
 
+  // Ejecuta todas las reglas de validación definidas
   function validate() {
     submitted.value = true
     const errors = {}
@@ -65,10 +71,12 @@ export function useFormValidation(form, rules) {
     return Object.keys(errors).length === 0
   }
 
+  // Obtiene el valor de un campo anidado usando notación de punto
   function getFieldValue(data, path) {
     return path.split('.').reduce((obj, key) => obj?.[key], data)
   }
 
+  // Aplica una regla de validación a un campo
   function applyRule(field, value, rule, data) {
     if (typeof rule === 'string') {
       const parts = rule.split(':')
@@ -82,6 +90,7 @@ export function useFormValidation(form, rules) {
     return ''
   }
 
+  // Evalúa una regla de validación individual con su parámetro y mensaje personalizado
   function validateRule(name, value, param, data, field, customMessage) {
     if (value === undefined || value === null) value = ''
 
@@ -213,6 +222,7 @@ export function useFormValidation(form, rules) {
     }
   }
 
+  // Limpia errores al escribir en un campo
   function handleInput(field) {
     clearFieldError(field)
     if (typeof form.clearErrors === 'function') {
@@ -220,6 +230,7 @@ export function useFormValidation(form, rules) {
     }
   }
 
+  // Maneja el envío del formulario con validación previa
   function handleSubmit(callback) {
     return function () {
       console.log('[useFormValidation] handleSubmit INVOCADO')

@@ -36,6 +36,7 @@ function reenviar(id) {
 </script>
 
 <template>
+  <!-- Historial de notificaciones enviadas con filtros por canal y estado -->
   <AppLayout>
     <div class="space-y-6">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

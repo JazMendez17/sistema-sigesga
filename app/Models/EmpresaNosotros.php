@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
+// Modelo de Nosotros de Empresa
 class EmpresaNosotros extends Model
 {
     use HasFactory;
@@ -19,6 +20,7 @@ class EmpresaNosotros extends Model
         'prioridad',
     ];
 
+    // Relación con empresa
     public function empresa()
     {
         return $this->belongsTo(Empresa::class, 'empresa_id');

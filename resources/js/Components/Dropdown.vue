@@ -44,19 +44,22 @@ const alignmentClasses = computed(() => {
 const open = ref(false);
 </script>
 
+<!-- Menú desplegable con transición y overlay -->
 <template>
     <div class="relative">
+        <!-- Activador del menú -->
         <div @click="open = !open">
             <slot name="trigger" />
         </div>
 
-        <!-- Full Screen Dropdown Overlay -->
+        <!-- Overlay de pantalla completa -->
         <div
             v-show="open"
             class="fixed inset-0 z-40"
             @click="open = false"
         ></div>
 
+        <!-- Contenido del menú desplegable -->
         <Transition
             enter-active-class="transition ease-out duration-200"
             enter-from-class="opacity-0 scale-95"

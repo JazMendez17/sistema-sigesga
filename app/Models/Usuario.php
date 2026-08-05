@@ -8,6 +8,7 @@ use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+// Modelo de Usuario
 class Usuario extends Authenticatable
 {
     use HasApiTokens, Notifiable, HasFactory, SoftDeletes;
@@ -45,41 +46,49 @@ class Usuario extends Authenticatable
         ];
     }
 
+    // Relación con empresa
     public function empresa()
     {
         return $this->belongsTo(Empresa::class, 'empresa_id');
     }
 
+    // Relación con empleado
     public function empleado()
     {
         return $this->belongsTo(Empleado::class, 'empleado_id');
     }
 
+    // Relación con usuario que desbloqueó
     public function desbloqueadoPor()
     {
         return $this->belongsTo(Usuario::class, 'desbloqueado_por');
     }
 
+    // Relación con cotizaciones
     public function cotizaciones()
     {
         return $this->hasMany(Cotizacione::class, 'usuario_creador_id');
     }
 
+    // Relación con autorizaciones de cancelación como solicitante
     public function autorizacionesCancelacionSolicitante()
     {
         return $this->hasMany(AutorizacionesCancelacione::class, 'usuario_solicitante_id');
     }
 
+    // Relación con autorizaciones de cancelación como resolutor
     public function autorizacionesCancelacionResolutor()
     {
         return $this->hasMany(AutorizacionesCancelacione::class, 'usuario_resolutor_id');
     }
 
+    // Relación con notificaciones
     public function notificaciones()
     {
         return $this->hasMany(Notificacione::class, 'usuario_id');
     }
 
+    // Relación con clientes
     public function clientes()
     {
         return $this->hasMany(Cliente::class, 'usuario_id');

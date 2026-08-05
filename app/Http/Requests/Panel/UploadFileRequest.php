@@ -1,5 +1,7 @@
 <?php
 
+// FormRequest para validar la subida de archivos/imágenes
+
 namespace App\Http\Requests\Panel;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -8,11 +10,13 @@ use Illuminate\Validation\ValidationException;
 
 class UploadFileRequest extends FormRequest
 {
+    // Autoriza la petición
     public function authorize(): bool
     {
         return true;
     }
 
+    // Limpia los campos antes de la validación
     protected function prepareForValidation(): void
     {
         $data = $this->all();
@@ -24,6 +28,7 @@ class UploadFileRequest extends FormRequest
         $this->merge($data);
     }
 
+    // Define las reglas de validación
     public function rules(): array
     {
         return [
@@ -32,6 +37,7 @@ class UploadFileRequest extends FormRequest
         ];
     }
 
+    // Mensajes de error personalizados en español
     public function messages(): array
     {
         return [
@@ -45,6 +51,7 @@ class UploadFileRequest extends FormRequest
         ];
     }
 
+    // Lanza excepción con los errores de validación
     protected function failedValidation(Validator $validator): void
     {
         throw ValidationException::withMessages($validator->errors()->toArray());

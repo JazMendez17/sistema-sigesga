@@ -160,6 +160,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
 </script>
 
 <template>
+  <!-- Configuración de la empresa: general, apariencia, valores, servicios y contacto -->
   <AppLayout>
     <div class="space-y-6">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

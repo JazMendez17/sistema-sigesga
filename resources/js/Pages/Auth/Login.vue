@@ -30,6 +30,7 @@ const submit = () => {
 </script>
 
 <template>
+    <!-- Página de inicio de sesión -->
     <Head title="Iniciar Sesión" />
 
     <div class="min-h-screen bg-[var(--color-bg)] flex items-center justify-center p-4">

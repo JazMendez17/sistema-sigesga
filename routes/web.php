@@ -1,5 +1,7 @@
 <?php
 
+// Rutas principales de la aplicación (landing y panel)
+
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\Panel\DashboardController;
 use App\Http\Controllers\Panel\CotizacionesController;
@@ -26,6 +28,7 @@ use App\Http\Controllers\Panel\PerfilController;
 use App\Http\Controllers\ContactoController;
 use Illuminate\Support\Facades\Route;
 
+// === Rutas públicas (Landing Page) ===
 Route::get('/', [LandingController::class, 'index']);
 
 Route::post('/contacto', [ContactoController::class, 'store']);
@@ -35,10 +38,12 @@ Route::post('/solicitar', [LandingController::class, 'solicitarStore'])->name('s
 Route::get('/rastrear', [LandingController::class, 'rastrear']);
 Route::get('/soporte', [LandingController::class, 'soporte']);
 
+// === Rutas protegidas del panel ===
 Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // === Módulos accesibles para admin y cotizador ===
     Route::middleware('role:admin,cotizador')->group(function () {
         Route::get('/cotizaciones', [CotizacionesController::class, 'index'])->name('cotizaciones.index');
         Route::get('/cotizaciones/create', [CotizacionesController::class, 'create'])->name('cotizaciones.create');
@@ -90,6 +95,7 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
         Route::post('/reportes/calificaciones', [ReportesController::class, 'calificaciones'])->name('reportes.calificaciones');
     });
 
+    // === Módulos accesibles para admin, cotizador y operador ===
     Route::middleware('role:admin,cotizador,operador')->group(function () {
         Route::get('/servicios', [ServiciosController::class, 'index'])->name('servicios.index');
         Route::get('/servicios/create', [ServiciosController::class, 'create'])->name('servicios.create');
@@ -104,6 +110,7 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
         Route::post('/autorizaciones-cancelacion/{id}/rechazar', [AutorizacionesCancelacionController::class, 'rechazar'])->name('autorizaciones-cancelacion.rechazar');
     });
 
+    // === Módulos exclusivos para administradores ===
     Route::middleware('role:admin')->group(function () {
         Route::get('/tipos-servicio', [TiposServicioController::class, 'index'])->name('tipos-servicio.index');
         Route::get('/tipos-servicio/create', [TiposServicioController::class, 'create'])->name('tipos-servicio.create');
@@ -170,6 +177,7 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
         Route::post('/notificaciones/{id}/reenviar', [NotificacionesController::class, 'reenviar'])->name('notificaciones.reenviar');
     });
 
+    // === Rutas del perfil de usuario (todos los roles) ===
     Route::get('/mi-perfil', [PerfilController::class, 'index'])->name('mi-perfil');
     Route::put('/mi-perfil/telefono', [PerfilController::class, 'updateTelefono'])->name('mi-perfil.telefono');
     Route::put('/mi-perfil/password', [PerfilController::class, 'updatePassword'])->name('mi-perfil.password');

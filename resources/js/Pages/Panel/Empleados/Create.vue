@@ -81,13 +81,16 @@ const onSubmit = val.handleSubmit(submit)
 </script>
 
 <template>
+  <!-- Formulario de registro / edición de empleado -->
   <AppLayout>
     <div class="space-y-6">
+      <!-- Encabezado del formulario -->
       <div>
         <h1 class="text-2xl font-bold text-[var(--color-text)]">{{ editMode ? 'Editar Empleado' : 'Nuevo Empleado' }}</h1>
         <p class="text-sm text-[var(--color-text-muted)] mt-1">{{ editMode ? 'Actualiza los datos del empleado' : 'Registra un nuevo empleado' }}</p>
       </div>
 
+      <!-- Formulario de datos -->
       <div class="neumorphic-card p-6 max-w-4xl">
         <form @submit.prevent="onSubmit" class="space-y-6">
           <h2 class="text-lg font-semibold text-[var(--color-text)] border-b border-[var(--neumorphic-dark)]/20 pb-2">Datos personales</h2>
@@ -178,6 +181,7 @@ const onSubmit = val.handleSubmit(submit)
             <NeumorphicInput v-model="form.direccion.referencias" label="Referencias" placeholder="Ej: Entre calles X y Y" />
           </div>
 
+          <!-- Botones de acción -->
           <div class="flex gap-3 pt-2">
             <NeumorphicButton type="submit" :loading="form.processing">{{ editMode ? 'Actualizar Empleado' : 'Guardar Empleado' }}</NeumorphicButton>
             <NeumorphicButton variant="secondary" @click="router.visit(route('panel.empleados.index'))">Cancelar</NeumorphicButton>

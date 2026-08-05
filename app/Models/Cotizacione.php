@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+// Modelo de Cotización
 class Cotizacione extends Model
 {
     use HasFactory, SoftDeletes;
@@ -41,36 +42,43 @@ class Cotizacione extends Model
         'estatus',
     ];
 
+    // Relación con empresa
     public function empresa(): BelongsTo
     {
         return $this->belongsTo(Empresa::class);
     }
 
+    // Relación con cliente
     public function cliente(): BelongsTo
     {
         return $this->belongsTo(Cliente::class);
     }
 
+    // Relación con convenio aplicado
     public function convenioAplicado(): BelongsTo
     {
         return $this->belongsTo(Convenio::class, 'convenio_aplicado_id');
     }
 
+    // Relación con tarifa de empresa aplicada
     public function tarifaEmpresaAplicada(): BelongsTo
     {
         return $this->belongsTo(TarifasEmpresa::class, 'tarifa_empresa_aplicada_id');
     }
 
+    // Relación con usuario creador
     public function usuarioCreador(): BelongsTo
     {
         return $this->belongsTo(Usuario::class, 'usuario_creador_id');
     }
 
+    // Relación con tipo de servicio
     public function tipoServicio(): BelongsTo
     {
         return $this->belongsTo(CatalogoServicio::class, 'tipo_servicio_id');
     }
 
+    // Relación con servicio
     public function servicio(): HasOne
     {
         return $this->hasOne(Servicio::class, 'cotizacion_id');

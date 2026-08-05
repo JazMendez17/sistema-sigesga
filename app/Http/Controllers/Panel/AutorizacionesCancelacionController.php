@@ -1,5 +1,7 @@
 <?php
 
+// Controlador de autorizaciones de cancelación
+
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
@@ -10,6 +12,7 @@ use Inertia\Inertia;
 
 class AutorizacionesCancelacionController extends Controller
 {
+    // Lista de autorizaciones de cancelación
     public function index()
     {
         $user = Auth::user();
@@ -36,6 +39,7 @@ class AutorizacionesCancelacionController extends Controller
         ]);
     }
 
+    // Aprobar solicitud de cancelación
     public function aprobar($id)
     {
         $auth = AutorizacionesCancelacione::whereHas('servicio', fn($q) => $q->where('empresa_id', auth()->user()->empresa_id))->findOrFail($id);
@@ -52,6 +56,7 @@ class AutorizacionesCancelacionController extends Controller
         return back()->with('success', 'Autorización aprobada');
     }
 
+    // Rechazar solicitud de cancelación
     public function rechazar($id)
     {
         $auth = AutorizacionesCancelacione::whereHas('servicio', fn($q) => $q->where('empresa_id', auth()->user()->empresa_id))->findOrFail($id);

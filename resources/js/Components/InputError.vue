@@ -6,7 +6,9 @@ defineProps({
 });
 </script>
 
+<!-- Mensaje de error para campos de formulario -->
 <template>
+    <!-- Texto de error en rojo -->
     <div v-show="message">
         <p class="text-sm text-red-600">
             {{ message }}

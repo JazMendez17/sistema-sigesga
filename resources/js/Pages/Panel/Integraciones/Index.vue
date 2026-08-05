@@ -14,6 +14,7 @@ function toggleActivo(id, current) {
 </script>
 
 <template>
+  <!-- Panel de integraciones externas (WhatsApp, email, SMS) -->
   <AppLayout>
     <div class="space-y-6">
       <div class="flex items-center justify-between">

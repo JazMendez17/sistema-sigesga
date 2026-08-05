@@ -115,6 +115,7 @@ const getIcon = (name) => icons[name] || ''
 </script>
 
 <template>
+    <!-- Landing page principal con secciones: inicio, nosotros, servicio, contacto -->
     <Head :title="empresa.nombre || 'SIGESGA'" />
 
     <div :style="cssVars" class="bg-[var(--color-bg)] min-h-screen" style="color: var(--color-text)">

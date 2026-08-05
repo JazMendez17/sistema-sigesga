@@ -1,5 +1,7 @@
 <?php
 
+// Middleware para verificar que el usuario tenga el rol requerido
+
 namespace App\Http\Middleware;
 
 use Closure;
@@ -8,6 +10,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CheckRole
 {
+    // Verifica si el usuario tiene alguno de los roles permitidos
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
         $user = $request->user();

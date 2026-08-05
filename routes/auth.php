@@ -1,5 +1,7 @@
 <?php
 
+// Rutas de autenticación (login, registro, restablecimiento de contraseña, verificación de email)
+
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
@@ -11,6 +13,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
+// === Rutas accesibles solo para invitados (no autenticados) ===
 Route::middleware('guest')->group(function () {
     Route::get('register', [RegisteredUserController::class, 'create'])
         ->name('register');
@@ -35,6 +38,7 @@ Route::middleware('guest')->group(function () {
         ->name('password.store');
 });
 
+// === Rutas accesibles solo para usuarios autenticados ===
 Route::middleware('auth')->group(function () {
     Route::get('verify-email', EmailVerificationPromptController::class)
         ->name('verification.notice');

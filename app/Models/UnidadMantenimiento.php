@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
+// Modelo de Mantenimiento de Unidad
 class UnidadMantenimiento extends Model
 {
     use HasFactory;
@@ -35,6 +36,7 @@ class UnidadMantenimiento extends Model
         });
     }
 
+    // Relación con unidad
     public function unidad()
     {
         return $this->belongsTo(Unidade::class, 'unidad_id');

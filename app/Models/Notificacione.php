@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+// Modelo de Notificación
 class Notificacione extends Model
 {
     use HasFactory, SoftDeletes;
@@ -24,11 +25,13 @@ class Notificacione extends Model
         'error_detalle',
     ];
 
+    // Relación con empresa
     public function empresa(): BelongsTo
     {
         return $this->belongsTo(Empresa::class);
     }
 
+    // Relación con usuario
     public function usuario(): BelongsTo
     {
         return $this->belongsTo(Usuario::class);

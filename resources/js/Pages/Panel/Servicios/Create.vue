@@ -61,13 +61,16 @@ function submit() {
 </script>
 
 <template>
+  <!-- Formulario de registro / edición de servicio -->
   <AppLayout>
     <div class="space-y-6">
+      <!-- Encabezado del formulario -->
       <div>
         <h1 class="text-2xl font-bold text-gray-800">{{ isEdit ? 'Editar Servicio' : 'Nuevo Servicio' }}</h1>
         <p class="text-sm text-gray-500 mt-1">{{ isEdit ? 'Actualiza los datos del servicio' : 'Registra un nuevo servicio' }}</p>
       </div>
 
+      <!-- Formulario de datos del servicio -->
       <div class="neumorphic-card p-6 max-w-2xl">
         <form @submit.prevent="val.handleSubmit(submit)" class="space-y-5">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -108,6 +111,7 @@ function submit() {
               <textarea v-model="form.observaciones" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300" rows="3" placeholder="Observaciones del servicio..."></textarea>
             </div>
 
+            <!-- Bitácora de kilometraje (solo en edición) -->
             <template v-if="isEdit">
               <div class="md:col-span-2 border-t border-gray-200 pt-4">
                 <p class="text-sm font-medium text-gray-600 mb-3">Bitácora de Kilometraje</p>

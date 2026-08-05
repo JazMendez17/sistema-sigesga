@@ -1,5 +1,7 @@
 <?php
 
+// Controlador de convenios
+
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
@@ -12,6 +14,7 @@ use Inertia\Inertia;
 
 class ConveniosController extends Controller
 {
+    // Lista de convenios
     public function index()
     {
         $user = Auth::user();
@@ -37,6 +40,7 @@ class ConveniosController extends Controller
         ]);
     }
 
+    // Formulario para crear convenio
     public function create()
     {
         $user = Auth::user();
@@ -48,6 +52,7 @@ class ConveniosController extends Controller
         ]);
     }
 
+    // Guardar convenio en base de datos
     public function store(StoreConvenioRequest $request)
     {
         $user = Auth::user();
@@ -62,6 +67,7 @@ class ConveniosController extends Controller
             ->with('success', 'Convenio creado correctamente');
     }
 
+    // Ver detalle de convenio
     public function show($id)
     {
         $convenio = Convenio::with([
@@ -95,6 +101,7 @@ class ConveniosController extends Controller
         ]);
     }
 
+    // Formulario para editar convenio
     public function edit($id)
     {
         $user = Auth::user();
@@ -107,6 +114,7 @@ class ConveniosController extends Controller
         ]);
     }
 
+    // Actualizar datos del convenio
     public function update(StoreConvenioRequest $request, $id)
     {
         $convenio = Convenio::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
@@ -120,6 +128,7 @@ class ConveniosController extends Controller
             ->with('success', 'Convenio actualizado correctamente');
     }
 
+    // Eliminar convenio
     public function destroy($id)
     {
         $convenio = Convenio::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);

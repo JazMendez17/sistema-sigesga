@@ -8,9 +8,13 @@ defineProps({
 })
 </script>
 
+<!-- Tarjeta de indicador KPI con ícono, valor, título y tendencia -->
 <template>
+  <!-- Tarjeta KPI neumórfica -->
   <div class="group relative overflow-hidden rounded-[28px] border border-white/40 bg-[var(--color-surface)] p-5 shadow-[10px_10px_20px_var(--neumorphic-dark),-10px_-10px_20px_var(--neumorphic-light)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[12px_12px_24px_var(--neumorphic-dark),-12px_-12px_24px_var(--neumorphic-light)]">
+    <!-- Barra decorativa superior -->
     <div class="absolute inset-x-0 top-0 h-1" :style="{ background: 'linear-gradient(90deg, var(--color-primary), var(--color-secondary))' }"></div>
+    <!-- Ícono y tendencia -->
     <div class="mb-4 flex items-start justify-between gap-3">
       <div class="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/30" :style="{ backgroundColor: color + '18', boxShadow: 'inset 2px 2px 6px rgba(255,255,255,0.35), inset -2px -2px 6px rgba(15,23,42,0.04)' }">
         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" :style="{ color }" stroke-width="1.7">
@@ -24,6 +28,7 @@ defineProps({
         <span>{{ trend.value }}</span>
       </div>
     </div>
+    <!-- Valor y título del KPI -->
     <p class="mb-1 text-3xl font-bold tracking-tight text-[var(--color-text)]">{{ value }}</p>
     <p class="text-sm text-[var(--color-text-muted)]">{{ title }}</p>
   </div>

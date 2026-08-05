@@ -9,8 +9,10 @@ const props = defineProps({
 </script>
 
 <template>
+  <!-- Perfil detallado del empleado -->
   <AppLayout>
     <div class="space-y-6">
+      <!-- Encabezado con acciones -->
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 class="text-2xl font-bold text-gray-800">{{ empleado.nombre }} {{ empleado.apellido_paterno }}</h1>
@@ -25,6 +27,7 @@ const props = defineProps({
           </NeumorphicButton>
         </div>
       </div>
+      <!-- Tarjeta de datos generales -->
       <div class="rounded-3xl bg-[#EEF2F7] p-6 shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
         <h3 class="text-lg font-semibold text-gray-700 mb-4">Datos Generales</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">

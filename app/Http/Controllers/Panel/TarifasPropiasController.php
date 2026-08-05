@@ -1,5 +1,7 @@
 <?php
 
+// Controlador de tarifas propias
+
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
@@ -11,6 +13,7 @@ use Inertia\Inertia;
 
 class TarifasPropiasController extends Controller
 {
+    // Lista de tarifas propias
     public function index()
     {
         $user = Auth::user();
@@ -35,6 +38,7 @@ class TarifasPropiasController extends Controller
         ]);
     }
 
+    // Formulario para crear tarifa propia
     public function create()
     {
         $user = Auth::user();
@@ -45,6 +49,7 @@ class TarifasPropiasController extends Controller
         ]);
     }
 
+    // Guardar tarifa propia en base de datos
     public function store(StoreTarifaPropiaRequest $request)
     {
         $user = Auth::user();
@@ -60,6 +65,7 @@ class TarifasPropiasController extends Controller
             ->with('success', 'Tarifa creada correctamente');
     }
 
+    // Formulario para editar tarifa propia
     public function edit($id)
     {
         $user = Auth::user();
@@ -71,6 +77,7 @@ class TarifasPropiasController extends Controller
         ]);
     }
 
+    // Actualizar datos de tarifa propia
     public function update(StoreTarifaPropiaRequest $request, $id)
     {
         $tarifa = TarifasEmpresa::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
@@ -84,6 +91,7 @@ class TarifasPropiasController extends Controller
             ->with('success', 'Tarifa actualizada correctamente');
     }
 
+    // Eliminar tarifa propia
     public function destroy($id)
     {
         TarifasEmpresa::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id)->delete();

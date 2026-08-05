@@ -48,6 +48,7 @@ function submit() {
 </script>
 
 <template>
+  <!-- Formulario de edición de convenio -->
   <AppLayout>
     <div class="space-y-6">
       <div>

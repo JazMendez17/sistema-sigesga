@@ -1,5 +1,7 @@
 <?php
 
+// Controlador de servicios
+
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
@@ -14,6 +16,7 @@ use Inertia\Inertia;
 
 class ServiciosController extends Controller
 {
+    // Lista de servicios
     public function index()
     {
         $user = Auth::user();
@@ -40,6 +43,7 @@ class ServiciosController extends Controller
         ]);
     }
 
+    // Formulario para crear servicio
     public function create()
     {
         $user = Auth::user();
@@ -53,6 +57,7 @@ class ServiciosController extends Controller
         ]);
     }
 
+    // Guardar servicio en base de datos
     public function store(StoreServicioRequest $request)
     {
         $user = Auth::user();
@@ -86,6 +91,7 @@ class ServiciosController extends Controller
             ->with('success', 'Servicio creado correctamente');
     }
 
+    // Ver detalle de servicio con bitácora
     public function show($id)
     {
         $servicio = Servicio::with([
@@ -121,6 +127,7 @@ class ServiciosController extends Controller
         ]);
     }
 
+    // Formulario para editar servicio
     public function edit($id)
     {
         $user = Auth::user();
@@ -137,6 +144,7 @@ class ServiciosController extends Controller
         ]);
     }
 
+    // Actualizar datos del servicio
     public function update(StoreServicioRequest $request, $id)
     {
         $servicio = Servicio::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
@@ -169,6 +177,7 @@ class ServiciosController extends Controller
             ->with('success', 'Servicio actualizado correctamente');
     }
 
+    // Eliminar servicio
     public function destroy($id)
     {
         Servicio::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id)->delete();

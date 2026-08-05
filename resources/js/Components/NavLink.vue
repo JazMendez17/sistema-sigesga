@@ -19,7 +19,9 @@ const classes = computed(() =>
 );
 </script>
 
+<!-- Enlace de navegación con soporte para estado activo -->
 <template>
+    <!-- Enlace con estilo condicional según ruta activa -->
     <Link :href="href" :class="classes">
         <slot />
     </Link>

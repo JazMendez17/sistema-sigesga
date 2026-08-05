@@ -14,6 +14,7 @@ const submit = () => { form.post(route('password.email')) }
 </script>
 
 <template>
+    <!-- Página de recuperación de contraseña -->
     <Head title="Recuperar Contraseña" />
     <div class="min-h-screen bg-[var(--color-bg)] flex items-center justify-center p-4">
         <div class="fixed top-0 left-0 right-0 z-50 h-1" :style="{ backgroundColor: 'var(--color-secondary)' }"></div>

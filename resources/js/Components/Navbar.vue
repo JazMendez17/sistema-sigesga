@@ -122,9 +122,12 @@ const visibleGroups = computed(() => {
 })
 </script>
 
+<!-- Barra de navegación superior con menú mega, menú de usuario y responsive -->
 <template>
+  <!-- Barra de navegación fija superior -->
   <header class="fixed top-0 right-0 left-0 z-30 bg-[var(--color-bg)]">
     <div class="flex items-center justify-between px-4 sm:px-6 h-16">
+      <!-- Logo y botón de menú móvil -->
       <div class="flex items-center gap-3">
         <button @click="menuOpen = !menuOpen" class="lg:hidden neumorphic-raised-sm p-2 rounded-xl">
           <svg class="w-5 h-5 text-[var(--color-text)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -142,6 +145,7 @@ const visibleGroups = computed(() => {
         </Link>
       </div>
 
+      <!-- Navegación de escritorio con menú mega -->
       <nav class="hidden lg:flex items-center h-full gap-0.5">
         <div v-for="menuGroup in visibleGroups" :key="menuGroup.title" class="relative h-full flex items-center">
           <div class="relative h-full flex items-center"
@@ -192,7 +196,9 @@ const visibleGroups = computed(() => {
         </div>
       </nav>
 
+      <!-- Menú de usuario y botón de cierre de sesión -->
       <div class="flex items-center gap-2 sm:gap-4">
+        <!-- Menú desplegable de usuario -->
         <div class="relative">
           <button @click="userMenuOpen = !userMenuOpen" class="flex items-center gap-3 neumorphic-raised-sm rounded-2xl px-4 py-2 cursor-pointer">
             <div v-if="user?.foto" class="w-8 h-8 rounded-full overflow-hidden">
@@ -225,6 +231,7 @@ const visibleGroups = computed(() => {
       </div>
     </div>
 
+    <!-- Menú responsive para móvil -->
     <Transition
       enter-active-class="transition-all duration-200 ease-out"
       enter-from-class="opacity-0 -translate-y-2"

@@ -1,5 +1,7 @@
 <?php
 
+// Controlador de reportes
+
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
@@ -13,11 +15,13 @@ use Inertia\Inertia;
 
 class ReportesController extends Controller
 {
+    // Página principal de reportes
     public function index()
     {
         return Inertia::render('Panel/Reportes/Index');
     }
 
+    // Reporte de servicios por periodo
     public function servicios(Request $request)
     {
         $user = Auth::user();
@@ -42,6 +46,7 @@ class ReportesController extends Controller
         return back()->with('reporte', ['type' => 'servicios', 'data' => $servicios]);
     }
 
+    // Reporte de costos e ingresos
     public function costos(Request $request)
     {
         $user = Auth::user();
@@ -68,6 +73,7 @@ class ReportesController extends Controller
         ]);
     }
 
+    // Reporte de rendimiento por operador
     public function rendimiento(Request $request)
     {
         $user = Auth::user();
@@ -95,6 +101,7 @@ class ReportesController extends Controller
         return back()->with('reporte', ['type' => 'rendimiento', 'data' => $servicios]);
     }
 
+    // Reporte de calificaciones de servicio
     public function calificaciones(Request $request)
     {
         $user = Auth::user();

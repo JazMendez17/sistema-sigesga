@@ -1,5 +1,7 @@
 <?php
 
+// Controlador de empleados
+
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
@@ -12,6 +14,7 @@ use Inertia\Inertia;
 
 class EmpleadosController extends Controller
 {
+    // Lista de empleados
     public function index()
     {
         $user = Auth::user();
@@ -36,6 +39,7 @@ class EmpleadosController extends Controller
         ]);
     }
 
+    // Formulario para crear empleado
     public function create()
     {
         $user = Auth::user();
@@ -46,6 +50,7 @@ class EmpleadosController extends Controller
         ]);
     }
 
+    // Guardar empleado en base de datos
     public function store(StoreEmpleadoRequest $request)
     {
         $user = Auth::user();
@@ -66,6 +71,7 @@ class EmpleadosController extends Controller
             ->with('success', 'Empleado creado correctamente');
     }
 
+    // Ver detalle de empleado
     public function show($id)
     {
         return Inertia::render('Panel/Empleados/Show', [
@@ -73,6 +79,7 @@ class EmpleadosController extends Controller
         ]);
     }
 
+    // Formulario para editar empleado
     public function edit($id)
     {
         $user = Auth::user();
@@ -84,6 +91,7 @@ class EmpleadosController extends Controller
         ]);
     }
 
+    // Actualizar datos del empleado
     public function update(StoreEmpleadoRequest $request, $id)
     {
         $empleado = Empleado::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
@@ -107,6 +115,7 @@ class EmpleadosController extends Controller
             ->with('success', 'Empleado actualizado correctamente');
     }
 
+    // Eliminar empleado
     public function destroy($id)
     {
         $empleado = Empleado::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);

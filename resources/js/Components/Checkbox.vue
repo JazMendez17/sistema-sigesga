@@ -24,7 +24,9 @@ const proxyChecked = computed({
 });
 </script>
 
+<!-- Casilla de verificación con soporte para v-model -->
 <template>
+    <!-- Checkbox genérico -->
     <input
         type="checkbox"
         :value="value"

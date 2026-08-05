@@ -42,8 +42,10 @@ const historialServicios = [
 </script>
 
 <template>
+  <!-- Perfil detallado del cliente -->
   <AppLayout>
     <div class="space-y-6">
+      <!-- Encabezado con acciones -->
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 class="text-2xl font-bold text-gray-800">{{ cliente.nombre }}</h1>
@@ -59,7 +61,9 @@ const historialServicios = [
         </div>
       </div>
 
+      <!-- Tarjetas de información del cliente -->
       <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <!-- Datos personales -->
         <div class="rounded-3xl bg-[#EEF2F7] p-6 shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
           <h3 class="text-lg font-semibold text-gray-700 mb-4">Datos Personales</h3>
           <div class="space-y-3">
@@ -78,6 +82,7 @@ const historialServicios = [
           </div>
         </div>
 
+        <!-- Dirección del cliente -->
         <div class="rounded-3xl bg-[#EEF2F7] p-6 shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
           <h3 class="text-lg font-semibold text-gray-700 mb-4">Dirección</h3>
           <div class="space-y-3">
@@ -100,6 +105,7 @@ const historialServicios = [
           </div>
         </div>
 
+        <!-- Aseguradora y póliza -->
         <div class="rounded-3xl bg-[#EEF2F7] p-6 shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
           <h3 class="text-lg font-semibold text-gray-700 mb-4">Aseguradora / Póliza</h3>
           <div class="space-y-3">
@@ -123,6 +129,7 @@ const historialServicios = [
         </div>
       </div>
 
+      <!-- Pestañas de historial -->
       <div class="flex flex-wrap gap-2">
         <button
           v-for="tab in tabs"
@@ -137,6 +144,7 @@ const historialServicios = [
         </button>
       </div>
 
+      <!-- Tabla de historial de cotizaciones -->
       <div v-if="tabActivo === 'cotizaciones'" class="rounded-3xl bg-[#EEF2F7] overflow-hidden shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
         <div class="overflow-x-auto">
           <table class="w-full">
@@ -166,6 +174,7 @@ const historialServicios = [
         </div>
       </div>
 
+      <!-- Tabla de historial de servicios -->
       <div v-if="tabActivo === 'servicios'" class="rounded-3xl bg-[#EEF2F7] overflow-hidden shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
         <div class="overflow-x-auto">
           <table class="w-full">

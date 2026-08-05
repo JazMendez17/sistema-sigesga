@@ -1,5 +1,7 @@
 <?php
 
+// Controlador de configuración general
+
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
@@ -12,6 +14,7 @@ use Inertia\Inertia;
 
 class ConfiguracionController extends Controller
 {
+    // Mostrar configuración de la empresa
     public function index()
     {
         $user = Auth::user();
@@ -38,6 +41,7 @@ class ConfiguracionController extends Controller
         ]);
     }
 
+    // Guardar configuración de la empresa
     public function update(Request $request)
     {
         $user = Auth::user();

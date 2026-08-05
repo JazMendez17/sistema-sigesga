@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
+// Modelo de Valor de Empresa
 class EmpresaValore extends Model
 {
     use HasFactory;
@@ -20,6 +21,7 @@ class EmpresaValore extends Model
         'orden',
     ];
 
+    // Relación con empresa
     public function empresa()
     {
         return $this->belongsTo(Empresa::class, 'empresa_id');

@@ -1,5 +1,7 @@
 <?php
 
+// Controlador de aseguradoras
+
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
@@ -12,6 +14,7 @@ use Inertia\Inertia;
 
 class AseguradorasController extends Controller
 {
+    // Lista de aseguradoras
     public function index()
     {
         $user = Auth::user();
@@ -33,11 +36,13 @@ class AseguradorasController extends Controller
         ]);
     }
 
+    // Formulario para crear aseguradora
     public function create()
     {
         return Inertia::render('Panel/Aseguradoras/Create');
     }
 
+    // Guardar aseguradora en base de datos
     public function store(StoreAseguradoraRequest $request)
     {
         $user = Auth::user();
@@ -51,6 +56,7 @@ class AseguradorasController extends Controller
             ->with('success', 'Aseguradora creada correctamente');
     }
 
+    // Ver detalle de aseguradora
     public function show($id)
     {
         $aseguradora = Aseguradora::with(['aseguradoraContactos', 'convenios'])->where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
@@ -81,6 +87,7 @@ class AseguradorasController extends Controller
         ]);
     }
 
+    // Formulario para editar aseguradora
     public function edit($id)
     {
         return Inertia::render('Panel/Aseguradoras/Create', [
@@ -88,6 +95,7 @@ class AseguradorasController extends Controller
         ]);
     }
 
+    // Actualizar datos de aseguradora
     public function update(StoreAseguradoraRequest $request, $id)
     {
         $aseguradora = Aseguradora::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
@@ -100,6 +108,7 @@ class AseguradorasController extends Controller
             ->with('success', 'Aseguradora actualizada correctamente');
     }
 
+    // Eliminar aseguradora
     public function destroy($id)
     {
         $aseguradora = Aseguradora::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);

@@ -63,6 +63,7 @@ const onSubmit = val.handleSubmit(doSubmit)
 </script>
 
 <template>
+  <!-- Formulario de registro / edición de usuario con asignación de rol -->
   <AppLayout>
     <div class="space-y-6">
       <div>

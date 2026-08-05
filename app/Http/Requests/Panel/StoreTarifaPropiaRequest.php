@@ -1,5 +1,7 @@
 <?php
 
+// FormRequest para validar los datos de tarifas propias
+
 namespace App\Http\Requests\Panel;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -8,11 +10,13 @@ use Illuminate\Validation\ValidationException;
 
 class StoreTarifaPropiaRequest extends FormRequest
 {
+    // Autoriza la petición
     public function authorize(): bool
     {
         return true;
     }
 
+    // Limpia los campos antes de la validación
     protected function prepareForValidation(): void
     {
         $data = $this->all();
@@ -27,6 +31,7 @@ class StoreTarifaPropiaRequest extends FormRequest
         }
     }
 
+    // Define las reglas de validación
     public function rules(): array
     {
         return [
@@ -41,6 +46,7 @@ class StoreTarifaPropiaRequest extends FormRequest
         ];
     }
 
+    // Mensajes de error personalizados en español
     public function messages(): array
     {
         return [
@@ -61,6 +67,7 @@ class StoreTarifaPropiaRequest extends FormRequest
         ];
     }
 
+    // Lanza excepción con los errores de validación
     protected function failedValidation(Validator $validator): void
     {
         throw ValidationException::withMessages($validator->errors()->toArray());

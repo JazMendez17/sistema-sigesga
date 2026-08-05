@@ -1,5 +1,7 @@
 <?php
 
+// Controlador de mantenimientos de unidades
+
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
@@ -11,6 +13,7 @@ use Inertia\Inertia;
 
 class MantenimientosController extends Controller
 {
+    // Lista de mantenimientos con alertas de vencimiento
     public function index()
     {
         $user = Auth::user();
@@ -51,6 +54,7 @@ class MantenimientosController extends Controller
         ]);
     }
 
+    // Formulario para registrar mantenimiento
     public function create()
     {
         $user = Auth::user();
@@ -61,6 +65,7 @@ class MantenimientosController extends Controller
         ]);
     }
 
+    // Guardar mantenimiento en base de datos
     public function store(StoreMantenimientoRequest $request)
     {
         $data = $request->validated();
@@ -72,6 +77,7 @@ class MantenimientosController extends Controller
             ->with('success', 'Mantenimiento registrado correctamente');
     }
 
+    // Ver detalle de mantenimiento
     public function show($id)
     {
         return Inertia::render('Panel/Mantenimientos/Show', [
@@ -79,6 +85,7 @@ class MantenimientosController extends Controller
         ]);
     }
 
+    // Formulario para editar mantenimiento
     public function edit($id)
     {
         $user = Auth::user();
@@ -90,6 +97,7 @@ class MantenimientosController extends Controller
         ]);
     }
 
+    // Actualizar datos del mantenimiento
     public function update(StoreMantenimientoRequest $request, $id)
     {
         $mantenimiento = UnidadMantenimiento::whereHas('unidad', fn($q) => $q->where('empresa_id', auth()->user()->empresa_id))->findOrFail($id);
@@ -102,6 +110,7 @@ class MantenimientosController extends Controller
             ->with('success', 'Mantenimiento actualizado correctamente');
     }
 
+    // Eliminar mantenimiento
     public function destroy($id)
     {
         UnidadMantenimiento::whereHas('unidad', fn($q) => $q->where('empresa_id', auth()->user()->empresa_id))->findOrFail($id)->delete();

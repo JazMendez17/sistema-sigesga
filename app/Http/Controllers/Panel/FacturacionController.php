@@ -1,5 +1,7 @@
 <?php
 
+// Controlador de facturación
+
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
@@ -11,6 +13,7 @@ use Inertia\Inertia;
 
 class FacturacionController extends Controller
 {
+    // Lista de facturas
     public function index()
     {
         $user = Auth::user();
@@ -42,6 +45,7 @@ class FacturacionController extends Controller
         ]);
     }
 
+    // Generar nueva factura
     public function store(Request $request)
     {
         $user = Auth::user();
@@ -63,6 +67,7 @@ class FacturacionController extends Controller
         return back()->with('success', 'Factura generada correctamente');
     }
 
+    // Ver detalle de factura
     public function show($id)
     {
         $factura = Factura::with(['cliente', 'servicio.cotizacion'])->where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);

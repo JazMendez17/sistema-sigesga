@@ -1,5 +1,7 @@
 <?php
 
+// Controlador de tipos de servicio
+
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
@@ -10,6 +12,7 @@ use Inertia\Inertia;
 
 class TiposServicioController extends Controller
 {
+    // Lista de tipos de servicio
     public function index()
     {
         $user = Auth::user();
@@ -30,11 +33,13 @@ class TiposServicioController extends Controller
         ]);
     }
 
+    // Formulario para crear tipo de servicio
     public function create()
     {
         return Inertia::render('Panel/TiposServicio/Create');
     }
 
+    // Guardar tipo de servicio en base de datos
     public function store(StoreTipoServicioRequest $request)
     {
         $user = Auth::user();
@@ -49,6 +54,7 @@ class TiposServicioController extends Controller
         return back()->with('success', 'Tipo de servicio creado correctamente');
     }
 
+    // Formulario para editar tipo de servicio
     public function edit($id)
     {
         return Inertia::render('Panel/TiposServicio/Create', [
@@ -56,6 +62,7 @@ class TiposServicioController extends Controller
         ]);
     }
 
+    // Actualizar datos de tipo de servicio
     public function update(StoreTipoServicioRequest $request, $id)
     {
         $tipo = CatalogoServicio::findOrFail($id);
@@ -74,6 +81,7 @@ class TiposServicioController extends Controller
         return back()->with('success', 'Tipo de servicio actualizado correctamente');
     }
 
+    // Eliminar tipo de servicio
     public function destroy($id)
     {
         CatalogoServicio::findOrFail($id)->delete();

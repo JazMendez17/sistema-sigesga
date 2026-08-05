@@ -120,6 +120,7 @@ const perfilData = empleado || cliente || null
 </script>
 
 <template>
+  <!-- Perfil del usuario con foto, datos personales y cambio de contraseña -->
   <AppLayout>
     <div class="space-y-6">
       <div class="flex items-center justify-between">

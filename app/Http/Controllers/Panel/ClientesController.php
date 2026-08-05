@@ -1,5 +1,7 @@
 <?php
 
+// Controlador de clientes
+
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
@@ -12,6 +14,7 @@ use Inertia\Inertia;
 
 class ClientesController extends Controller
 {
+    // Lista de clientes
     public function index()
     {
         $user = Auth::user();
@@ -35,6 +38,7 @@ class ClientesController extends Controller
         ]);
     }
 
+    // Formulario para crear cliente
     public function create()
     {
         $user = Auth::user();
@@ -45,6 +49,7 @@ class ClientesController extends Controller
         ]);
     }
 
+    // Guardar cliente en base de datos
     public function store(StoreClienteRequest $request)
     {
         $user = Auth::user();
@@ -74,6 +79,7 @@ class ClientesController extends Controller
             ->with('success', 'Cliente creado correctamente');
     }
 
+    // Ver detalle de cliente
     public function show($id)
     {
         $cliente = Cliente::with(['aseguradora', 'direccion', 'cotizaciones.tipoServicio', 'facturas'])
@@ -118,6 +124,7 @@ class ClientesController extends Controller
         ]);
     }
 
+    // Formulario para editar cliente
     public function edit($id)
     {
         $user = Auth::user();
@@ -129,6 +136,7 @@ class ClientesController extends Controller
         ]);
     }
 
+    // Actualizar datos del cliente
     public function update(StoreClienteRequest $request, $id)
     {
         $cliente = Cliente::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
@@ -172,6 +180,7 @@ class ClientesController extends Controller
             ->with('success', 'Cliente actualizado correctamente');
     }
 
+    // Eliminar cliente
     public function destroy($id)
     {
         $cliente = Cliente::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);

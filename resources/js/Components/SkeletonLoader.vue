@@ -9,32 +9,39 @@ defineProps({
 })
 </script>
 
+<!-- Cargador de esqueleto para estados de carga con múltiples variantes (texto, tarjeta, tabla, formulario, etc.) -->
 <template>
+  <!-- Renderiza múltiples esqueletos según el tipo -->
   <template v-for="i in count" :key="i">
+    <!-- Círculo -->
     <div
       v-if="type === 'circle'"
       class="animate-pulse rounded-full"
       :class="[rounded || 'rounded-full']"
       :style="{ width: width || '3rem', height: height || width || '3rem', backgroundColor: 'var(--neumorphic-dark)', opacity: 0.3 }"
     />
+    <!-- Línea de texto -->
     <div
       v-else-if="type === 'text'"
       class="animate-pulse"
       :class="[rounded || 'rounded-xl']"
       :style="{ width: width || '100%', height: height || '1rem', backgroundColor: 'var(--neumorphic-dark)', opacity: 0.3 }"
     />
+    <!-- Título -->
     <div
       v-else-if="type === 'title'"
       class="animate-pulse"
       :class="[rounded || 'rounded-xl']"
       :style="{ width: width || '60%', height: height || '1.5rem', backgroundColor: 'var(--neumorphic-dark)', opacity: 0.3 }"
     />
+    <!-- Botón -->
     <div
       v-else-if="type === 'button'"
       class="animate-pulse"
       :class="[rounded || 'rounded-2xl']"
       :style="{ width: width || '10rem', height: height || '2.75rem', backgroundColor: 'var(--neumorphic-dark)', opacity: 0.3 }"
     />
+    <!-- Tarjeta -->
     <div
       v-else-if="type === 'card'"
       class="animate-pulse rounded-3xl p-6 space-y-4"
@@ -45,6 +52,7 @@ defineProps({
       <div class="rounded-xl" :style="{ width: '70%', height: '0.875rem', backgroundColor: 'var(--neumorphic-dark)', opacity: 0.2 }" />
       <div class="rounded-xl" :style="{ width: '40%', height: '0.875rem', backgroundColor: 'var(--neumorphic-dark)', opacity: 0.2 }" />
     </div>
+    <!-- Fila de tabla -->
     <div
       v-else-if="type === 'table-row'"
       class="animate-pulse rounded-2xl flex items-center gap-4 px-4"
@@ -56,6 +64,7 @@ defineProps({
       <div class="rounded-lg" :style="{ width: '15%', height: '0.75rem', backgroundColor: 'var(--neumorphic-dark)', opacity: 0.2 }" />
       <div class="rounded-lg ml-auto" :style="{ width: '8%', height: '0.75rem', backgroundColor: 'var(--neumorphic-dark)', opacity: 0.15 }" />
     </div>
+    <!-- Tarjeta de estadística -->
     <div
       v-else-if="type === 'stat-card'"
       class="animate-pulse rounded-[22px] p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]"
@@ -64,6 +73,7 @@ defineProps({
       <div class="rounded-lg mb-3" :style="{ width: '40%', height: '0.625rem', backgroundColor: 'var(--neumorphic-dark)', opacity: 0.2 }" />
       <div class="rounded-lg" :style="{ width: '30%', height: '1.5rem', backgroundColor: 'var(--neumorphic-dark)', opacity: 0.3 }" />
     </div>
+    <!-- Campo de formulario -->
     <div
       v-else-if="type === 'form-field'"
       class="animate-pulse space-y-2"
@@ -72,6 +82,7 @@ defineProps({
       <div class="rounded-lg" :style="{ width: '30%', height: '0.75rem', backgroundColor: 'var(--neumorphic-dark)', opacity: 0.25 }" />
       <div class="rounded-2xl" :style="{ width: '100%', height: height || '2.75rem', backgroundColor: 'var(--neumorphic-dark)', opacity: 0.15 }" />
     </div>
+    <!-- Bloque genérico -->
     <div
       v-else-if="type === 'block'"
       class="animate-pulse"

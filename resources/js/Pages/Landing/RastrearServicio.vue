@@ -11,6 +11,7 @@ const buscar = () => {
 </script>
 
 <template>
+    <!-- Página de rastreo de servicio por código de seguimiento -->
     <Head title="Rastrear Servicio - SIGESGA" />
 
     <div class="min-h-screen bg-[#E8EDF2] flex items-center justify-center p-4">

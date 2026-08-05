@@ -1,5 +1,7 @@
 <?php
 
+// Controlador de unidades
+
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
@@ -12,6 +14,7 @@ use Inertia\Inertia;
 
 class UnidadesController extends Controller
 {
+    // Lista de unidades
     public function index()
     {
         $user = Auth::user();
@@ -41,6 +44,7 @@ class UnidadesController extends Controller
         ]);
     }
 
+    // Formulario para crear unidad
     public function create()
     {
         $user = Auth::user();
@@ -52,6 +56,7 @@ class UnidadesController extends Controller
         ]);
     }
 
+    // Guardar unidad en base de datos
     public function store(StoreUnidadRequest $request)
     {
         $user = Auth::user();
@@ -66,6 +71,7 @@ class UnidadesController extends Controller
             ->with('success', 'Unidad creada correctamente');
     }
 
+    // Ver detalle de unidad
     public function show($id)
     {
         return Inertia::render('Panel/Unidades/Show', [
@@ -73,6 +79,7 @@ class UnidadesController extends Controller
         ]);
     }
 
+    // Formulario para editar unidad
     public function edit($id)
     {
         $user = Auth::user();
@@ -85,6 +92,7 @@ class UnidadesController extends Controller
         ]);
     }
 
+    // Actualizar datos de la unidad
     public function update(StoreUnidadRequest $request, $id)
     {
         $unidad = Unidade::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
@@ -97,6 +105,7 @@ class UnidadesController extends Controller
             ->with('success', 'Unidad actualizada correctamente');
     }
 
+    // Eliminar unidad
     public function destroy($id)
     {
         $unidad = Unidade::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);

@@ -38,6 +38,7 @@ function submit() {
 </script>
 
 <template>
+  <!-- Formulario de nueva cotización -->
   <AppLayout>
     <div class="space-y-6">
       <div>

@@ -1,5 +1,7 @@
 <?php
 
+// Controlador de registro de nuevos usuarios
+
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
@@ -17,11 +19,13 @@ use Inertia\Response;
 
 class RegisteredUserController extends Controller
 {
+    // Muestra el formulario de registro
     public function create(): Response
     {
         return Inertia::render('Auth/Register');
     }
 
+    // Registra un nuevo usuario en el sistema
     public function store(Request $request): RedirectResponse
     {
         $this->ensureRegistrationIsNotRateLimited($request);
@@ -57,6 +61,7 @@ class RegisteredUserController extends Controller
         return redirect(route('panel.dashboard', absolute: false));
     }
 
+    // Verifica que no se exceda el límite de intentos de registro
     protected function ensureRegistrationIsNotRateLimited(Request $request): void
     {
         $key = $this->registrationThrottleKey($request);
@@ -69,6 +74,7 @@ class RegisteredUserController extends Controller
         }
     }
 
+    // Genera la clave de limitación por IP
     protected function registrationThrottleKey(Request $request): string
     {
         return 'register:' . $request->ip();

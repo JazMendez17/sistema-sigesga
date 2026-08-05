@@ -1,5 +1,7 @@
 <?php
 
+// Controlador de integraciones con servicios externos
+
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
@@ -10,6 +12,7 @@ use Inertia\Inertia;
 
 class IntegracionesController extends Controller
 {
+    // Lista de integraciones disponibles
     public function index()
     {
         $user = Auth::user();
@@ -36,6 +39,7 @@ class IntegracionesController extends Controller
         ]);
     }
 
+    // Actualizar configuración de integración
     public function update(Request $request, $id)
     {
         $integracion = EmpresaIntegracione::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);

@@ -16,13 +16,17 @@ const mensaje = computed(() => {
 })
 </script>
 
+<!-- Indicador de fortaleza de contraseña con barra de progreso y lista de requisitos -->
 <template>
+    <!-- Panel de fortaleza de contraseña -->
     <div v-if="password" class="space-y-3">
+        <!-- Barra de progreso y nivel -->
         <div class="space-y-1.5">
             <div class="flex items-center justify-between">
                 <span class="text-xs font-medium" :style="{ color: level.color }">{{ level.label }}</span>
                 <span class="text-xs text-gray-400">5/5 requisitos</span>
             </div>
+            <!-- Barra de progreso de fortaleza -->
             <div class="h-2 w-full bg-gray-200 rounded-full overflow-hidden shadow-[inset_2px_2px_4px_#c0c4c8]">
                 <div
                     class="h-full rounded-full transition-all duration-500 ease-out"
@@ -32,6 +36,7 @@ const mensaje = computed(() => {
             <p v-if="mensaje" class="text-xs text-red-500 font-medium mt-1">{{ mensaje }}</p>
         </div>
 
+        <!-- Lista de requisitos -->
         <div class="space-y-1.5">
             <div
                 v-for="(req, key) in resultados"
@@ -49,6 +54,7 @@ const mensaje = computed(() => {
             </div>
         </div>
 
+        <!-- Errores al enviar el formulario -->
         <div v-if="submitted && errores.length" class="rounded-xl bg-red-50 border border-red-200 p-3">
             <p class="text-xs font-medium text-red-700 mb-1">Requisitos faltantes:</p>
             <ul class="list-disc list-inside space-y-0.5">

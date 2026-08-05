@@ -58,8 +58,10 @@ function eliminarServicio(id) {
 </script>
 
 <template>
+  <!-- Listado de servicios activos -->
   <AppLayout>
     <div class="space-y-6">
+      <!-- Encabezado con botones de acción -->
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 class="text-2xl font-bold text-gray-800">Servicios</h1>
         <div class="flex gap-3">
@@ -72,6 +74,7 @@ function eliminarServicio(id) {
         </div>
       </div>
 
+      <!-- Filtros de estatus y búsqueda -->
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex flex-wrap gap-2">
           <button
@@ -93,6 +96,7 @@ function eliminarServicio(id) {
         />
       </div>
 
+      <!-- Tabla de servicios -->
       <div class="rounded-3xl bg-[#EEF2F7] p-6 shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
         <DataTable :columns="columns" :data="filteredServicios">
           <template #cell-estatus="{ row }">
@@ -116,6 +120,7 @@ function eliminarServicio(id) {
         </DataTable>
       </div>
 
+      <!-- Paginación -->
       <div class="flex items-center justify-center gap-2">
         <button class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF2F7] text-gray-500 shadow-[4px_4px_8px_#d0d5da,-4px_-4px_8px_#ffffff] transition-all hover:text-gray-700">
           <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>

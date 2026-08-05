@@ -6,6 +6,7 @@ const empresa = computed(() => usePage().props.empresa || {})
 </script>
 
 <template>
+    <!-- Página de soporte técnico con información de contacto -->
     <Head title="Soporte - SIGESGA" />
 
     <div class="min-h-screen bg-[var(--color-bg)] flex items-center justify-center p-4">

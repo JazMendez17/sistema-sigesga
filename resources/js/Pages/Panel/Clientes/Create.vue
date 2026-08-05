@@ -80,13 +80,16 @@ function submit() {
 </script>
 
 <template>
+  <!-- Formulario de registro / edición de cliente -->
   <AppLayout>
     <div class="space-y-6">
+      <!-- Encabezado del formulario -->
       <div>
         <h1 class="text-2xl font-bold text-gray-800">{{ editMode ? 'Editar Cliente' : 'Nuevo Cliente' }}</h1>
         <p class="text-sm text-gray-500 mt-1">{{ editMode ? 'Actualiza los datos del cliente' : 'Registra un nuevo cliente' }}</p>
       </div>
 
+      <!-- Formulario de datos del cliente -->
       <div class="neumorphic-card p-6 max-w-4xl">
         <form @submit.prevent="val.handleSubmit(submit)" class="space-y-5">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -177,6 +180,7 @@ function submit() {
             </div>
           </div>
 
+          <!-- Sección de dirección -->
           <div class="border-t border-gray-200 pt-4">
             <p class="text-sm font-medium text-gray-600 mb-3">Dirección</p>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -229,6 +233,7 @@ function submit() {
             </div>
           </div>
 
+          <!-- Botones de acción -->
           <div class="flex gap-3 pt-2">
             <NeumorphicButton type="submit" :loading="form.processing">{{ editMode ? 'Actualizar Cliente' : 'Guardar Cliente' }}</NeumorphicButton>
             <NeumorphicButton variant="secondary" @click="router.visit(route('panel.clientes.index'))">Cancelar</NeumorphicButton>

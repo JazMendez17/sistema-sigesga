@@ -1,5 +1,7 @@
 <?php
 
+// Controlador de oficinas
+
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
@@ -11,6 +13,7 @@ use Inertia\Inertia;
 
 class OficinasController extends Controller
 {
+    // Lista de oficinas
     public function index()
     {
         $user = Auth::user();
@@ -34,11 +37,13 @@ class OficinasController extends Controller
         ]);
     }
 
+    // Formulario para crear oficina
     public function create()
     {
         return Inertia::render('Panel/Oficinas/Create');
     }
 
+    // Guardar oficina en base de datos
     public function store(StoreOficinaRequest $request)
     {
         $user = Auth::user();
@@ -68,6 +73,7 @@ class OficinasController extends Controller
             ->with('success', 'Oficina creada correctamente');
     }
 
+    // Ver detalle de oficina
     public function show($id)
     {
         $oficina = Oficina::with('direccion')->where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
@@ -77,6 +83,7 @@ class OficinasController extends Controller
         ]);
     }
 
+    // Formulario para editar oficina
     public function edit($id)
     {
         return Inertia::render('Panel/Oficinas/Create', [
@@ -84,6 +91,7 @@ class OficinasController extends Controller
         ]);
     }
 
+    // Actualizar datos de la oficina
     public function update(StoreOficinaRequest $request, $id)
     {
         $oficina = Oficina::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
@@ -127,6 +135,7 @@ class OficinasController extends Controller
             ->with('success', 'Oficina actualizada correctamente');
     }
 
+    // Eliminar oficina
     public function destroy($id)
     {
         Oficina::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id)->delete();

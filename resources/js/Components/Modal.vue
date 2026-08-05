@@ -74,7 +74,9 @@ const maxWidthClass = computed(() => {
 });
 </script>
 
+<!-- Ventana modal con backdrop, transiciones y cierre con Escape -->
 <template>
+    <!-- Diálogo modal nativo -->
     <dialog
         class="z-50 m-0 min-h-full min-w-full overflow-y-auto bg-transparent backdrop:bg-transparent"
         ref="dialog"
@@ -83,6 +85,7 @@ const maxWidthClass = computed(() => {
             class="fixed inset-0 z-50 overflow-y-auto px-4 py-6 sm:px-0"
             scroll-region
         >
+            <!-- Fondo oscuro con transición -->
             <Transition
                 enter-active-class="ease-out duration-300"
                 enter-from-class="opacity-0"
@@ -102,6 +105,7 @@ const maxWidthClass = computed(() => {
                 </div>
             </Transition>
 
+            <!-- Contenido del modal con transición -->
             <Transition
                 enter-active-class="ease-out duration-300"
                 enter-from-class="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"

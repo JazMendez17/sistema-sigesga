@@ -19,7 +19,9 @@ const classes = computed(() =>
 );
 </script>
 
+<!-- Enlace de navegación responsive con indicador lateral activo -->
 <template>
+    <!-- Enlace responsive con borde lateral para estado activo -->
     <Link :href="href" :class="classes">
         <slot />
     </Link>

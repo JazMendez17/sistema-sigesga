@@ -1,5 +1,7 @@
 <?php
 
+// Controlador para solicitar el enlace de restablecimiento de contraseña
+
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
@@ -11,9 +13,7 @@ use Inertia\Response;
 
 class PasswordResetLinkController extends Controller
 {
-    /**
-     * Display the password reset link request view.
-     */
+    // Muestra el formulario de solicitud de enlace de restablecimiento
     public function create(): Response
     {
         return Inertia::render('Auth/ForgotPassword', [
@@ -21,11 +21,7 @@ class PasswordResetLinkController extends Controller
         ]);
     }
 
-    /**
-     * Handle an incoming password reset link request.
-     *
-     * @throws ValidationException
-     */
+    // Envía el enlace de restablecimiento de contraseña al correo
     public function store(Request $request): RedirectResponse
     {
         $request->merge([

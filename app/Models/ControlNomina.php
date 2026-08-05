@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+// Modelo de Control de Nómina
 class ControlNomina extends Model
 {
     protected $table = 'control_nomina';
@@ -31,11 +32,13 @@ class ControlNomina extends Model
         ];
     }
 
+    // Relación con empresa
     public function empresa(): BelongsTo
     {
         return $this->belongsTo(Empresa::class);
     }
 
+    // Relación con operador
     public function operador(): BelongsTo
     {
         return $this->belongsTo(Operadore::class);

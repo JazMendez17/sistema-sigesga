@@ -1,5 +1,7 @@
 <?php
 
+// Middleware para verificar que la cuenta no esté bloqueada
+
 namespace App\Http\Middleware;
 
 use Closure;
@@ -8,6 +10,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CheckAccountStatus
 {
+    // Redirige al login si la cuenta del usuario está bloqueada
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();

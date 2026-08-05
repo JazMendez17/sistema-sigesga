@@ -31,6 +31,7 @@ const submit = () => {
 </script>
 
 <template>
+    <!-- Página de registro de cuenta -->
     <Head title="Registrarse" />
 
     <div class="min-h-screen bg-[var(--color-bg)] flex items-center justify-center p-4">

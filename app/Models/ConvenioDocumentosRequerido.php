@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+// Modelo de Documento Requerido de Convenio
 class ConvenioDocumentosRequerido extends Model
 {
     use HasFactory;
@@ -18,6 +19,7 @@ class ConvenioDocumentosRequerido extends Model
         'obligatorio',
     ];
 
+    // Relación con convenio
     public function convenio(): BelongsTo
     {
         return $this->belongsTo(Convenio::class);
