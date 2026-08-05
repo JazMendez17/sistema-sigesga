@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Panel;
 use App\Http\Controllers\Controller;
 use App\Models\Unidade;
 use App\Models\Operadore;
+use App\Models\Empleado;
 use App\Models\Oficina;
 use App\Http\Requests\Panel\StoreUnidadRequest;
 use Illuminate\Support\Facades\Auth;
@@ -51,8 +52,18 @@ class UnidadesController extends Controller
         $empresaId = $user->empresa_id;
 
         return Inertia::render('Panel/Unidades/Create', [
-            'operadores' => Operadore::with('empleado')->where('empresa_id', $empresaId)->get(),
-            'oficinas' => Oficina::where('empresa_id', $empresaId)->get(),
+            'operadores' => Empleado::where('empresa_id', $empresaId)
+                ->where('puesto', 'operador')
+                ->get()
+                ->map(fn ($e) => [
+                    'id' => $e->operador?->id ?? null,
+                    'empleado_id' => $e->id,
+                    'nombre_operador' => trim($e->nombre . ' ' . ($e->apellido_paterno ?? '') . ' ' . ($e->apellido_materno ?? '')),
+                    'disponible' => $e->operador?->disponible ?? true,
+                ])
+                ->filter(fn ($o) => $o['id'] !== null)
+                ->values(),
+            'oficinas' => Oficina::where('empresa_id', $empresaId)->get(['id', 'nombre']),
         ]);
     }
 
@@ -87,8 +98,18 @@ class UnidadesController extends Controller
 
         return Inertia::render('Panel/Unidades/Create', [
             'unidad' => Unidade::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id),
-            'operadores' => Operadore::with('empleado')->where('empresa_id', $empresaId)->get(),
-            'oficinas' => Oficina::where('empresa_id', $empresaId)->get(),
+            'operadores' => Empleado::where('empresa_id', $empresaId)
+                ->where('puesto', 'operador')
+                ->get()
+                ->map(fn ($e) => [
+                    'id' => $e->operador?->id ?? null,
+                    'empleado_id' => $e->id,
+                    'nombre_operador' => trim($e->nombre . ' ' . ($e->apellido_paterno ?? '') . ' ' . ($e->apellido_materno ?? '')),
+                    'disponible' => $e->operador?->disponible ?? true,
+                ])
+                ->filter(fn ($o) => $o['id'] !== null)
+                ->values(),
+            'oficinas' => Oficina::where('empresa_id', $empresaId)->get(['id', 'nombre']),
         ]);
     }
 

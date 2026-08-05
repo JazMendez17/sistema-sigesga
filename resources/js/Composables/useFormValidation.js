@@ -166,7 +166,7 @@ export function useFormValidation(form, rules) {
         return ''
       }
       case 'curp': {
-        if (value !== '' && !/^[A-Z]{4}\d{6}[HM][A-Z]{5}[0-9][0-9A-Z]$/.test(value.toUpperCase())) {
+        if (value !== '' && !/^[A-Z]{4}\d{6}[HM][A-Z]{5}[0-9A-Z][0-9]$/.test(value.toUpperCase())) {
           return customMessage || 'CURP inválida (debe tener 18 caracteres alfanuméricos)'
         }
         return ''
@@ -192,6 +192,24 @@ export function useFormValidation(form, rules) {
       case 'date': {
         if (value !== '' && isNaN(Date.parse(value))) {
           return customMessage || 'Fecha inválida'
+        }
+        return ''
+      }
+      case 'min_date': {
+        if (value !== '') {
+          const curDate = new Date(value + 'T00:00:00')
+          if (param === 'today') {
+            const today = new Date()
+            today.setHours(0, 0, 0, 0)
+            if (curDate <= today) {
+              return customMessage || 'La fecha debe ser posterior a hoy.'
+            }
+          } else {
+            const refDate = new Date(param + 'T00:00:00')
+            if (curDate <= refDate) {
+              return customMessage || `La fecha debe ser posterior a ${param}.`
+            }
+          }
         }
         return ''
       }

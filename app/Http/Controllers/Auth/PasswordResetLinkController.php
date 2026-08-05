@@ -29,7 +29,7 @@ class PasswordResetLinkController extends Controller
         ]);
 
         $request->validate([
-            'email' => 'required|email:rfc,dns|max:254',
+            'email' => 'required|email:rfc|max:254',
         ]);
 
         Password::sendResetLink($request->only('email'));

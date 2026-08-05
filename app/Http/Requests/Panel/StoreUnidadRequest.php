@@ -42,7 +42,7 @@ class StoreUnidadRequest extends FormRequest
             'modelo' => 'nullable|string|max:255',
             'placas' => 'required|string|max:20|unique:unidades,placas,' . $id,
             'numero_economico' => 'required|string|max:50|unique:unidades,numero_economico,' . $id,
-            'seguro_vencimiento' => 'nullable|date',
+            'seguro_vencimiento' => 'nullable|date|after:today',
             'estado_emplacado' => 'nullable|string|max:255',
             'activo' => 'nullable|boolean',
             'oficina_id' => 'nullable|exists:oficinas,id',
@@ -66,6 +66,7 @@ class StoreUnidadRequest extends FormRequest
             'numero_economico.max' => 'El número económico no debe exceder los 50 caracteres.',
             'numero_economico.unique' => 'El número económico ya está registrado en el sistema.',
             'seguro_vencimiento.date' => 'La fecha de vencimiento del seguro no tiene un formato válido.',
+            'seguro_vencimiento.after' => 'La fecha de vencimiento del seguro debe ser posterior a hoy.',
 
             'estado_emplacado.max' => 'El estado emplacado no debe exceder los 255 caracteres.',
             'activo.boolean' => 'El campo activo debe ser verdadero o falso.',

@@ -38,6 +38,19 @@ Route::post('/solicitar', [LandingController::class, 'solicitarStore'])->name('s
 Route::get('/rastrear', [LandingController::class, 'rastrear']);
 Route::get('/soporte', [LandingController::class, 'soporte']);
 
+// Ruta temporal para probar el envío de emails
+Route::get('/test-email', function () {
+    try {
+        \Illuminate\Support\Facades\Mail::raw('Este es un correo de prueba enviado desde SIGESGA. La configuración SMTP de Gmail funciona correctamente.', function ($message) {
+            $message->to(env('MAIL_FROM_ADDRESS'))
+                    ->subject('Prueba de conexión Gmail - SIGESGA');
+        });
+        return 'Correo enviado exitosamente. Revisa tu bandeja de entrada.';
+    } catch (\Exception $e) {
+        return 'Error al enviar: ' . $e->getMessage();
+    }
+});
+
 // === Rutas protegidas del panel ===
 Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () {
 
@@ -56,6 +69,7 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
         Route::get('/facturacion', [FacturacionController::class, 'index'])->name('facturacion.index');
         Route::post('/facturacion', [FacturacionController::class, 'store'])->name('facturacion.store');
         Route::get('/facturacion/{id}', [FacturacionController::class, 'show'])->name('facturacion.show');
+        Route::post('/facturacion/{id}/enviar', [FacturacionController::class, 'enviarEmail'])->name('facturacion.enviar');
 
         Route::get('/clientes', [ClientesController::class, 'index'])->name('clientes.index');
         Route::get('/clientes/create', [ClientesController::class, 'create'])->name('clientes.create');

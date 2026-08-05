@@ -45,7 +45,7 @@ class UsuariosController extends Controller
         $empresaId = $user->empresa_id;
 
         return Inertia::render('Panel/Usuarios/Create', [
-            'empleados' => Empleado::where('empresa_id', $empresaId)->get(['id', 'nombre', 'apellido_paterno']),
+            'empleados' => Empleado::where('empresa_id', $empresaId)->get(['id', 'nombre', 'apellido_paterno', 'apellido_materno']),
         ]);
     }
 
@@ -67,8 +67,12 @@ class UsuariosController extends Controller
     // Formulario para editar usuario
     public function edit($id)
     {
+        $user = Auth::user();
+        $empresaId = $user->empresa_id;
+
         return Inertia::render('Panel/Usuarios/Create', [
             'usuario' => Usuario::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id),
+            'empleados' => Empleado::where('empresa_id', $empresaId)->get(['id', 'nombre', 'apellido_paterno', 'apellido_materno']),
         ]);
     }
 

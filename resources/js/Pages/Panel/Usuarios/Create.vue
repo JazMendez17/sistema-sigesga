@@ -107,7 +107,7 @@ const onSubmit = val.handleSubmit(doSubmit)
               <label class="block text-sm font-medium text-gray-600 mb-1">Empleado</label>
               <select v-model="form.empleado_id" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
                 <option value="">Sin empleado...</option>
-                <option v-for="e in empleados" :key="e.id" :value="e.id">{{ e.nombre }} {{ e.apellido_paterno ?? '' }}</option>
+                <option v-for="e in empleados" :key="e.id" :value="e.id">{{ e.nombre }} {{ e.apellido_paterno ?? '' }} {{ e.apellido_materno ?? '' }}</option>
               </select>
             </div>
             <div v-if="!isEdit">

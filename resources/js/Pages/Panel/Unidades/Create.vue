@@ -1,9 +1,11 @@
 <script setup>
+import { computed } from 'vue'
 import { router, useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Pages/Panel/AppLayout.vue'
 import NeumorphicInput from '@/Components/NeumorphicInput.vue'
 import NeumorphicButton from '@/Components/NeumorphicButton.vue'
 import { useFormValidation } from '@/Composables/useFormValidation'
+import { ESTADOS } from '@/Data/estadosMunicipios'
 
 const props = defineProps({
   unidad: Object,
@@ -12,6 +14,13 @@ const props = defineProps({
 })
 
 const isEdit = !!props.unidad
+
+// Fecha mínima para seguro (mañana)
+const tomorrow = computed(() => {
+  const d = new Date()
+  d.setDate(d.getDate() + 1)
+  return d.toISOString().split('T')[0]
+})
 
 const form = useForm({
   marca: props.unidad?.marca ?? '',
@@ -28,11 +37,11 @@ const form = useForm({
 
 const rules = {
   marca: ['required', 'min:2', 'max:50'],
-  tipo: ['required', 'min:2', 'max:50'],
+  tipo: ['required'],
   modelo: ['max:45'],
   placas: ['required', 'placas'],
   numero_economico: ['required', 'min:2', 'max:50'],
-  seguro_vencimiento: ['date'],
+  seguro_vencimiento: ['date', { rule: 'min_date:today', message: 'La fecha de vencimiento del seguro no puede ser hoy ni una fecha pasada.' }],
   activo: ['boolean'],
 }
 const val = useFormValidation(form, rules)
@@ -68,7 +77,13 @@ function submit() {
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Tipo</label>
-              <NeumorphicInput v-model="form.tipo" placeholder="Ej: Sedán, SUV, Camioneta" :error="val.getError('tipo')" @input="val.handleInput('tipo')" />
+              <select v-model="form.tipo" @change="val.handleInput('tipo')" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                <option value="">Seleccionar tipo...</option>
+                <option value="Arrastre">Arrastre</option>
+                <option value="Plataforma">Plataforma</option>
+                <option value="Pesada">Pesada</option>
+              </select>
+              <p v-if="val.getError('tipo')" class="text-sm text-red-500 mt-1">{{ val.getError('tipo') }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Modelo</label>
@@ -84,11 +99,14 @@ function submit() {
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Seguro Vencimiento</label>
-              <NeumorphicInput v-model="form.seguro_vencimiento" type="date" :error="val.getError('seguro_vencimiento')" @input="val.handleInput('seguro_vencimiento')" />
+              <NeumorphicInput v-model="form.seguro_vencimiento" type="date" :min="tomorrow" :error="val.getError('seguro_vencimiento')" @input="val.handleInput('seguro_vencimiento')" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Estado Emplacado</label>
-              <NeumorphicInput v-model="form.estado_emplacado" placeholder="Estado emplacado" />
+              <select v-model="form.estado_emplacado" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                <option value="">Seleccionar estado...</option>
+                <option v-for="e in ESTADOS" :key="e" :value="e">{{ e }}</option>
+              </select>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Oficina</label>
@@ -101,7 +119,7 @@ function submit() {
               <label class="block text-sm font-medium text-gray-600 mb-1">Operador Asignado</label>
               <select v-model="form.operador_asignado_id" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
                 <option value="">Sin operador...</option>
-                <option v-for="o in operadores" :key="o.id" :value="o.id">{{ o.empleado?.nombre ?? 'Operador #' + o.id }}</option>
+                <option v-for="o in operadores" :key="o.id" :value="o.id">{{ o.nombre_operador }}</option>
               </select>
             </div>
           </div>

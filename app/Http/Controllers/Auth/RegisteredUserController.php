@@ -37,7 +37,7 @@ class RegisteredUserController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|lowercase|email:rfc,dns|max:254|unique:'.Usuario::class,
+            'email' => 'required|string|lowercase|email:rfc|max:254|unique:'.Usuario::class,
             'password' => ['required', 'confirmed', Rules\Password::min(8)->letters()->mixedCase()->numbers()->symbols()],
         ], [
             'email.unique' => 'No se pudo completar el registro.',
