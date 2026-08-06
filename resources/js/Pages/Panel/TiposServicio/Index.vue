@@ -11,6 +11,10 @@ function toggleActivo(id, current) {
   router.put(route('panel.tipos-servicio.update', { id }), { activo: !current })
 }
 
+function toggleManiobra(id, current) {
+  router.put(route('panel.tipos-servicio.update', { id }), { requiere_maniobra: !current })
+}
+
 function eliminarTipo(id) {
   if (confirm('¿Eliminar este tipo de servicio?')) {
     router.delete(route('panel.tipos-servicio.destroy', { id }))
@@ -44,14 +48,16 @@ function eliminarTipo(id) {
               <tr v-for="tipo in tiposServicio" :key="tipo.id" class="hover:bg-white/30 transition-colors">
                 <td class="px-4 py-3 text-sm font-medium text-[var(--color-text)]">{{ tipo.nombre }}</td>
                 <td class="px-4 py-3 text-sm text-[var(--color-text)]">
-                  <span
-                    class="inline-flex items-center rounded-xl px-2 py-0.5 text-xs font-medium"
-                    :class="tipo.requiere_maniobra
-                      ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] shadow-[2px_2px_4px_#a0b8d4,-2px_-2px_4px_var(--neumorphic-light)]'
-                      : 'bg-gray-100 text-gray-600 shadow-[2px_2px_4px_#c0c4c8,-2px_-2px_4px_var(--neumorphic-light)]'"
+                  <button
+                    @click="toggleManiobra(tipo.id, tipo.requiere_maniobra)"
+                    class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200"
+                    :class="tipo.requiere_maniobra ? 'bg-[var(--color-primary)] shadow-[inset_2px_2px_4px_#4338ca,inset_-2px_-2px_4px_#6366f1]' : 'bg-gray-300 shadow-[inset_2px_2px_4px_#b0b0b0,inset_-2px_-2px_4px_#d0d0d0]'"
                   >
-                    {{ tipo.requiere_maniobra ? 'Sí' : 'No' }}
-                  </span>
+                    <span
+                      class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-200"
+                      :class="tipo.requiere_maniobra ? 'translate-x-6' : 'translate-x-0.5'"
+                    />
+                  </button>
                 </td>
                 <td class="px-4 py-3">
                   <button

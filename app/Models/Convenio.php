@@ -17,6 +17,11 @@ class Convenio extends Model
         'empresa_id',
         'aseguradora_id',
         'nombre_convenio_poliza',
+        'codigo_convenio',
+        'fecha_inicio',
+        'fecha_fin',
+        'renovacion_automatica',
+        'exclusivo',
         'tipo_servicio_id',
         'tipo_ruta',
         'tipo_cobertura',
@@ -28,6 +33,11 @@ class Convenio extends Model
         'tope_presupuesto',
         'cubre_casetas_peaje',
         'dias_credito',
+        'periodicidad_corte',
+        'requiere_folio_cfdi',
+        'iva_incluido',
+        'tope_credito',
+        'aviso_previo_terminacion_dias',
         'proceso_envio_facturas',
         'estatus',
     ];
@@ -72,6 +82,12 @@ class Convenio extends Model
     public function convenioDocumentosRequeridos(): HasMany
     {
         return $this->hasMany(ConvenioDocumentosRequerido::class);
+    }
+
+    // Relación con tarifas del convenio
+    public function convenioTarifas(): HasMany
+    {
+        return $this->hasMany(ConvenioTarifa::class);
     }
 
     // Relación con cotizaciones

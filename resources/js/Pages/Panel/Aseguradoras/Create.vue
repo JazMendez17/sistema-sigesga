@@ -21,11 +21,12 @@ const form = useForm({
     nombre_contacto: c.nombre_contacto ?? '',
     telefono: c.telefono ?? '',
     email: c.email ?? '',
+    activo: c.activo ?? true,
   })) ?? [],
 })
 
 function agregarContacto() {
-  form.contactos.push({ departamento: '', nombre_contacto: '', telefono: '', email: '' })
+  form.contactos.push({ departamento: '', nombre_contacto: '', telefono: '', email: '', activo: true })
 }
 
 function eliminarContacto(i) {
@@ -91,7 +92,16 @@ function doSubmit() {
               <button type="button" @click="agregarContacto" class="rounded-xl bg-[var(--color-bg)] px-3 py-1.5 text-xs text-[var(--color-primary)] shadow-[3px_3px_6px_var(--neumorphic-dark),-3px_-3px_6px_var(--neumorphic-light)]">+ Agregar Contacto</button>
             </div>
             <div v-if="form.contactos.length === 0" class="text-sm text-gray-400 text-center py-3">Sin contactos registrados</div>
-            <div v-for="(c, i) in form.contactos" :key="i" class="rounded-2xl bg-[var(--color-bg)] p-4 mb-3 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]">
+            <div v-for="(c, i) in form.contactos" :key="i" class="rounded-2xl bg-[var(--color-bg)] p-4 mb-3 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]" :class="{ 'opacity-50': !c.activo }">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-sm font-medium text-gray-600">Contacto #{{ i + 1 }}</span>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs" :class="c.activo ? 'text-green-600' : 'text-gray-400'">{{ c.activo ? 'Activo' : 'Inactivo' }}</span>
+                  <button type="button" @click="c.activo = !c.activo" class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200" :class="c.activo ? 'bg-[#059669]' : 'bg-gray-300'">
+                    <span class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-200" :class="c.activo ? 'translate-x-5' : 'translate-x-0.5'" />
+                  </button>
+                </div>
+              </div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <NeumorphicInput v-model="c.nombre_contacto" label="Nombre del Contacto" placeholder="Nombre completo" />
                 <NeumorphicInput v-model="c.departamento" label="Departamento" placeholder="Ej: Siniestros, Ventas, Cabina" />

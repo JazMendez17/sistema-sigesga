@@ -10,6 +10,7 @@ use App\Models\AseguradoraContacto;
 use App\Models\Convenio;
 use App\Http\Requests\Panel\StoreAseguradoraRequest;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class AseguradorasController extends Controller
@@ -84,6 +85,7 @@ class AseguradorasController extends Controller
                     'nombre_contacto' => $c->nombre_contacto ?? '—',
                     'telefono' => $c->telefono ?? '—',
                     'email' => $c->email ?? '—',
+                    'activo' => $c->activo ?? true,
                 ]),
                 'convenios' => $aseguradora->convenios->map(fn ($c) => [
                     'id' => $c->id,
@@ -119,8 +121,11 @@ class AseguradorasController extends Controller
 
         $aseguradora->update($data);
 
+        // Reemplazar lista de contactos: elimina los anteriores y crea los nuevos
         if ($request->has('contactos')) {
-            $aseguradora->aseguradoraContactos()->delete();
+            foreach ($aseguradora->aseguradoraContactos as $contactoExistente) {
+                $contactoExistente->delete();
+            }
             foreach ($contactos as $contacto) {
                 if (!empty($contacto['nombre_contacto'])) {
                     $aseguradora->aseguradoraContactos()->create($contacto);
@@ -130,6 +135,27 @@ class AseguradorasController extends Controller
 
         return redirect()->route('panel.aseguradoras.index')
             ->with('success', 'Aseguradora actualizada correctamente');
+    }
+
+    // Alternar estado activo/inactivo de un contacto
+    public function toggleContacto(Request $request, $id, $contactoId)
+    {
+        $aseguradora = Aseguradora::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+        $contacto = $aseguradora->aseguradoraContactos()->findOrFail($contactoId);
+
+        $contacto->update(['activo' => $request->boolean('activo')]);
+
+        return back()->with('success', 'Contacto actualizado correctamente');
+    }
+
+    // Eliminar contacto individual
+    public function destroyContacto($id, $contactoId)
+    {
+        $aseguradora = Aseguradora::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+        $contacto = $aseguradora->aseguradoraContactos()->findOrFail($contactoId);
+        $contacto->delete();
+
+        return back()->with('success', 'Contacto eliminado correctamente');
     }
 
     // Eliminar aseguradora

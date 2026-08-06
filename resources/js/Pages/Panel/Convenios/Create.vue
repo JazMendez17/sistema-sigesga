@@ -1,20 +1,26 @@
 <script setup>
+import { ref } from 'vue'
 import { router, useForm, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Pages/Panel/AppLayout.vue'
 import NeumorphicInput from '@/Components/NeumorphicInput.vue'
 import NeumorphicButton from '@/Components/NeumorphicButton.vue'
 import { useFormValidation } from '@/Composables/useFormValidation'
+import { showValidationErrors } from '@/stores/notification'
 
 const page = usePage()
 const convenio = page.props.convenio
 const aseguradoras = page.props.aseguradoras ?? []
-const tiposServicio = page.props.tiposServicio ?? []
 const editMode = !!convenio
+const submitted = ref(false)
 
 const form = useForm({
   nombre_convenio_poliza: convenio?.nombre_convenio_poliza ?? '',
+  codigo_convenio: convenio?.codigo_convenio ?? '',
   aseguradora_id: convenio?.aseguradora_id ?? '',
-  tipo_servicio_id: convenio?.tipo_servicio_id ?? '',
+  fecha_inicio: convenio?.fecha_inicio ?? '',
+  fecha_fin: convenio?.fecha_fin ?? '',
+  renovacion_automatica: convenio?.renovacion_automatica ?? false,
+  exclusivo: convenio?.exclusivo ?? false,
   tipo_ruta: convenio?.tipo_ruta ?? '',
   tipo_cobertura: convenio?.tipo_cobertura ?? '',
   alcance_geografico: convenio?.alcance_geografico ?? '',
@@ -25,23 +31,48 @@ const form = useForm({
   tope_presupuesto: convenio?.tope_presupuesto ?? '',
   cubre_casetas_peaje: convenio?.cubre_casetas_peaje ?? false,
   dias_credito: convenio?.dias_credito ?? '',
+  periodicidad_corte: convenio?.periodicidad_corte ?? '',
+  requiere_folio_cfdi: convenio?.requiere_folio_cfdi ?? false,
+  iva_incluido: convenio?.iva_incluido ?? false,
+  tope_credito: convenio?.tope_credito ?? '',
+  aviso_previo_terminacion_dias: convenio?.aviso_previo_terminacion_dias ?? '',
   proceso_envio_facturas: convenio?.proceso_envio_facturas ?? '',
-  estatus: convenio?.estatus ?? 'vigente',
+  estatus: convenio?.estatus ?? '',
+  tarifas: convenio?.tarifas ?? [],
 })
+
+function agregarTarifa() {
+  form.tarifas.push({
+    servicio: '', alcance: '', banderazo: '', km_incluidos: '', costo_km_extra: '',
+    tarifa_nocturna_recargo_pct: '', tarifa_domingo_festivo_recargo_pct: '',
+    minutos_espera_incluidos: '', costo_espera_adicional_hora: '', descuento_pct: '', tipo_descuento: '',
+  })
+}
+
+function eliminarTarifa(i) {
+  form.tarifas.splice(i, 1)
+}
 
 const rules = {
   nombre_convenio_poliza: ['required', 'min:2', 'max:255'],
-  costo_banderazo: ['numeric', 'min_value:0'],
-  costo_km: ['numeric', 'min_value:0'],
-  km_seguros_incluidos: ['numeric', 'min_value:0'],
-  km_maximo_amparado: ['numeric', 'min_value:0'],
-  tope_presupuesto: ['numeric', 'min_value:0'],
-  cubre_casetas_peaje: ['boolean'],
-  dias_credito: ['numeric', 'min_value:0'],
+  costo_banderazo: ['numeric', 'min:0'],
+  costo_km: ['numeric', 'min:0'],
+  tope_credito: ['numeric', 'min:0'],
+  dias_credito: ['numeric', 'min:0'],
+  aviso_previo_terminacion_dias: ['numeric', 'min:0'],
+  fecha_inicio: ['date'],
+  fecha_fin: ['date'],
 }
 const val = useFormValidation(form, rules)
 
-function submit() {
+function doSubmit() {
+  submitted.value = true
+  const ok = val.validate()
+  if (!ok) {
+    const errors = Object.values(val.clientErrors).filter(Boolean)
+    if (errors.length) showValidationErrors(errors)
+    return
+  }
   if (editMode) {
     form.put(route('panel.convenios.update', convenio.id), {
       onSuccess: () => form.reset(),
@@ -55,20 +86,26 @@ function submit() {
 </script>
 
 <template>
-  <!-- Formulario de registro / edición de convenio -->
   <AppLayout>
     <div class="space-y-6">
       <div>
         <h1 class="text-2xl font-bold text-gray-800">{{ editMode ? 'Editar Convenio' : 'Nuevo Convenio' }}</h1>
-        <p class="text-sm text-gray-500 mt-1">{{ editMode ? 'Modifica los datos del convenio' : 'Registra un nuevo convenio con aseguradora' }}</p>
+        <p class="text-sm text-gray-500 mt-1">Registra un nuevo convenio con aseguradora</p>
       </div>
 
       <div class="neumorphic-card p-6 max-w-4xl">
-        <form @submit.prevent="val.handleSubmit(submit)" class="space-y-5">
+        <form @submit.prevent="doSubmit" class="space-y-5">
+
+          <!-- Datos Generales -->
+          <div class="border-b border-gray-200 pb-2"><p class="text-sm font-medium text-gray-600">Datos Generales</p></div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div class="md:col-span-2">
               <label class="block text-sm font-medium text-gray-600 mb-1">Nombre del Convenio / Póliza</label>
               <NeumorphicInput v-model="form.nombre_convenio_poliza" placeholder="Ej: Convenio General Atlas" :error="val.getError('nombre_convenio_poliza')" @input="val.handleInput('nombre_convenio_poliza')" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-600 mb-1">Código de Convenio</label>
+              <NeumorphicInput v-model="form.codigo_convenio" placeholder="Ej: CONV-001" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Aseguradora</label>
@@ -78,72 +115,82 @@ function submit() {
               </select>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-600 mb-1">Tipo de Servicio</label>
-              <select v-model="form.tipo_servicio_id" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
+              <label class="block text-sm font-medium text-gray-600 mb-1">Fecha de Inicio</label>
+              <NeumorphicInput v-model="form.fecha_inicio" type="date" :error="val.getError('fecha_inicio')" @input="val.handleInput('fecha_inicio')" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-600 mb-1">Fecha de Fin</label>
+              <NeumorphicInput v-model="form.fecha_fin" type="date" :error="val.getError('fecha_fin')" @input="val.handleInput('fecha_fin')" />
+            </div>
+            <div class="flex items-end pb-3"><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" v-model="form.renovacion_automatica" class="w-5 h-5 rounded-md bg-[#E8EDF2] shadow-[inset_3px_3px_6px_#d0d5da,inset_-3px_-3px_6px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300 appearance-none checked:bg-[#4F46E5] checked:shadow-none" /><span class="text-sm font-medium text-gray-600">Renovación Automática</span></label></div>
+            <div class="flex items-end pb-3"><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" v-model="form.exclusivo" class="w-5 h-5 rounded-md bg-[#E8EDF2] shadow-[inset_3px_3px_6px_#d0d5da,inset_-3px_-3px_6px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300 appearance-none checked:bg-[#4F46E5] checked:shadow-none" /><span class="text-sm font-medium text-gray-600">Exclusivo</span></label></div>
+          </div>
+
+          <!-- Pagos y Facturación -->
+          <div class="border-b border-gray-200 pb-2"><p class="text-sm font-medium text-gray-600">Pagos y Facturación</p></div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label class="block text-sm font-medium text-gray-600 mb-1">Plazo de Pago (días)</label>
+              <NeumorphicInput v-model="form.dias_credito" type="number" placeholder="30" :error="val.getError('dias_credito')" @input="val.handleInput('dias_credito')" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-600 mb-1">Periodicidad de Corte</label>
+              <select v-model="form.periodicidad_corte" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
                 <option value="">Seleccionar...</option>
-                <option v-for="ts in tiposServicio" :key="ts.id" :value="ts.id">{{ ts.nombre }}</option>
+                <option value="semanal">Semanal</option>
+                <option value="quincenal">Quincenal</option>
+                <option value="mensual">Mensual</option>
+                <option value="bimestral">Bimestral</option>
               </select>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-600 mb-1">Tipo de Ruta</label>
-              <select v-model="form.tipo_ruta" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
-                <option value="">Seleccionar...</option>
-                <option value="local">Local</option>
-                <option value="foraneo">Foráneo</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-600 mb-1">Tipo de Cobertura</label>
-              <NeumorphicInput v-model="form.tipo_cobertura" placeholder="Ej: Cobertura Amplia" />
-            </div>
-            <div class="md:col-span-2">
-              <label class="block text-sm font-medium text-gray-600 mb-1">Alcance Geográfico</label>
-              <NeumorphicInput v-model="form.alcance_geografico" placeholder="Ej: Nacional, Estatal, Regional" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-600 mb-1">Costo Banderazo ($)</label>
-              <NeumorphicInput v-model="form.costo_banderazo" type="number" step="0.01" placeholder="0.00" :error="val.getError('costo_banderazo')" @input="val.handleInput('costo_banderazo')" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-600 mb-1">Costo por KM ($)</label>
-              <NeumorphicInput v-model="form.costo_km" type="number" step="0.01" placeholder="0.00" :error="val.getError('costo_km')" @input="val.handleInput('costo_km')" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-600 mb-1">KM Seguros Incluidos</label>
-              <NeumorphicInput v-model="form.km_seguros_incluidos" type="number" step="0.01" placeholder="0" :error="val.getError('km_seguros_incluidos')" @input="val.handleInput('km_seguros_incluidos')" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-600 mb-1">KM Máximo Amparado</label>
-              <NeumorphicInput v-model="form.km_maximo_amparado" type="number" step="0.01" placeholder="Sin límite" :error="val.getError('km_maximo_amparado')" @input="val.handleInput('km_maximo_amparado')" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-600 mb-1">Tope de Presupuesto ($)</label>
-              <NeumorphicInput v-model="form.tope_presupuesto" type="number" step="0.01" placeholder="Sin tope" :error="val.getError('tope_presupuesto')" @input="val.handleInput('tope_presupuesto')" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-600 mb-1">Días de Crédito</label>
-              <NeumorphicInput v-model="form.dias_credito" type="number" placeholder="0" :error="val.getError('dias_credito')" @input="val.handleInput('dias_credito')" />
+              <label class="block text-sm font-medium text-gray-600 mb-1">Aviso Previo Terminación (días)</label>
+              <NeumorphicInput v-model="form.aviso_previo_terminacion_dias" type="number" placeholder="30" :error="val.getError('aviso_previo_terminacion_dias')" @input="val.handleInput('aviso_previo_terminacion_dias')" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Estatus</label>
               <select v-model="form.estatus" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                <option value="">Seleccionar...</option>
                 <option value="vigente">Vigente</option>
                 <option value="vencido">Vencido</option>
                 <option value="en_negociacion">En Negociación</option>
                 <option value="cancelado">Cancelado</option>
               </select>
             </div>
-            <div class="flex items-end pb-3">
-              <label class="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" v-model="form.cubre_casetas_peaje" class="w-5 h-5 rounded-md bg-[#E8EDF2] shadow-[inset_3px_3px_6px_#d0d5da,inset_-3px_-3px_6px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300 appearance-none checked:bg-[#4F46E5] checked:shadow-none" />
-                <span class="text-sm font-medium text-gray-600">Cubre Casetas de Peaje</span>
-              </label>
+            <div class="flex items-end pb-3"><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" v-model="form.requiere_folio_cfdi" class="w-5 h-5 rounded-md bg-[#E8EDF2] shadow-[inset_3px_3px_6px_#d0d5da,inset_-3px_-3px_6px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300 appearance-none checked:bg-[#4F46E5] checked:shadow-none" /><span class="text-sm font-medium text-gray-600">Requiere Folio CFDI</span></label></div>
+            <div class="flex items-end pb-3"><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" v-model="form.iva_incluido" class="w-5 h-5 rounded-md bg-[#E8EDF2] shadow-[inset_3px_3px_6px_#d0d5da,inset_-3px_-3px_6px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300 appearance-none checked:bg-[#4F46E5] checked:shadow-none" /><span class="text-sm font-medium text-gray-600">IVA Incluido</span></label></div>
+            <div>
+              <label class="block text-sm font-medium text-gray-600 mb-1">Tope de Crédito ($)</label>
+              <NeumorphicInput v-model="form.tope_credito" type="number" step="0.01" placeholder="0.00" :error="val.getError('tope_credito')" @input="val.handleInput('tope_credito')" />
             </div>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">Proceso de Envío de Facturas</label>
-            <textarea v-model="form.proceso_envio_facturas" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300" rows="3" placeholder="Describe el proceso de envío de facturas..."></textarea>
+          <!-- Tarifas del Convenio -->
+          <div class="border-b border-gray-200 pb-2">
+            <div class="flex items-center justify-between">
+              <p class="text-sm font-medium text-gray-600">Tarifas del Convenio</p>
+              <button type="button" @click="agregarTarifa" class="rounded-xl bg-[var(--color-bg)] px-3 py-1.5 text-xs text-[var(--color-primary)] shadow-[3px_3px_6px_var(--neumorphic-dark),-3px_-3px_6px_var(--neumorphic-light)]">+ Agregar Tarifa</button>
+            </div>
+          </div>
+          <div v-if="form.tarifas.length === 0" class="text-sm text-gray-400 text-center py-3">Sin tarifas registradas. Agrega una tarifa para este convenio.</div>
+          <div v-for="(t, i) in form.tarifas" :key="i" class="rounded-2xl bg-[var(--color-bg)] p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-sm font-medium text-gray-600">Tarifa #{{ i + 1 }}</span>
+              <button type="button" @click="eliminarTarifa(i)" class="text-xs text-red-500 hover:text-red-600">Eliminar</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <NeumorphicInput v-model="t.servicio" label="Servicio" placeholder="Ej: Arrastre local" />
+              <NeumorphicInput v-model="t.alcance" label="Alcance" placeholder="Ej: 0-10 km" />
+              <NeumorphicInput v-model="t.banderazo" label="Banderazo ($)" type="number" step="0.01" placeholder="0.00" />
+              <NeumorphicInput v-model="t.km_incluidos" label="KM Incluidos" type="number" placeholder="0" />
+              <NeumorphicInput v-model="t.costo_km_extra" label="Costo KM Extra ($)" type="number" step="0.01" placeholder="0.00" />
+              <NeumorphicInput v-model="t.tarifa_nocturna_recargo_pct" label="Recargo Nocturno (%)" type="number" step="0.01" placeholder="0" />
+              <NeumorphicInput v-model="t.tarifa_domingo_festivo_recargo_pct" label="Recargo Dom/Festivo (%)" type="number" step="0.01" placeholder="0" />
+              <NeumorphicInput v-model="t.minutos_espera_incluidos" label="Minutos Espera Incluidos" type="number" placeholder="30" />
+              <NeumorphicInput v-model="t.costo_espera_adicional_hora" label="Costo Hora Espera Adicional ($)" type="number" step="0.01" placeholder="0.00" />
+              <NeumorphicInput v-model="t.descuento_pct" label="Descuento (%)" type="number" step="0.01" placeholder="0" />
+              <NeumorphicInput v-model="t.tipo_descuento" label="Tipo de Descuento" placeholder="Ej: Volumen, Pronto pago" />
+            </div>
           </div>
 
           <div class="flex gap-3 pt-2">

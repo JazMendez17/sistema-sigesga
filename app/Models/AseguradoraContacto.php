@@ -21,6 +21,7 @@ class AseguradoraContacto extends Model
         'telefono',
         'email',
         'red_social',
+        'activo',
     ];
 
     // Relación con aseguradora

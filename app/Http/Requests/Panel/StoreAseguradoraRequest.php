@@ -43,9 +43,10 @@ class StoreAseguradoraRequest extends FormRequest
             'telefono' => 'nullable|string|max:20',
             'contactos' => 'nullable|array',
             'contactos.*.departamento' => 'nullable|string|max:150',
-            'contactos.*.nombre_contacto' => 'nullable|string|max:255',
+            'contactos.*.nombre_contacto' => 'nullable|string|max:150',
             'contactos.*.telefono' => 'nullable|string|max:20',
-            'contactos.*.email' => 'nullable|email|max:255',
+            'contactos.*.email' => 'nullable|email|max:150',
+            'contactos.*.activo' => 'nullable|boolean',
         ];
     }
 

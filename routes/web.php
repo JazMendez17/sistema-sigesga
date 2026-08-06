@@ -85,6 +85,8 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
         Route::get('/aseguradoras/{id}', [AseguradorasController::class, 'show'])->name('aseguradoras.show');
         Route::get('/aseguradoras/{id}/edit', [AseguradorasController::class, 'edit'])->name('aseguradoras.edit');
         Route::put('/aseguradoras/{id}', [AseguradorasController::class, 'update'])->name('aseguradoras.update');
+        Route::put('/aseguradoras/{id}/contacto/{contacto}/toggle', [AseguradorasController::class, 'toggleContacto'])->name('aseguradoras.contacto.toggle');
+        Route::delete('/aseguradoras/{id}/contacto/{contacto}', [AseguradorasController::class, 'destroyContacto'])->name('aseguradoras.contacto.destroy');
         Route::delete('/aseguradoras/{id}', [AseguradorasController::class, 'destroy'])->name('aseguradoras.destroy');
 
         Route::get('/convenios', [ConveniosController::class, 'index'])->name('convenios.index');

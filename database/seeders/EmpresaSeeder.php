@@ -59,7 +59,7 @@ class EmpresaSeeder extends Seeder
         $modulos = [
             ['empresa_id' => $empresaId, 'modulo' => 'dashboard', 'color' => '#4F46E5'],
             ['empresa_id' => $empresaId, 'modulo' => 'cotizaciones', 'color' => '#059669'],
-            ['empresa_id' => $empresaId, 'modulo' => 'Servicios', 'color' => '#D97706'],
+            ['empresa_id' => $empresaId, 'modulo' => 'servicios', 'color' => '#D97706'],
             ['empresa_id' => $empresaId, 'modulo' => 'clientes', 'color' => '#7C3AED'],
             ['empresa_id' => $empresaId, 'modulo' => 'unidades', 'color' => '#2563EB'],
             ['empresa_id' => $empresaId, 'modulo' => 'mantenimientos', 'color' => '#DC2626'],

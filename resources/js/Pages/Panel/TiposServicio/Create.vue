@@ -1,4 +1,5 @@
 <script setup>
+import { ref } from 'vue'
 import { router, useForm } from '@inertiajs/vue3'
 import AppLayout from '@/Pages/Panel/AppLayout.vue'
 import NeumorphicInput from '@/Components/NeumorphicInput.vue'
@@ -10,6 +11,7 @@ const props = defineProps({
 })
 
 const isEdit = !!props.tipoServicio
+const submitted = ref(false)
 
 const form = useForm({
   nombre: props.tipoServicio?.nombre ?? '',
@@ -19,12 +21,12 @@ const form = useForm({
 
 const rules = {
   nombre: ['required', 'min:2', 'max:255'],
-  requiere_maniobra: ['boolean'],
-  activo: ['boolean'],
 }
 const val = useFormValidation(form, rules)
 
-function submit() {
+function doSubmit() {
+  submitted.value = true
+  if (!val.validate()) return
   if (isEdit) {
     form.put(route('panel.tipos-servicio.update', props.tipoServicio.id), {
       onSuccess: () => form.reset(),
@@ -47,7 +49,7 @@ function submit() {
       </div>
 
       <div class="neumorphic-card p-6 max-w-2xl">
-        <form @submit.prevent="val.handleSubmit(submit)" class="space-y-5">
+        <form @submit.prevent="doSubmit" class="space-y-5">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div class="md:col-span-2">
               <label class="block text-sm font-medium text-gray-600 mb-1">Nombre</label>

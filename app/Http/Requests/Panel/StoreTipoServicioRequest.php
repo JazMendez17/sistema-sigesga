@@ -42,7 +42,7 @@ class StoreTipoServicioRequest extends FormRequest
         ];
 
         if (!$id || $this->has('nombre')) {
-            $rules['nombre'] = 'required|string|max:255|unique:catalogo_servicios,nombre,' . $id;
+            $rules['nombre'] = 'required|string|max:255|unique:catalogo_servicios,nombre,' . $id . ',id,deleted_at,NULL';
         }
 
         return $rules;
