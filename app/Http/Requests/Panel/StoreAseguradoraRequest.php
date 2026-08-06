@@ -41,6 +41,11 @@ class StoreAseguradoraRequest extends FormRequest
             'nombre_comercial' => 'nullable|string|max:255',
             'rfc' => 'nullable|string|max:13|unique:aseguradoras,rfc,' . $id,
             'telefono' => 'nullable|string|max:20',
+            'contactos' => 'nullable|array',
+            'contactos.*.departamento' => 'nullable|string|max:150',
+            'contactos.*.nombre_contacto' => 'nullable|string|max:255',
+            'contactos.*.telefono' => 'nullable|string|max:20',
+            'contactos.*.email' => 'nullable|email|max:255',
         ];
     }
 

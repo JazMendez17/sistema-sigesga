@@ -1,6 +1,6 @@
 <script setup>
-import { ref, watch, computed } from 'vue'
-import { usePage } from '@inertiajs/vue3'
+import { ref, watch } from 'vue'
+import { usePage, router } from '@inertiajs/vue3'
 import { validationErrors, clearValidationErrors } from '@/stores/notification'
 
 const page = usePage()
@@ -43,18 +43,23 @@ function showErrors(errors, duration) {
   timer = setTimeout(() => { visible.value = false }, duration || 6000)
 }
 
-watch(() => page.props.flash, (flash) => {
-  const msg = flash?.success || flash?.error || ''
-  if (!msg) return
-  errorsList.value = []
-  show(msg, flash?.error ? 'error' : 'success')
-}, { deep: true })
+function checkFlash() {
+  const flash = page.props.flash
+  if (!flash) return
+  const success = flash.success
+  const error = flash.error
+  if (success) {
+    errorsList.value = []
+    show(success, 'success')
+  } else if (error) {
+    errorsList.value = []
+    show(error, 'error')
+  }
+}
 
-watch(() => page.props.errors, (errors) => {
-  const msgs = Object.values(errors).filter(Boolean)
-  if (msgs.length === 0) return
-  showErrors(msgs)
-}, { deep: true })
+router.on('finish', () => {
+  setTimeout(checkFlash, 100)
+})
 
 watch(validationErrors, (errors) => {
   if (errors.length === 0) return

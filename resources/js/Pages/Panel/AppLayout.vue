@@ -11,7 +11,7 @@ const { loading } = usePageLoading()
 
 <template>
   <div class="min-h-screen bg-[var(--color-bg)]">
-    <div class="fixed top-0 left-0 right-0 z-50 h-1" :style="{ backgroundColor: 'var(--color-secondary)' }"></div>
+    <div class="fixed top-0 left-0 right-0 z-50 h-1.5" :style="{ backgroundColor: 'var(--color-secondary)' }"></div>
     <Navbar />
     <Toast />
 

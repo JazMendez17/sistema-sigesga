@@ -50,7 +50,16 @@ class AseguradorasController extends Controller
         $data = $request->validated();
         $data['empresa_id'] = $user->empresa_id;
 
-        Aseguradora::create($data);
+        $contactos = $data['contactos'] ?? [];
+        unset($data['contactos']);
+
+        $aseguradora = Aseguradora::create($data);
+
+        foreach ($contactos as $contacto) {
+            if (!empty($contacto['nombre_contacto'])) {
+                $aseguradora->aseguradoraContactos()->create($contacto);
+            }
+        }
 
         return redirect()->route('panel.aseguradoras.index')
             ->with('success', 'Aseguradora creada correctamente');
@@ -90,8 +99,12 @@ class AseguradorasController extends Controller
     // Formulario para editar aseguradora
     public function edit($id)
     {
+        $aseguradora = Aseguradora::with('aseguradoraContactos')->where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+
         return Inertia::render('Panel/Aseguradoras/Create', [
-            'aseguradora' => Aseguradora::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id),
+            'aseguradora' => array_merge($aseguradora->toArray(), [
+                'contactos' => $aseguradora->aseguradoraContactos->toArray(),
+            ]),
         ]);
     }
 
@@ -101,8 +114,19 @@ class AseguradorasController extends Controller
         $aseguradora = Aseguradora::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
 
         $data = $request->validated();
+        $contactos = $data['contactos'] ?? [];
+        unset($data['contactos']);
 
         $aseguradora->update($data);
+
+        if ($request->has('contactos')) {
+            $aseguradora->aseguradoraContactos()->delete();
+            foreach ($contactos as $contacto) {
+                if (!empty($contacto['nombre_contacto'])) {
+                    $aseguradora->aseguradoraContactos()->create($contacto);
+                }
+            }
+        }
 
         return redirect()->route('panel.aseguradoras.index')
             ->with('success', 'Aseguradora actualizada correctamente');
