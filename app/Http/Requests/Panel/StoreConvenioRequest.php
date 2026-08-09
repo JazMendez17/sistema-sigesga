@@ -59,18 +59,6 @@ class StoreConvenioRequest extends FormRequest
             'aviso_previo_terminacion_dias' => 'nullable|integer|min:0',
             'proceso_envio_facturas' => 'nullable|string|max:500',
             'estatus' => 'nullable|in:vigente,vencido,en_negociacion,cancelado',
-            'tarifas' => 'nullable|array',
-            'tarifas.*.servicio' => 'nullable|string|max:150',
-            'tarifas.*.alcance' => 'nullable|string|max:100',
-            'tarifas.*.banderazo' => 'nullable|numeric|min:0',
-            'tarifas.*.km_incluidos' => 'nullable|integer|min:0',
-            'tarifas.*.costo_km_extra' => 'nullable|numeric|min:0',
-            'tarifas.*.tarifa_nocturna_recargo_pct' => 'nullable|numeric|min:0',
-            'tarifas.*.tarifa_domingo_festivo_recargo_pct' => 'nullable|numeric|min:0',
-            'tarifas.*.minutos_espera_incluidos' => 'nullable|integer|min:0',
-            'tarifas.*.costo_espera_adicional_hora' => 'nullable|numeric|min:0',
-            'tarifas.*.descuento_pct' => 'nullable|numeric|min:0',
-            'tarifas.*.tipo_descuento' => 'nullable|string|max:50',
         ];
     }
 

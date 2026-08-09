@@ -58,40 +58,6 @@ function siNo(val) {
           <div><p class="text-xs text-gray-500 uppercase">Tope de Crédito</p><p class="text-sm font-medium text-gray-800">{{ convenio.tope_credito ? '$' + parseFloat(convenio.tope_credito).toFixed(2) : '—' }}</p></div>
         </div>
       </div>
-
-      <!-- Tarifas del Convenio -->
-      <div class="rounded-3xl bg-[#EEF2F7] p-6 shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
-        <h3 class="text-lg font-semibold text-gray-700 mb-4">Tarifas del Convenio</h3>
-        <div v-if="!convenio.tarifas || convenio.tarifas.length === 0" class="text-sm text-gray-400 text-center py-4">Sin tarifas registradas</div>
-        <div v-else class="overflow-x-auto">
-          <table class="w-full">
-            <thead>
-              <tr class="border-b border-[#d0d5da]/30">
-                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Servicio</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Alcance</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Banderazo</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">KM Incl.</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">KM Extra</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Rec. Noct.</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Rec. Dom</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Desc.</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-[#d0d5da]/20">
-              <tr v-for="t in convenio.tarifas" :key="t.id" class="hover:bg-white/30">
-                <td class="px-4 py-3 text-sm">{{ formato(t.servicio) }}</td>
-                <td class="px-4 py-3 text-sm">{{ formato(t.alcance) }}</td>
-                <td class="px-4 py-3 text-sm">{{ t.banderazo ? '$'+parseFloat(t.banderazo).toFixed(2) : '—' }}</td>
-                <td class="px-4 py-3 text-sm">{{ formato(t.km_incluidos) }}</td>
-                <td class="px-4 py-3 text-sm">{{ t.costo_km_extra ? '$'+parseFloat(t.costo_km_extra).toFixed(2) : '—' }}</td>
-                <td class="px-4 py-3 text-sm">{{ t.tarifa_nocturna_recargo_pct ? t.tarifa_nocturna_recargo_pct+'%' : '—' }}</td>
-                <td class="px-4 py-3 text-sm">{{ t.tarifa_domingo_festivo_recargo_pct ? t.tarifa_domingo_festivo_recargo_pct+'%' : '—' }}</td>
-                <td class="px-4 py-3 text-sm">{{ t.descuento_pct ? t.descuento_pct+'%' : '—' }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
   </AppLayout>
 </template>

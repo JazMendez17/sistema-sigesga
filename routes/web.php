@@ -12,6 +12,10 @@ use App\Http\Controllers\Panel\ClientesController;
 use App\Http\Controllers\Panel\AseguradorasController;
 use App\Http\Controllers\Panel\TiposServicioController;
 use App\Http\Controllers\Panel\ConveniosController;
+use App\Http\Controllers\Panel\ConvenioTarifaController;
+use App\Http\Controllers\Panel\ConvenioManiobraEspecialController;
+use App\Http\Controllers\Panel\ConvenioConceptoAdicionalController;
+use App\Http\Controllers\Panel\PenalizacionController;
 use App\Http\Controllers\Panel\TarifasPropiasController;
 use App\Http\Controllers\Panel\OficinasController;
 use App\Http\Controllers\Panel\UnidadesController;
@@ -96,6 +100,34 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
         Route::get('/convenios/{id}/edit', [ConveniosController::class, 'edit'])->name('convenios.edit');
         Route::put('/convenios/{id}', [ConveniosController::class, 'update'])->name('convenios.update');
         Route::delete('/convenios/{id}', [ConveniosController::class, 'destroy'])->name('convenios.destroy');
+
+        Route::get('/convenio-tarifas', [ConvenioTarifaController::class, 'index'])->name('convenio-tarifas.index');
+        Route::get('/convenio-tarifas/create', [ConvenioTarifaController::class, 'create'])->name('convenio-tarifas.create');
+        Route::post('/convenio-tarifas', [ConvenioTarifaController::class, 'store'])->name('convenio-tarifas.store');
+        Route::get('/convenio-tarifas/{id}/edit', [ConvenioTarifaController::class, 'edit'])->name('convenio-tarifas.edit');
+        Route::put('/convenio-tarifas/{id}', [ConvenioTarifaController::class, 'update'])->name('convenio-tarifas.update');
+        Route::delete('/convenio-tarifas/{id}', [ConvenioTarifaController::class, 'destroy'])->name('convenio-tarifas.destroy');
+
+        Route::get('/servicios-especiales', [ConvenioManiobraEspecialController::class, 'index'])->name('servicios-especiales.index');
+        Route::get('/servicios-especiales/create', [ConvenioManiobraEspecialController::class, 'create'])->name('servicios-especiales.create');
+        Route::post('/servicios-especiales', [ConvenioManiobraEspecialController::class, 'store'])->name('servicios-especiales.store');
+        Route::get('/servicios-especiales/{id}/edit', [ConvenioManiobraEspecialController::class, 'edit'])->name('servicios-especiales.edit');
+        Route::put('/servicios-especiales/{id}', [ConvenioManiobraEspecialController::class, 'update'])->name('servicios-especiales.update');
+        Route::delete('/servicios-especiales/{id}', [ConvenioManiobraEspecialController::class, 'destroy'])->name('servicios-especiales.destroy');
+
+        Route::get('/conceptos-adicionales', [ConvenioConceptoAdicionalController::class, 'index'])->name('conceptos-adicionales.index');
+        Route::get('/conceptos-adicionales/create', [ConvenioConceptoAdicionalController::class, 'create'])->name('conceptos-adicionales.create');
+        Route::post('/conceptos-adicionales', [ConvenioConceptoAdicionalController::class, 'store'])->name('conceptos-adicionales.store');
+        Route::get('/conceptos-adicionales/{id}/edit', [ConvenioConceptoAdicionalController::class, 'edit'])->name('conceptos-adicionales.edit');
+        Route::put('/conceptos-adicionales/{id}', [ConvenioConceptoAdicionalController::class, 'update'])->name('conceptos-adicionales.update');
+        Route::delete('/conceptos-adicionales/{id}', [ConvenioConceptoAdicionalController::class, 'destroy'])->name('conceptos-adicionales.destroy');
+
+        Route::get('/penalizaciones', [PenalizacionController::class, 'index'])->name('penalizaciones.index');
+        Route::get('/penalizaciones/create', [PenalizacionController::class, 'create'])->name('penalizaciones.create');
+        Route::post('/penalizaciones', [PenalizacionController::class, 'store'])->name('penalizaciones.store');
+        Route::get('/penalizaciones/{id}/edit', [PenalizacionController::class, 'edit'])->name('penalizaciones.edit');
+        Route::put('/penalizaciones/{id}', [PenalizacionController::class, 'update'])->name('penalizaciones.update');
+        Route::delete('/penalizaciones/{id}', [PenalizacionController::class, 'destroy'])->name('penalizaciones.destroy');
 
         Route::get('/tarifas-propias', [TarifasPropiasController::class, 'index'])->name('tarifas-propias.index');
         Route::get('/tarifas-propias/create', [TarifasPropiasController::class, 'create'])->name('tarifas-propias.create');

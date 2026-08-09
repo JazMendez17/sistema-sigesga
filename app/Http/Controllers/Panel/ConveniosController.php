@@ -83,9 +83,6 @@ class ConveniosController extends Controller
         $user = Auth::user();
 
         $data = $request->validated();
-        $tarifas = $data['tarifas'] ?? [];
-        unset($data['tarifas']);
-
         $data['empresa_id'] = $user->empresa_id;
         $data['cubre_casetas_peaje'] = $request->boolean('cubre_casetas_peaje');
         $data['renovacion_automatica'] = $request->boolean('renovacion_automatica');
@@ -95,12 +92,6 @@ class ConveniosController extends Controller
 
         $convenio = Convenio::create($data);
 
-        foreach ($tarifas as $tarifa) {
-            if (!empty($tarifa['servicio']) || !empty($tarifa['alcance'])) {
-                $convenio->convenioTarifas()->create($tarifa);
-            }
-        }
-
         return redirect()->route('panel.convenios.index')
             ->with('success', 'Convenio creado correctamente');
     }
@@ -108,7 +99,7 @@ class ConveniosController extends Controller
     // Ver detalle de convenio
     public function show($id)
     {
-        $convenio = Convenio::with(['aseguradora', 'convenioTarifas'])
+        $convenio = Convenio::with(['aseguradora'])
             ->where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
 
         return Inertia::render('Panel/Convenios/Show', [
@@ -128,7 +119,6 @@ class ConveniosController extends Controller
                 'requiere_folio_cfdi' => $convenio->requiere_folio_cfdi,
                 'iva_incluido' => $convenio->iva_incluido,
                 'tope_credito' => $convenio->tope_credito,
-                'tarifas' => $convenio->convenioTarifas->toArray(),
             ],
         ]);
     }
@@ -139,12 +129,10 @@ class ConveniosController extends Controller
         $user = Auth::user();
         $empresaId = $user->empresa_id;
 
-        $convenio = Convenio::with('convenioTarifas')->where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+        $convenio = Convenio::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
 
         return Inertia::render('Panel/Convenios/Create', [
-            'convenio' => array_merge($convenio->toArray(), [
-                'tarifas' => $convenio->convenioTarifas->toArray(),
-            ]),
+            'convenio' => $convenio,
             'aseguradoras' => Aseguradora::where('empresa_id', $empresaId)->get(['id', 'nombre']),
             'tiposServicio' => CatalogoServicio::where('empresa_id', $empresaId)->get(['id', 'nombre']),
         ]);
@@ -156,9 +144,6 @@ class ConveniosController extends Controller
         $convenio = Convenio::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
 
         $data = $request->validated();
-        $tarifas = $data['tarifas'] ?? [];
-        unset($data['tarifas']);
-
         $data['cubre_casetas_peaje'] = $request->boolean('cubre_casetas_peaje');
         $data['renovacion_automatica'] = $request->boolean('renovacion_automatica');
         $data['exclusivo'] = $request->boolean('exclusivo');
@@ -166,15 +151,6 @@ class ConveniosController extends Controller
         $data['iva_incluido'] = $request->boolean('iva_incluido');
 
         $convenio->update($data);
-
-        if ($request->has('tarifas')) {
-            $convenio->convenioTarifas()->delete();
-            foreach ($tarifas as $tarifa) {
-                if (!empty($tarifa['servicio']) || !empty($tarifa['alcance'])) {
-                    $convenio->convenioTarifas()->create($tarifa);
-                }
-            }
-        }
 
         return redirect()->route('panel.convenios.index')
             ->with('success', 'Convenio actualizado correctamente');

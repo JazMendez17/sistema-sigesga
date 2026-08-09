@@ -2,26 +2,25 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-// Modelo de Maniobra Especial de Convenio
-class ConvenioManiobrasEspeciale extends Model
+// Modelo de SLA / Penalizaciones por Convenio
+class ConvenioSla extends Model
 {
-    use HasFactory;
-
     public $timestamps = false;
+
+    protected $table = 'convenio_sla';
 
     protected $fillable = [
         'convenio_id',
-        'concepto',
-        'aplica',
-        'forma_cobro',
-        'costo',
+        'tiempo_max_respuesta_urbano_min',
+        'tiempo_max_respuesta_carretera_min',
+        'disponibilidad',
+        'penalizacion_incumplimiento',
+        'protocolo_asignacion',
     ];
 
-    // Relación con convenio
     public function convenio(): BelongsTo
     {
         return $this->belongsTo(Convenio::class);

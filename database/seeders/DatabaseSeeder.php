@@ -17,6 +17,9 @@ class DatabaseSeeder extends Seeder
             OperadoreSeeder::class,
             CatalogoServicioSeeder::class,
             ClienteSeeder::class,
+            AseguradoraSeeder::class,
+            ConvenioSeeder::class,
+            ConvenioTarifaSeeder::class,
         ]);
     }
 }

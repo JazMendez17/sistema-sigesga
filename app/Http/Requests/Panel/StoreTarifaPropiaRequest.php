@@ -36,11 +36,20 @@ class StoreTarifaPropiaRequest extends FormRequest
     {
         return [
             'nombre_tarifa' => 'required|string|max:255',
-            'tipo_servicio_id' => 'required|exists:catalogo_servicios,id',
-            'tipo_ruta' => 'required|in:local,foraneo',
+            'tipo_servicio_id' => 'nullable|exists:catalogo_servicios,id',
+            'servicio' => 'nullable|string|max:150',
+            'alcance' => 'nullable|string|max:100',
+            'tipo_ruta' => 'nullable|in:local,foraneo',
             'costo_banderazo' => 'nullable|numeric|min:0',
             'costo_km' => 'nullable|numeric|min:0',
             'km_incluidos' => 'nullable|numeric|min:0',
+            'costo_km_extra' => 'nullable|numeric|min:0',
+            'tarifa_nocturna_recargo_pct' => 'nullable|numeric|min:0',
+            'tarifa_domingo_festivo_recargo_pct' => 'nullable|numeric|min:0',
+            'minutos_espera_incluidos' => 'nullable|integer|min:0',
+            'costo_espera_adicional_hora' => 'nullable|numeric|min:0',
+            'descuento_pct' => 'nullable|numeric|min:0',
+            'tipo_descuento' => 'nullable|string|max:50',
             'cubre_casetas_peaje' => 'nullable|boolean',
             'activo' => 'nullable|boolean',
         ];
@@ -52,9 +61,7 @@ class StoreTarifaPropiaRequest extends FormRequest
         return [
             'nombre_tarifa.required' => 'El nombre de la tarifa es obligatorio.',
             'nombre_tarifa.max' => 'El nombre de la tarifa no debe exceder los 255 caracteres.',
-            'tipo_servicio_id.required' => 'El tipo de servicio es obligatorio.',
             'tipo_servicio_id.exists' => 'El tipo de servicio seleccionado no existe.',
-            'tipo_ruta.required' => 'El tipo de ruta es obligatorio.',
             'tipo_ruta.in' => 'El tipo de ruta debe ser local o foraneo.',
             'costo_banderazo.numeric' => 'El costo de banderazo debe ser un valor numérico.',
             'costo_banderazo.min' => 'El costo de banderazo debe ser mayor o igual a 0.',

@@ -37,21 +37,7 @@ const form = useForm({
   tope_credito: convenio?.tope_credito ?? '',
   aviso_previo_terminacion_dias: convenio?.aviso_previo_terminacion_dias ?? '',
   proceso_envio_facturas: convenio?.proceso_envio_facturas ?? '',
-  estatus: convenio?.estatus ?? '',
-  tarifas: convenio?.tarifas ?? [],
 })
-
-function agregarTarifa() {
-  form.tarifas.push({
-    servicio: '', alcance: '', banderazo: '', km_incluidos: '', costo_km_extra: '',
-    tarifa_nocturna_recargo_pct: '', tarifa_domingo_festivo_recargo_pct: '',
-    minutos_espera_incluidos: '', costo_espera_adicional_hora: '', descuento_pct: '', tipo_descuento: '',
-  })
-}
-
-function eliminarTarifa(i) {
-  form.tarifas.splice(i, 1)
-}
 
 const rules = {
   nombre_convenio_poliza: ['required', 'min:2', 'max:255'],
@@ -147,49 +133,11 @@ function doSubmit() {
               <label class="block text-sm font-medium text-gray-600 mb-1">Aviso Previo Terminación (días)</label>
               <NeumorphicInput v-model="form.aviso_previo_terminacion_dias" type="number" placeholder="30" :error="val.getError('aviso_previo_terminacion_dias')" @input="val.handleInput('aviso_previo_terminacion_dias')" />
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-600 mb-1">Estatus</label>
-              <select v-model="form.estatus" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
-                <option value="">Seleccionar...</option>
-                <option value="vigente">Vigente</option>
-                <option value="vencido">Vencido</option>
-                <option value="en_negociacion">En Negociación</option>
-                <option value="cancelado">Cancelado</option>
-              </select>
-            </div>
             <div class="flex items-end pb-3"><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" v-model="form.requiere_folio_cfdi" class="w-5 h-5 rounded-md bg-[#E8EDF2] shadow-[inset_3px_3px_6px_#d0d5da,inset_-3px_-3px_6px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300 appearance-none checked:bg-[#4F46E5] checked:shadow-none" /><span class="text-sm font-medium text-gray-600">Requiere Folio CFDI</span></label></div>
             <div class="flex items-end pb-3"><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" v-model="form.iva_incluido" class="w-5 h-5 rounded-md bg-[#E8EDF2] shadow-[inset_3px_3px_6px_#d0d5da,inset_-3px_-3px_6px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300 appearance-none checked:bg-[#4F46E5] checked:shadow-none" /><span class="text-sm font-medium text-gray-600">IVA Incluido</span></label></div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Tope de Crédito ($)</label>
               <NeumorphicInput v-model="form.tope_credito" type="number" step="0.01" placeholder="0.00" :error="val.getError('tope_credito')" @input="val.handleInput('tope_credito')" />
-            </div>
-          </div>
-
-          <!-- Tarifas del Convenio -->
-          <div class="border-b border-gray-200 pb-2">
-            <div class="flex items-center justify-between">
-              <p class="text-sm font-medium text-gray-600">Tarifas del Convenio</p>
-              <button type="button" @click="agregarTarifa" class="rounded-xl bg-[var(--color-bg)] px-3 py-1.5 text-xs text-[var(--color-primary)] shadow-[3px_3px_6px_var(--neumorphic-dark),-3px_-3px_6px_var(--neumorphic-light)]">+ Agregar Tarifa</button>
-            </div>
-          </div>
-          <div v-if="form.tarifas.length === 0" class="text-sm text-gray-400 text-center py-3">Sin tarifas registradas. Agrega una tarifa para este convenio.</div>
-          <div v-for="(t, i) in form.tarifas" :key="i" class="rounded-2xl bg-[var(--color-bg)] p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]">
-            <div class="flex items-center justify-between mb-3">
-              <span class="text-sm font-medium text-gray-600">Tarifa #{{ i + 1 }}</span>
-              <button type="button" @click="eliminarTarifa(i)" class="text-xs text-red-500 hover:text-red-600">Eliminar</button>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <NeumorphicInput v-model="t.servicio" label="Servicio" placeholder="Ej: Arrastre local" />
-              <NeumorphicInput v-model="t.alcance" label="Alcance" placeholder="Ej: 0-10 km" />
-              <NeumorphicInput v-model="t.banderazo" label="Banderazo ($)" type="number" step="0.01" placeholder="0.00" />
-              <NeumorphicInput v-model="t.km_incluidos" label="KM Incluidos" type="number" placeholder="0" />
-              <NeumorphicInput v-model="t.costo_km_extra" label="Costo KM Extra ($)" type="number" step="0.01" placeholder="0.00" />
-              <NeumorphicInput v-model="t.tarifa_nocturna_recargo_pct" label="Recargo Nocturno (%)" type="number" step="0.01" placeholder="0" />
-              <NeumorphicInput v-model="t.tarifa_domingo_festivo_recargo_pct" label="Recargo Dom/Festivo (%)" type="number" step="0.01" placeholder="0" />
-              <NeumorphicInput v-model="t.minutos_espera_incluidos" label="Minutos Espera Incluidos" type="number" placeholder="30" />
-              <NeumorphicInput v-model="t.costo_espera_adicional_hora" label="Costo Hora Espera Adicional ($)" type="number" step="0.01" placeholder="0.00" />
-              <NeumorphicInput v-model="t.descuento_pct" label="Descuento (%)" type="number" step="0.01" placeholder="0" />
-              <NeumorphicInput v-model="t.tipo_descuento" label="Tipo de Descuento" placeholder="Ej: Volumen, Pronto pago" />
             </div>
           </div>
 
