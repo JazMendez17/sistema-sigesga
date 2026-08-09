@@ -1,6 +1,6 @@
 <?php
 
-// Controlador de notificaciones
+// Controlador de notificaciones operativas del sistema
 
 namespace App\Http\Controllers\Panel;
 
@@ -12,41 +12,39 @@ use Inertia\Inertia;
 
 class NotificacionesController extends Controller
 {
-    // Lista de notificaciones enviadas
+    // Lista de notificaciones del usuario autenticado
     public function index()
     {
         $user = Auth::user();
-        $empresaId = $user->empresa_id;
 
-        $notificaciones = Notificacione::with('usuario')
-            ->where('empresa_id', $empresaId)
+        $notificaciones = Notificacione::where('usuario_id', $user->id)
             ->latest()
-            ->get()
-            ->map(fn ($n) => [
+            ->paginate(15)
+            ->through(fn ($n) => [
                 'id' => $n->id,
-                'usuario' => $n->usuario?->name ?? '—',
                 'mensaje' => $n->mensaje ?? '—',
                 'canal' => $n->canal ?? '—',
-                'estado' => $n->estado ?? 'enviado',
-                'intentos' => $n->intentos_envio ?? 0,
+                'estado' => $n->estado ?? 'pendiente',
                 'fecha' => $n->created_at?->format('d/m/Y H:i'),
+                'hora' => $n->created_at?->format('H:i'),
             ]);
+
+        $noLeidas = Notificacione::where('usuario_id', $user->id)
+            ->where('estado', '!=', 'leido')
+            ->count();
 
         return Inertia::render('Panel/Notificaciones/Index', [
             'notificaciones' => $notificaciones,
+            'noLeidas' => $noLeidas,
         ]);
     }
 
-    // Reenviar notificación fallida
-    public function reenviar($id)
+    // Marcar una notificación como leída
+    public function marcarLeida($id)
     {
-        $notificacion = Notificacione::findOrFail($id);
+        $notificacion = Notificacione::where('usuario_id', auth()->id())->findOrFail($id);
+        $notificacion->update(['estado' => 'leido']);
 
-        $notificacion->update([
-            'estado' => 'enviado',
-            'intentos_envio' => ($notificacion->intentos_envio ?? 0) + 1,
-        ]);
-
-        return back()->with('success', 'Notificación reenviada correctamente');
+        return back()->with('success', 'Notificación marcada como leída.');
     }
 }

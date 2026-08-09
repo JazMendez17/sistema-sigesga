@@ -59,30 +59,64 @@ class LoginRequest extends FormRequest
         if ($user && $user->cuenta_bloqueada && $user->rol !== 'admin') {
             $this->hitRateLimiter();
             throw ValidationException::withMessages([
-                'email' => 'Credenciales incorrectas.',
+                'email' => 'Tu cuenta está bloqueada. Se ha enviado un código de desbloqueo a tu correo electrónico.',
             ]);
         }
 
         if (!Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             if ($user && $user->rol !== 'admin') {
+                // Incrementar contador y calcular intentos restantes
                 $user->increment('intentos_fallidos');
-                if ($user->intentos_fallidos >= 5) {
-                    $user->update([
-                        'cuenta_bloqueada' => true,
-                        'bloqueada_en' => now(),
+                $intentos = $user->intentos_fallidos + 1; // ya se incrementó en DB, sumamos 1 al valor local
+                $user->refresh(); // recargar del modelo para tener el valor real
+                $intentos = $user->intentos_fallidos;
+
+                if ($intentos < 4) {
+                    $restantes = 4 - $intentos;
+                    throw ValidationException::withMessages([
+                        'email' => "Credenciales incorrectas. Te quedan {$restantes} intento" . ($restantes > 1 ? 's' : '') . ' antes de que tu cuenta sea bloqueada.',
                     ]);
                 }
+
+                // Llegó al límite: bloquear cuenta y enviar código de desbloqueo
+                $codigo = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+                $user->update([
+                    'cuenta_bloqueada' => true,
+                    'bloqueada_en' => now(),
+                    'codigo_desbloqueo' => $codigo,
+                    'codigo_desbloqueo_expira' => now()->addMinutes(30),
+                ]);
+
+                // Enviar correo con código de desbloqueo
+                try {
+                    \Illuminate\Support\Facades\Mail::raw(
+                        "Tu cuenta en SIGESGA ha sido bloqueada por múltiples intentos fallidos.\n\n" .
+                        "Código de desbloqueo: {$codigo}\n" .
+                        "Este código expira en 30 minutos.\n\n" .
+                        "Si no fuiste tú, contacta al administrador.",
+                        function ($message) use ($user) {
+                            $message->to($user->email)->subject('Código de desbloqueo - SIGESGA');
+                        }
+                    );
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Error al enviar correo de desbloqueo: ' . $e->getMessage());
+                }
+
+                throw ValidationException::withMessages([
+                    'email' => 'Tu cuenta ha sido bloqueada por seguridad. Se ha enviado un código de desbloqueo a tu correo electrónico.',
+                ]);
             }
 
             $this->hitRateLimiter();
-
-            throw ValidationException::withMessages([
-                'email' => 'Credenciales incorrectas.',
-            ]);
+            throw ValidationException::withMessages(['email' => 'Credenciales incorrectas.']);
         }
 
         if ($user) {
-            $user->update(['intentos_fallidos' => 0]);
+            $user->update([
+                'intentos_fallidos' => 0,
+                'codigo_desbloqueo' => null,
+                'codigo_desbloqueo_expira' => null,
+            ]);
         }
 
         RateLimiter::clear($this->throttleKey());

@@ -6,10 +6,12 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\Usuario;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -44,5 +46,74 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerateToken();
 
         return redirect('/');
+    }
+
+    // Desbloquea la cuenta del usuario mediante código enviado por correo
+    public function unlock(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'codigo' => 'required|string|size:6',
+        ]);
+
+        $user = Usuario::where('email', $request->email)->first();
+
+        if (!$user || !$user->cuenta_bloqueada) {
+            throw ValidationException::withMessages([
+                'email' => 'No se encontró una cuenta bloqueada con ese correo.',
+            ]);
+        }
+
+        if ($user->codigo_desbloqueo !== $request->codigo) {
+            throw ValidationException::withMessages([
+                'codigo' => 'El código de desbloqueo no es válido.',
+            ]);
+        }
+
+        if ($user->codigo_desbloqueo_expira && now()->gt($user->codigo_desbloqueo_expira)) {
+            throw ValidationException::withMessages([
+                'codigo' => 'El código de desbloqueo ha expirado. Solicita un nuevo código.',
+            ]);
+        }
+
+        $user->update([
+            'cuenta_bloqueada' => false,
+            'intentos_fallidos' => 0,
+            'codigo_desbloqueo' => null,
+            'codigo_desbloqueo_expira' => null,
+        ]);
+
+        return redirect()->route('login')->with('status', 'Cuenta desbloqueada correctamente. Ya puedes iniciar sesión.');
+    }
+
+    // Reenviar código de desbloqueo por correo
+    public function reenviarCodigo(Request $request): RedirectResponse
+    {
+        $request->validate(['email' => 'required|email']);
+
+        $user = Usuario::where('email', $request->email)->first();
+
+        if (!$user || !$user->cuenta_bloqueada) {
+            return back()->with('error', 'No se encontró una cuenta bloqueada con ese correo.');
+        }
+
+        $codigo = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $user->update([
+            'codigo_desbloqueo' => $codigo,
+            'codigo_desbloqueo_expira' => now()->addMinutes(30),
+        ]);
+
+        try {
+            \Illuminate\Support\Facades\Mail::raw(
+                "Tu nuevo código de desbloqueo para SIGESGA es: {$codigo}\n\nEste código expira en 30 minutos.",
+                function ($message) use ($user) {
+                    $message->to($user->email)->subject('Nuevo código de desbloqueo - SIGESGA');
+                }
+            );
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error al reenviar código: ' . $e->getMessage());
+        }
+
+        return back()->with('success', 'Se ha enviado un nuevo código a tu correo electrónico.');
     }
 }

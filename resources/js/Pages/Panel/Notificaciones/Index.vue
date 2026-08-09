@@ -2,103 +2,83 @@
 import { ref, computed } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Pages/Panel/AppLayout.vue'
-import DataTable from '@/Components/DataTable.vue'
 import Badge from '@/Components/Badge.vue'
+import NeumorphicButton from '@/Components/NeumorphicButton.vue'
 
-const filtroCanal = ref('todos')
-const filtroEstado = ref('todos')
+const filtroActivo = ref('todos')
+const filtros = ['todos', 'pendiente', 'leido']
 
 const page = usePage()
-const notificaciones = computed(() => page.props.notificaciones || [])
+const notificaciones = computed(() => page.props.notificaciones?.data || page.props.notificaciones || [])
 
-const notificacionesFiltradas = computed(() =>
-  notificaciones.value.filter(n =>
-    (filtroCanal.value === 'todos' || n.canal === filtroCanal.value) &&
-    (filtroEstado.value === 'todos' || n.estado === filtroEstado.value)
-  )
-)
+function notificacionesFiltradas() {
+  const data = Array.isArray(notificaciones.value) ? notificaciones.value : []
+  if (filtroActivo.value === 'todos') return data
+  return data.filter(n => n.estado === filtroActivo.value)
+}
 
-const columns = [
-  { key: 'usuario', label: 'Usuario' },
-  { key: 'mensaje', label: 'Mensaje' },
-  { key: 'canal', label: 'Canal' },
-  { key: 'estado', label: 'Estado' },
-  { key: 'intentos', label: 'Intentos' },
-  { key: 'fecha', label: 'Fecha' },
-]
+function marcarLeida(id) {
+  router.post(route('panel.notificaciones.marcar-leida', { id }))
+}
 
-const canales = ['todos', 'whatsapp', 'email', 'sms']
-const estados = ['todos', 'enviado', 'fallido']
-
-function reenviar(id) {
-  router.post(route('panel.notificaciones.reenviar', { id }))
+function getBadgeVariant(estado) {
+  if (estado === 'leido') return 'neutral'
+  if (estado === 'fallido') return 'danger'
+  return 'success'
 }
 </script>
 
 <template>
-  <!-- Historial de notificaciones enviadas con filtros por canal y estado -->
   <AppLayout>
     <div class="space-y-6">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 class="text-2xl font-bold text-gray-800">Notificaciones</h1>
-      </div>
-
-      <div class="flex flex-wrap gap-4">
-        <div class="flex flex-wrap gap-2">
-          <button
-            v-for="c in canales"
-            :key="c"
-            @click="filtroCanal = c"
-            class="rounded-xl px-5 py-2 text-sm font-medium capitalize transition-all duration-200"
-            :class="filtroCanal === c
-              ? 'bg-[var(--color-surface)] text-[var(--color-primary)] shadow-[4px_4px_8px_var(--neumorphic-dark),-4px_-4px_8px_var(--neumorphic-light)]'
-              : 'bg-transparent text-gray-500 hover:text-gray-700'"
-          >
-            {{ c === 'todos' ? 'Todos' : c }}
-          </button>
-        </div>
-        <div class="flex flex-wrap gap-2">
-          <button
-            v-for="e in estados"
-            :key="e"
-            @click="filtroEstado = e"
-            class="rounded-xl px-5 py-2 text-sm font-medium capitalize transition-all duration-200"
-            :class="filtroEstado === e
-              ? 'bg-[var(--color-surface)] text-[var(--color-primary)] shadow-[4px_4px_8px_var(--neumorphic-dark),-4px_-4px_8px_var(--neumorphic-light)]'
-              : 'bg-transparent text-gray-500 hover:text-gray-700'"
-          >
-            {{ e === 'todos' ? 'Todos' : e }}
-          </button>
+        <div>
+          <h1 class="text-2xl font-bold text-gray-800">Notificaciones</h1>
+          <p class="text-sm text-gray-500 mt-1">Eventos operativos de servicios y cotizaciones</p>
         </div>
       </div>
 
-      <div class="rounded-3xl bg-[var(--color-surface)] p-6 shadow-[8px_8px_16px_var(--neumorphic-dark),-8px_-8px_16px_var(--neumorphic-light)]">
-        <DataTable :columns="columns" :data="notificacionesFiltradas">
-          <template #cell-mensaje="{ row }">
-            <span class="block max-w-xs truncate" :title="row.mensaje">{{ row.mensaje }}</span>
-          </template>
-          <template #cell-canal="{ row }">
-            <Badge :variant="row.canal === 'whatsapp' ? 'success' : row.canal === 'email' ? 'info' : 'neutral'">{{ row.canal }}</Badge>
-          </template>
-          <template #cell-estado="{ row }">
-            <Badge :variant="row.estado === 'enviado' ? 'success' : 'danger'">{{ row.estado }}</Badge>
-          </template>
-          <template #actions="{ row }">
-            <div class="flex items-center gap-2">
-              <button @click="router.visit(route('panel.notificaciones.index'))" class="rounded-lg bg-[var(--color-surface)] p-2 text-gray-500 shadow-[3px_3px_6px_var(--neumorphic-dark),-3px_-3px_6px_var(--neumorphic-light)] transition-all hover:text-[#4F46E5]">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-              </button>
-              <button
-                v-if="row.estado === 'fallido'"
-                @click="reenviar(row.id)"
-                class="rounded-lg bg-[var(--color-surface)] p-2 text-[var(--color-primary)] shadow-[3px_3px_6px_var(--neumorphic-dark),-3px_-3px_6px_var(--neumorphic-light)] transition-all hover:text-[var(--color-primary)]"
-                title="Reenviar"
-              >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-              </button>
+      <div class="flex flex-wrap gap-2">
+        <button v-for="f in filtros" :key="f" @click="filtroActivo = f"
+          class="rounded-xl px-5 py-2 text-sm font-medium capitalize transition-all duration-200"
+          :class="filtroActivo === f ? 'bg-[#EEF2F7] text-[#4F46E5] shadow-[4px_4px_8px_#d0d5da,-4px_-4px_8px_#ffffff]' : 'bg-transparent text-gray-500 hover:text-gray-700'">
+          {{ f === 'todos' ? 'Todas' : f === 'pendiente' ? 'No Leídas' : 'Leídas' }}
+        </button>
+      </div>
+
+      <div class="rounded-3xl bg-[#EEF2F7] overflow-hidden shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
+        <div class="divide-y divide-[#d0d5da]/20">
+          <div v-if="notificacionesFiltradas().length === 0" class="px-6 py-12 text-center text-gray-400">
+            <svg class="w-12 h-12 mx-auto mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+            <p class="text-sm">No hay notificaciones</p>
+          </div>
+          <div v-for="n in notificacionesFiltradas()" :key="n.id"
+            class="px-6 py-4 hover:bg-white/30 transition-colors flex items-start gap-4"
+            :class="{ 'bg-[var(--color-primary-light)]/10': n.estado !== 'leido' }">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+              :class="n.estado === 'leido' ? 'bg-gray-200' : 'bg-[var(--color-primary-light)]'">
+              <svg class="w-5 h-5" :class="n.estado === 'leido' ? 'text-gray-400' : 'text-[var(--color-primary)]'"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
             </div>
-          </template>
-        </DataTable>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-start justify-between gap-2">
+                <p class="text-sm font-medium text-gray-800">{{ n.mensaje }}</p>
+                <Badge :variant="getBadgeVariant(n.estado)">{{ n.estado === 'leido' ? 'Leída' : n.estado }}</Badge>
+              </div>
+              <div class="flex items-center gap-3 mt-1.5">
+                <span class="text-xs text-gray-400">{{ n.fecha }}</span>
+                <span class="text-xs text-gray-300">|</span>
+                <span class="text-xs text-gray-400 capitalize">{{ n.canal }}</span>
+                <button v-if="n.estado !== 'leido'" @click="marcarLeida(n.id)"
+                  class="ml-auto text-xs text-[var(--color-primary)] hover:underline font-medium">
+                  Marcar como leída
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </AppLayout>

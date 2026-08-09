@@ -28,6 +28,8 @@ class Usuario extends Authenticatable
         'rol',
         'intentos_fallidos',
         'cuenta_bloqueada',
+        'codigo_desbloqueo',
+        'codigo_desbloqueo_expira',
         'bloqueada_en',
         'desbloqueada_por',
     ];
@@ -42,6 +44,7 @@ class Usuario extends Authenticatable
             'password' => 'hashed',
             'password_reset_expires_at' => 'datetime',
             'bloqueada_en' => 'datetime',
+            'codigo_desbloqueo_expira' => 'datetime',
             'cuenta_bloqueada' => 'boolean',
         ];
     }

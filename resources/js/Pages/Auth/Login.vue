@@ -132,6 +132,9 @@ const submit = () => {
                 ¿No tienes cuenta?
                 <Link :href="route('register')" class="text-[var(--color-primary)] hover:text-[var(--color-primary)] font-medium">Regístrate</Link>
             </p>
+            <p v-if="form.errors.email && (form.errors.email.includes('ha sido bloqueada') || form.errors.email.includes('código de desbloqueo'))" class="text-center mt-3 text-sm text-[var(--color-text-muted)]">
+                <Link :href="route('unlock')" class="text-[var(--color-primary)] hover:underline font-medium">Desbloquear cuenta</Link>
+            </p>
         </div>
     </div>
 </template>

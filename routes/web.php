@@ -221,9 +221,6 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
 
         Route::get('/integraciones', [IntegracionesController::class, 'index'])->name('integraciones.index');
         Route::put('/integraciones/{id}', [IntegracionesController::class, 'update'])->name('integraciones.update');
-
-        Route::get('/notificaciones', [NotificacionesController::class, 'index'])->name('notificaciones.index');
-        Route::post('/notificaciones/{id}/reenviar', [NotificacionesController::class, 'reenviar'])->name('notificaciones.reenviar');
     });
 
     // === Rutas del perfil de usuario (todos los roles) ===
@@ -232,6 +229,9 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
     Route::put('/mi-perfil/password', [PerfilController::class, 'updatePassword'])->name('mi-perfil.password');
     Route::post('/mi-perfil/foto', [PerfilController::class, 'updateFoto'])->name('mi-perfil.foto');
     Route::delete('/mi-perfil/foto', [PerfilController::class, 'destroyFoto'])->name('mi-perfil.foto.destroy');
+
+    Route::get('/notificaciones', [NotificacionesController::class, 'index'])->name('notificaciones.index');
+    Route::post('/notificaciones/{id}/marcar-leida', [NotificacionesController::class, 'marcarLeida'])->name('notificaciones.marcar-leida');
 });
 
 require __DIR__.'/auth.php';

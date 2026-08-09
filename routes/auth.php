@@ -12,6 +12,7 @@ use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 // === Rutas accesibles solo para invitados (no autenticados) ===
 Route::middleware('guest')->group(function () {
@@ -24,6 +25,10 @@ Route::middleware('guest')->group(function () {
         ->name('login');
 
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
+
+    Route::get('unlock', fn () => Inertia::render('Auth/Unlock'))->name('unlock');
+    Route::post('unlock', [AuthenticatedSessionController::class, 'unlock'])->name('unlock.store');
+    Route::post('unlock/reenviar', [AuthenticatedSessionController::class, 'reenviarCodigo'])->name('unlock.reenviar');
 
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
