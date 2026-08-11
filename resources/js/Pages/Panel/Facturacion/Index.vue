@@ -6,6 +6,7 @@ import DataTable from '@/Components/DataTable.vue'
 import NeumorphicButton from '@/Components/NeumorphicButton.vue'
 import NeumorphicInput from '@/Components/NeumorphicInput.vue'
 import Badge from '@/Components/Badge.vue'
+import Swal from 'sweetalert2'
 
 const busqueda = ref('')
 const mostrarModal = ref(false)
@@ -75,14 +76,27 @@ function generarFactura() {
     onSuccess: () => {
       mostrarModal.value = false
       form.reset()
+      Swal.fire('Generada', 'Factura creada y enviada por correo.', 'success')
     },
   })
 }
 
 function enviarFactura(id) {
-  if (confirm('¿Enviar esta factura por correo electrónico?')) {
-    router.post(route('panel.facturacion.enviar', { id }))
-  }
+  Swal.fire({
+    title: '¿Enviar factura?',
+    text: 'Se enviará la factura en PDF al correo del cliente.',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Enviar',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#4F46E5',
+  }).then((result) => {
+    if (result.isConfirmed) {
+      router.post(route('panel.facturacion.enviar', { id }), {
+        onSuccess: () => Swal.fire('Enviada', 'Factura enviada por correo.', 'success')
+      })
+    }
+  })
 }
 
 const filteredFacturas = computed(() => {

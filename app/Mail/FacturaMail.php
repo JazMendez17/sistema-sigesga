@@ -7,6 +7,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Queue\SerializesModels;
 
 class FacturaMail extends Mailable
@@ -24,43 +25,57 @@ class FacturaMail extends Mailable
         );
     }
 
+    protected function data(): array
+    {
+        $s = $this->factura->servicio;
+        $cot = $s?->cotizacion;
+        $cli = $this->factura->cliente;
+        $kmRec = $s?->kms_termino_servicio ?? $cot?->distancia_km ?? 0;
+        $kmInc = $cot?->km_incluidos ?? 0;
+        $kmExc = max(0, $kmRec - $kmInc);
+        $costoKm = $cot?->costo_km ?? 0;
+
+        return [
+            'folio' => $this->factura->folio_factura,
+            'fecha' => $this->factura->created_at?->format('d/m/Y'),
+            'cliente' => $cli?->nombre ?? 'Cliente',
+            'email_cliente' => $cli?->email ?? '',
+            'aseguradora' => $cli?->aseguradora?->nombre_comercial ?? 'Particular',
+            'poliza' => $cli?->numero_poliza ?? '—',
+            'cobertura' => $cli?->tipo_cobertura_poliza ?? '—',
+            'servicio' => 'SVC-' . str_pad($s?->id ?? 0, 5, '0', STR_PAD_LEFT),
+            'tipo_servicio' => $cot?->tipoServicio?->nombre ?? '—',
+            'origen' => $cot?->origen_direccion ?? '—',
+            'destino' => $cot?->destino_direccion ?? '—',
+            'banderazo' => number_format($cot?->costo_banderazo ?? 0, 2),
+            'km_incluidos' => $kmInc,
+            'km_recorridos' => $kmRec,
+            'km_excedentes' => $kmExc,
+            'costo_km' => number_format($costoKm, 2),
+            'costo_km_extra_total' => number_format($kmExc * $costoKm, 2),
+            'descuento_pct' => $cot?->descuento_pct ?? 0,
+            'monto_descuento' => number_format($this->factura->subtotal * ($cot?->descuento_pct ?? 0) / 100, 2),
+            'subtotal' => number_format($this->factura->subtotal, 2),
+            'iva' => number_format($this->factura->iva, 2),
+            'total' => number_format($this->factura->total, 2),
+        ];
+    }
+
     public function content(): Content
     {
-        $servicio = $this->factura->servicio;
-        $cotizacion = $servicio?->cotizacion;
-        $cliente = $this->factura->cliente;
+        return new Content(view: 'emails.factura_pdf', with: $this->data());
+    }
 
-        $kmRecorridos = $servicio?->kms_termino_servicio ?? $cotizacion?->distancia_km ?? 0;
-        $kmIncluidos = $cotizacion?->km_incluidos ?? 0;
-        $kmExcedentes = max(0, $kmRecorridos - $kmIncluidos);
-        $costoKm = $cotizacion?->costo_km ?? 0;
+    public function attachments(): array
+    {
+        if (!class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
+            return [];
+        }
 
-        return new Content(
-            view: 'emails.factura_pdf',
-            with: [
-                'folio' => $this->factura->folio_factura,
-                'fecha' => $this->factura->created_at?->format('d/m/Y'),
-                'cliente' => $cliente?->nombre ?? 'Cliente',
-                'email_cliente' => $cliente?->email ?? '',
-                'aseguradora' => $cliente?->aseguradora?->nombre_comercial ?? 'Particular',
-                'poliza' => $cliente?->numero_poliza ?? '—',
-                'cobertura' => $cliente?->tipo_cobertura_poliza ?? '—',
-                'servicio' => 'SVC-' . str_pad($servicio?->id ?? 0, 5, '0', STR_PAD_LEFT),
-                'tipo_servicio' => $cotizacion?->tipoServicio?->nombre ?? '—',
-                'origen' => $cotizacion?->origen_direccion ?? '—',
-                'destino' => $cotizacion?->destino_direccion ?? '—',
-                'banderazo' => number_format($cotizacion?->costo_banderazo ?? 0, 2),
-                'km_incluidos' => $kmIncluidos,
-                'km_recorridos' => $kmRecorridos,
-                'km_excedentes' => $kmExcedentes,
-                'costo_km' => number_format($costoKm, 2),
-                'costo_km_extra_total' => number_format($kmExcedentes * $costoKm, 2),
-                'descuento_pct' => $cotizacion?->descuento_pct ?? 0,
-                'monto_descuento' => number_format($this->factura->subtotal * ($cotizacion?->descuento_pct ?? 0) / 100, 2),
-                'subtotal' => number_format($this->factura->subtotal, 2),
-                'iva' => number_format($this->factura->iva, 2),
-                'total' => number_format($this->factura->total, 2),
-            ]
-        );
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('emails.factura_pdf', $this->data());
+        return [
+            Attachment::fromData(fn () => $pdf->output(), $this->factura->folio_factura . '.pdf')
+                ->withMime('application/pdf'),
+        ];
     }
 }
