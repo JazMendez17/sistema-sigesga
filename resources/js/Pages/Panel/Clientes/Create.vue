@@ -66,7 +66,8 @@ const rules = {
 }
 const val = useFormValidation(form, rules)
 
-function submit() {
+function doSubmit() {
+  if (!val.validate()) return
   if (editMode) {
     form.put(route('panel.clientes.update', cliente.id), {
       onSuccess: () => form.reset(),
@@ -91,7 +92,7 @@ function submit() {
 
       <!-- Formulario de datos del cliente -->
       <div class="neumorphic-card p-6 max-w-4xl">
-        <form @submit.prevent="val.handleSubmit(submit)" class="space-y-5">
+        <form @submit.prevent="doSubmit" class="space-y-5">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Nombre</label>

@@ -65,4 +65,7 @@ Route::middleware('auth')->group(function () {
 
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
+
+    Route::get('cambiar-password', fn () => Inertia::render('Auth/CambiarPassword'))->name('password.cambiar');
+    Route::post('cambiar-password', [AuthenticatedSessionController::class, 'cambiarPassword'])->name('password.cambiar.store');
 });

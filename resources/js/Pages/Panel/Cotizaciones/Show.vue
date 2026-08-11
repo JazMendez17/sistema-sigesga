@@ -1,21 +1,50 @@
 <script setup>
-import { router } from '@inertiajs/vue3'
+import { ref, computed } from 'vue'
+import { router, useForm, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Pages/Panel/AppLayout.vue'
 import Badge from '@/Components/Badge.vue'
 import NeumorphicButton from '@/Components/NeumorphicButton.vue'
+import NeumorphicInput from '@/Components/NeumorphicInput.vue'
 
 const props = defineProps({
   cotizacion: Object,
 })
+
+const page = usePage()
+const operadores = computed(() => page.props.operadores ?? [])
+const unidades = computed(() => page.props.unidades ?? [])
+const mostrarModal = ref(false)
+
+const form = useForm({
+  operador_id: '',
+  unidad_id: '',
+})
+
+function aprobar() {
+  mostrarModal.value = true
+}
+
+function confirmarAprobar() {
+  form.post(route('panel.cotizaciones.aprobar', { id: props.cotizacion.id }), {
+    onSuccess: () => { mostrarModal.value = false; form.reset() },
+  })
+}
+
+function rechazar() {
+  if (confirm('¿Rechazar esta cotización?')) {
+    form.post(route('panel.cotizaciones.rechazar', { id: props.cotizacion.id }))
+  }
+}
+
+function formato(val) { return val || '—' }
 </script>
 
 <template>
-  <!-- Detalle de cotización -->
   <AppLayout>
     <div class="space-y-6">
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-2xl font-bold text-gray-800">{{ cotizacion?.folio || 'COT-00124' }}</h1>
+          <h1 class="text-2xl font-bold text-gray-800">{{ formato(cotizacion?.folio) }}</h1>
           <p class="text-sm text-gray-500 mt-1">Detalle de cotización</p>
         </div>
         <NeumorphicButton @click="router.visit(route('panel.cotizaciones.index'))">Volver</NeumorphicButton>
@@ -24,50 +53,48 @@ const props = defineProps({
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="neumorphic-card p-6 lg:col-span-2 space-y-5">
           <div class="grid grid-cols-2 gap-4">
-            <div>
-              <p class="text-xs text-gray-500 uppercase tracking-wider">Cliente</p>
-              <p class="text-gray-800 font-medium">{{ cotizacion?.cliente || 'Juan Pérez' }}</p>
-            </div>
-            <div>
-              <p class="text-xs text-gray-500 uppercase tracking-wider">Fecha</p>
-              <p class="text-gray-800 font-medium">{{ cotizacion?.fecha || '23 Jul 2026' }}</p>
-            </div>
-            <div>
-              <p class="text-xs text-gray-500 uppercase tracking-wider">Tipo de Servicio</p>
-              <p class="text-gray-800 font-medium">{{ cotizacion?.tipo_servicio || 'Transporte Local' }}</p>
-            </div>
-            <div>
-              <p class="text-xs text-gray-500 uppercase tracking-wider">Estatus</p>
-              <Badge :variant="cotizacion?.estatus || 'warning'">{{ cotizacion?.estatus || 'Pendiente' }}</Badge>
-            </div>
-            <div class="col-span-2">
-              <p class="text-xs text-gray-500 uppercase tracking-wider">Origen</p>
-              <p class="text-gray-800 font-medium">{{ cotizacion?.origen || 'Centro, Ciudad de México' }}</p>
-            </div>
-            <div class="col-span-2">
-              <p class="text-xs text-gray-500 uppercase tracking-wider">Destino</p>
-              <p class="text-gray-800 font-medium">{{ cotizacion?.destino || 'Norte, Ciudad de México' }}</p>
-            </div>
-            <div>
-              <p class="text-xs text-gray-500 uppercase tracking-wider">Distancia</p>
-              <p class="text-gray-800 font-medium">{{ cotizacion?.distancia || '15 km' }}</p>
-            </div>
-            <div>
-              <p class="text-xs text-gray-500 uppercase tracking-wider">Total Estimado</p>
-              <p class="text-xl font-bold text-[var(--color-primary)]">${{ cotizacion?.total || '1,200' }}</p>
-            </div>
+            <div><p class="text-xs text-gray-500 uppercase">Cliente</p><p class="text-gray-800 font-medium">{{ formato(cotizacion?.cliente) }}</p></div>
+            <div><p class="text-xs text-gray-500 uppercase">Fecha</p><p class="text-gray-800 font-medium">{{ formato(cotizacion?.fecha) }}</p></div>
+            <div><p class="text-xs text-gray-500 uppercase">Tipo de Servicio</p><p class="text-gray-800 font-medium">{{ formato(cotizacion?.tipo) }}</p></div>
+            <div><p class="text-xs text-gray-500 uppercase">Estatus</p><Badge :variant="cotizacion?.estatus === 'aprobado' ? 'success' : cotizacion?.estatus === 'rechazado' ? 'danger' : 'warning'">{{ cotizacion?.estatus || 'pendiente' }}</Badge></div>
+            <div class="col-span-2"><p class="text-xs text-gray-500 uppercase">Origen</p><p class="text-gray-800 font-medium">{{ formato(cotizacion?.origen) }}</p></div>
+            <div class="col-span-2"><p class="text-xs text-gray-500 uppercase">Destino</p><p class="text-gray-800 font-medium">{{ formato(cotizacion?.destino) }}</p></div>
+            <div><p class="text-xs text-gray-500 uppercase">Distancia</p><p class="text-gray-800 font-medium">{{ cotizacion?.distancia ? cotizacion.distancia + ' km' : '—' }}</p></div>
+            <div><p class="text-xs text-gray-500 uppercase">Total Estimado</p><p class="text-xl font-bold text-[var(--color-primary)]">${{ cotizacion?.total_estimado?.toFixed(2) || '0.00' }}</p></div>
+          </div>
+
+          <!-- Botones de aprobación -->
+          <div v-if="cotizacion?.estatus === 'pendiente'" class="flex gap-3 pt-3 border-t border-gray-200">
+            <NeumorphicButton @click="aprobar()" class="!bg-green-600 !text-white">Aprobar Cotización</NeumorphicButton>
+            <NeumorphicButton variant="danger" @click="rechazar()">Rechazar</NeumorphicButton>
+          </div>
+          <div v-if="cotizacion?.servicio_id" class="pt-3 border-t border-gray-200">
+            <p class="text-sm text-green-700">Servicio #{{ cotizacion.servicio_id }} creado</p>
           </div>
         </div>
+      </div>
 
-        <div class="neumorphic-card p-6 space-y-4">
-          <h3 class="font-semibold text-gray-800">Historial</h3>
-          <div class="space-y-3">
-            <div v-if="cotizacion?.historial" v-for="(item, i) in cotizacion.historial" :key="i" class="text-sm">
-              <p class="text-gray-500">{{ item }}</p>
-            </div>
-            <div v-else class="text-sm">
-              <p class="text-gray-500">23 Jul - Creada por Admin</p>
-            </div>
+      <!-- Modal de asignación -->
+      <div v-if="mostrarModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="mostrarModal = false">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-md mx-4 shadow-2xl space-y-4">
+          <h2 class="text-lg font-semibold text-gray-800">Asignar Operador y Unidad</h2>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Operador</label>
+            <select v-model="form.operador_id" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
+              <option value="">Seleccionar operador...</option>
+              <option v-for="o in operadores" :key="o.id" :value="o.id">{{ o.nombre }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Unidad</label>
+            <select v-model="form.unidad_id" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
+              <option value="">Seleccionar unidad...</option>
+              <option v-for="u in unidades" :key="u.id" :value="u.id">{{ u.placas }} - {{ u.numero_economico }}</option>
+            </select>
+          </div>
+          <div class="flex gap-3 pt-2">
+            <NeumorphicButton @click="confirmarAprobar()" :loading="form.processing" :disabled="!form.operador_id || !form.unidad_id">Confirmar y Crear Servicio</NeumorphicButton>
+            <NeumorphicButton variant="secondary" @click="mostrarModal = false">Cancelar</NeumorphicButton>
           </div>
         </div>
       </div>
@@ -76,9 +103,5 @@ const props = defineProps({
 </template>
 
 <style scoped>
-.neumorphic-card {
-  background: var(--color-surface);
-  border-radius: 24px;
-  box-shadow: 8px 8px 16px var(--neumorphic-dark), -8px -8px 16px var(--neumorphic-light);
-}
+.neumorphic-card { background: var(--color-surface); border-radius: 24px; box-shadow: 8px 8px 16px var(--neumorphic-dark), -8px -8px 16px var(--neumorphic-light); }
 </style>

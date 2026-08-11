@@ -17,8 +17,15 @@ class NotificacionesController extends Controller
     {
         $user = Auth::user();
 
-        $notificaciones = Notificacione::where('usuario_id', $user->id)
-            ->latest()
+        $query = Notificacione::where('empresa_id', $user->empresa_id);
+
+        // Admins y cotizadores ven todas las notificaciones de la empresa
+        // Operadores y clientes solo ven las suyas
+        if (!in_array($user->rol, ['admin', 'cotizador'])) {
+            $query->where('usuario_id', $user->id);
+        }
+
+        $notificaciones = $query->latest()
             ->paginate(15)
             ->through(fn ($n) => [
                 'id' => $n->id,
@@ -29,7 +36,8 @@ class NotificacionesController extends Controller
                 'hora' => $n->created_at?->format('H:i'),
             ]);
 
-        $noLeidas = Notificacione::where('usuario_id', $user->id)
+        $noLeidas = Notificacione::where('empresa_id', $user->empresa_id)
+            ->when(!in_array($user->rol, ['admin', 'cotizador']), fn($q) => $q->where('usuario_id', $user->id))
             ->where('estado', '!=', 'leido')
             ->count();
 

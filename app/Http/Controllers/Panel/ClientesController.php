@@ -8,8 +8,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Cliente;
 use App\Models\Aseguradora;
 use App\Models\Direccion;
+use App\Models\Usuario;
 use App\Http\Requests\Panel\StoreClienteRequest;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 
 class ClientesController extends Controller
@@ -73,17 +75,58 @@ class ClientesController extends Controller
             $data['direccion_id'] = $dir->id;
         }
 
+        // Crear usuario para el cliente si tiene email
+        $usuarioCreado = null;
+        if (!empty($data['email'])) {
+            $usuario = Usuario::firstOrCreate(
+                ['email' => $data['email']],
+                [
+                    'empresa_id' => $user->empresa_id,
+                    'name' => trim(($data['nombre'] ?? '') . ' ' . ($data['apellido_paterno'] ?? '') . ' ' . ($data['apellido_materno'] ?? '')),
+                    'password' => Hash::make('Cliente123.'),
+                    'debe_cambiar_password' => true,
+                    'rol' => 'cliente',
+                ]
+            );
+            $data['usuario_id'] = $usuario->id;
+            if ($usuario->wasRecentlyCreated) $usuarioCreado = $usuario;
+        }
+
         Cliente::create($data);
 
+        $mensaje = 'Cliente creado correctamente.';
+        if ($usuarioCreado) {
+            $mensaje .= ' Usuario: ' . $usuarioCreado->email . ' | Contraseña: Cliente123.';
+        }
+
         return redirect()->route('panel.clientes.index')
-            ->with('success', 'Cliente creado correctamente');
+            ->with('success', $mensaje);
     }
 
     // Ver detalle de cliente
     public function show($id)
     {
-        $cliente = Cliente::with(['aseguradora', 'direccion', 'cotizaciones.tipoServicio', 'facturas'])
+        $cliente = Cliente::with(['aseguradora.convenios.convenioTarifas', 'direccion', 'cotizaciones.tipoServicio', 'facturas'])
             ->where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+
+        $convenioInfo = null;
+        if ($cliente->aseguradora) {
+            $convenio = $cliente->aseguradora->convenios->first();
+            if ($convenio) {
+                $convenioInfo = [
+                    'nombre' => $convenio->nombre_convenio_poliza ?? '—',
+                    'codigo' => $convenio->codigo_convenio ?? '—',
+                    'cubre_casetas' => (bool) ($convenio->cubre_casetas_peaje ?? false),
+                    'dias_credito' => $convenio->dias_credito ?? '—',
+                    'tarifas' => $convenio->convenioTarifas->map(fn ($t) => [
+                        'servicio' => $t->servicio ?? '—',
+                        'banderazo' => (float) $t->banderazo,
+                        'km_incluidos' => (int) $t->km_incluidos,
+                        'costo_km_extra' => (float) $t->costo_km_extra,
+                    ]),
+                ];
+            }
+        }
 
         return Inertia::render('Panel/Clientes/Show', [
             'cliente' => [
@@ -95,7 +138,7 @@ class ClientesController extends Controller
                 'tipo_cliente' => $cliente->tipo_cliente === 'persona_moral' ? 'Persona Moral' : 'Persona Física',
                 'sexo' => $cliente->sexo,
                 'curp' => $cliente->curp,
-                'fecha_nacimiento' => $cliente->fecha_nacimiento?->format('d/m/Y'),
+                'fecha_nacimiento' => $cliente->fecha_nacimiento ? \Carbon\Carbon::parse($cliente->fecha_nacimiento)->format('d/m/Y') : null,
                 'telefono' => $cliente->telefono ?? '—',
                 'telefono_local' => $cliente->telefono_local ?? '—',
                 'email' => $cliente->email ?? '—',
@@ -105,6 +148,8 @@ class ClientesController extends Controller
                 'numero_poliza' => $cliente->numero_poliza ?? '—',
                 'tipo_cobertura_poliza' => $cliente->tipo_cobertura_poliza ?? '—',
                 'aseguradora' => $cliente->aseguradora?->nombre ?? '—',
+                'aseguradora_comercial' => $cliente->aseguradora?->nombre_comercial ?? '—',
+                'convenio' => $convenioInfo,
                 'direccion' => $cliente->direccion ? [
                     'calle' => $cliente->direccion->calle,
                     'numero' => $cliente->direccion->numero_exterior,

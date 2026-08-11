@@ -19,7 +19,6 @@ const empresa = computed(() => page.props.empresa)
 const form = useForm({
     email: '',
     password: '',
-    remember: false,
 })
 
 const submit = () => {
@@ -107,11 +106,7 @@ const submit = () => {
                         <p v-if="form.errors.password" class="mt-2 text-sm text-red-500">{{ form.errors.password }}</p>
                     </div>
 
-                    <div class="flex items-center justify-between mb-6">
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" v-model="form.remember" class="w-4 h-4 rounded-lg bg-[var(--color-bg)] border-0 shadow-[inset_2px_2px_4px_#d0d5da,inset_-2px_-2px_4px_#ffffff] text-[var(--color-primary)] focus:ring-[var(--color-primary)]" />
-                            <span class="text-sm text-[var(--color-text-muted)]">Recordarme</span>
-                        </label>
+                    <div class="flex items-center justify-end mb-6">
                         <Link v-if="canResetPassword" :href="route('password.request')" class="text-sm text-[var(--color-primary)] hover:text-[var(--color-primary)] font-medium">
                             ¿Olvidaste tu contraseña?
                         </Link>

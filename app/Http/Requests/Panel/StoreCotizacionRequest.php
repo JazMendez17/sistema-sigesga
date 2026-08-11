@@ -44,7 +44,7 @@ class StoreCotizacionRequest extends FormRequest
             'distancia_km' => 'nullable|numeric|min:0.1',
             'costo_total' => 'nullable|numeric|min:0',
             'observaciones' => 'nullable|string|max:1000',
-            'folio' => 'required|string|max:50|unique:cotizaciones,folio,' . $id,
+            'folio' => 'nullable|string|max:50|unique:cotizaciones,folio,' . $id,
             'origen_lat' => 'nullable|numeric|between:-90,90',
             'origen_lng' => 'nullable|numeric|between:-180,180',
             'destino_lat' => 'nullable|numeric|between:-90,90',

@@ -16,7 +16,7 @@ const columns = [
 
 const page = usePage()
 const usuarios = computed(() => page.props.usuarios || [])
-const rolesDisponibles = computed(() => page.props.roles || ['admin', 'cotizador', 'operador'])
+const rolesDisponibles = computed(() => page.props.roles || ['admin', 'cotizador', 'operador', 'cliente'])
 
 function cambiarRol(usuarioId, nuevoRol) {
   router.put(route('panel.usuarios.update', { id: usuarioId }), { rol: nuevoRol })

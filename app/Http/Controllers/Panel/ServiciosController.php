@@ -11,6 +11,7 @@ use App\Models\Operadore;
 use App\Models\Unidade;
 use App\Models\Oficina;
 use App\Http\Requests\Panel\StoreServicioRequest;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
@@ -175,6 +176,57 @@ class ServiciosController extends Controller
 
         return redirect()->route('panel.servicios.index')
             ->with('success', 'Servicio actualizado correctamente');
+    }
+
+    // Avanzar estado del servicio (panel del operador)
+    public function avanzarEstado(Request $request, $id)
+    {
+        $servicio = Servicio::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+        $nuevoEstado = $request->input('estado');
+
+        $flujo = ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino', 'finalizado'];
+        if (!in_array($nuevoEstado, $flujo)) {
+            return back()->with('error', 'Estado no válido.');
+        }
+
+        $data = ['estado' => $nuevoEstado];
+
+        // Registrar bitácora de tiempos
+        $bitacora = $servicio->bitacoraTiemposServicio;
+        if (!$bitacora) {
+            $bitacora = \App\Models\BitacoraTiemposServicio::create(['servicio_id' => $servicio->id]);
+        }
+
+        $camposTiempo = [
+            'asignado' => 'hora_asignado',
+            'inicio_servicio' => 'hora_inicio_servicio',
+            'en_sitio_origen' => 'hora_en_sitio_origen',
+            'salida_destino' => 'hora_salida_destino',
+            'en_destino' => 'hora_en_destino',
+            'finalizado' => 'hora_finalizado',
+        ];
+
+        if (isset($camposTiempo[$nuevoEstado])) {
+            $bitacora->update([$camposTiempo[$nuevoEstado] => now()]);
+        }
+
+        if ($nuevoEstado === 'finalizado') {
+            $request->validate([
+                'kms_termino_servicio' => 'nullable|integer|min:0',
+                'observaciones' => 'nullable|string|max:500',
+            ]);
+            $data['kms_termino_servicio'] = $request->kms_termino_servicio;
+            $data['observaciones'] = $request->observaciones;
+
+            // Liberar operador
+            if ($servicio->operador_id) {
+                \App\Models\Operadore::where('id', $servicio->operador_id)->update(['disponible' => true]);
+            }
+        }
+
+        $servicio->update($data);
+
+        return back()->with('success', "Servicio actualizado a: {$nuevoEstado}");
     }
 
     // Eliminar servicio

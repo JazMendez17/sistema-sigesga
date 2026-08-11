@@ -8,8 +8,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Empleado;
 use App\Models\Oficina;
 use App\Models\Direccion;
+use App\Models\Usuario;
 use App\Http\Requests\Panel\StoreEmpleadoRequest;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 
 class EmpleadosController extends Controller
@@ -65,10 +67,32 @@ class EmpleadosController extends Controller
 
         unset($data['direccion']);
 
-        Empleado::create($data);
+        $empleado = Empleado::create($data);
+
+        // Crear usuario automáticamente si el empleado tiene correo y puesto
+        $usuarioCreado = null;
+        if (!empty($empleado->correo) && !empty($empleado->puesto)) {
+            $usuario = Usuario::firstOrCreate(
+                ['email' => $empleado->correo],
+                [
+                    'empresa_id' => $user->empresa_id,
+                    'empleado_id' => $empleado->id,
+                    'name' => trim($empleado->nombre . ' ' . ($empleado->apellido_paterno ?? '') . ' ' . ($empleado->apellido_materno ?? '')),
+                    'password' => Hash::make('Empleado123.'),
+                    'debe_cambiar_password' => true,
+                    'rol' => $empleado->puesto,
+                ]
+            );
+            if ($usuario->wasRecentlyCreated) $usuarioCreado = $usuario;
+        }
+
+        $mensaje = 'Empleado creado correctamente.';
+        if ($usuarioCreado) {
+            $mensaje .= ' Usuario: ' . $usuarioCreado->email . ' | Contraseña: Empleado123.';
+        }
 
         return redirect()->route('panel.empleados.index')
-            ->with('success', 'Empleado creado correctamente');
+            ->with('success', $mensaje);
     }
 
     // Ver detalle de empleado

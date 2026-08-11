@@ -35,6 +35,13 @@ class Cliente extends Model
         'tipo_cobertura_poliza',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'fecha_nacimiento' => 'date',
+        ];
+    }
+
     // Relación con empresa
     public function empresa(): BelongsTo
     {

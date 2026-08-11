@@ -65,9 +65,27 @@ function formato(val) {
         <div class="rounded-3xl bg-[#EEF2F7] p-6 shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
           <h3 class="text-lg font-semibold text-gray-700 mb-4">Aseguradora / Póliza</h3>
           <div class="space-y-3">
-            <div><p class="text-xs text-gray-500 uppercase tracking-wider">Aseguradora</p><p class="text-sm font-medium text-gray-800">{{ formato(cliente.aseguradora) }}</p></div>
+            <div><p class="text-xs text-gray-500 uppercase tracking-wider">Aseguradora</p><p class="text-sm font-medium text-gray-800">{{ formato(cliente.aseguradora_comercial) || formato(cliente.aseguradora) }}</p></div>
+            <div><p class="text-xs text-gray-500 uppercase tracking-wider">Razón Social</p><p class="text-sm font-medium text-gray-800">{{ formato(cliente.aseguradora) }}</p></div>
             <div><p class="text-xs text-gray-500 uppercase tracking-wider">Número de Póliza</p><p class="text-sm font-medium text-gray-800">{{ formato(cliente.numero_poliza) }}</p></div>
             <div><p class="text-xs text-gray-500 uppercase tracking-wider">Tipo de Cobertura</p><p class="text-sm font-medium text-gray-800">{{ formato(cliente.tipo_cobertura_poliza) }}</p></div>
+          </div>
+        </div>
+
+        <!-- Convenio y Tarifas -->
+        <div v-if="cliente.convenio" class="rounded-3xl bg-[#EEF2F7] p-6 shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
+          <h3 class="text-lg font-semibold text-gray-700 mb-4">Convenio y Tarifas</h3>
+          <div class="space-y-3">
+            <div><p class="text-xs text-gray-500 uppercase">Convenio</p><p class="text-sm font-medium text-gray-800">{{ formato(cliente.convenio.nombre) }} <span class="text-xs text-gray-400">({{ formato(cliente.convenio.codigo) }})</span></p></div>
+            <div><p class="text-xs text-gray-500 uppercase">Plazo de Pago</p><p class="text-sm font-medium text-gray-800">{{ cliente.convenio.dias_credito ? cliente.convenio.dias_credito + ' días' : '—' }}</p></div>
+            <div><p class="text-xs text-gray-500 uppercase">Cubre Casetas</p><p class="text-sm font-medium" :class="cliente.convenio.cubre_casetas ? 'text-green-600' : 'text-gray-400'">{{ cliente.convenio.cubre_casetas ? 'Sí' : 'No' }}</p></div>
+            <div v-if="cliente.convenio.tarifas?.length" class="pt-2 border-t border-gray-200">
+              <p class="text-xs text-gray-500 uppercase mb-2">Tarifas del Convenio</p>
+              <div class="overflow-x-auto"><table class="w-full text-sm">
+                <thead><tr class="border-b"><th class="text-left py-1 text-xs text-gray-400">Servicio</th><th class="text-right py-1 text-xs text-gray-400">Banderazo</th><th class="text-right py-1 text-xs text-gray-400">KM Incl</th><th class="text-right py-1 text-xs text-gray-400">KM Extra</th></tr></thead>
+                <tbody><tr v-for="t in cliente.convenio.tarifas" :key="t.servicio" class="border-b border-gray-100"><td class="py-1">{{ t.servicio }}</td><td class="text-right py-1">${{ t.banderazo?.toFixed(2) }}</td><td class="text-right py-1">{{ t.km_incluidos }}</td><td class="text-right py-1">${{ t.costo_km_extra?.toFixed(2) }}</td></tr></tbody>
+              </table></div>
+            </div>
           </div>
         </div>
 

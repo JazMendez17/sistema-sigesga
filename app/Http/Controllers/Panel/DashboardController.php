@@ -84,7 +84,7 @@ class DashboardController extends Controller
                     'servicio' => $s->cotizacion?->tipoServicio?->nombre ?? 'Transporte',
                     'fecha' => $s->created_at?->format('d M Y'),
                     'status' => $s->estado ?? 'finalizado',
-                    'monto' => '$' . number_format($s->costo_final_real ?? 0, 2),
+                    'monto' => '$' . number_format($s->costo_final_real ?? $s->cotizacion?->costo_total ?? 0, 2),
                 ]);
         }
 

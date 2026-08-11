@@ -5,6 +5,8 @@ namespace App\Providers;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use App\Models\Servicio;
+use App\Observers\ServicioObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -22,5 +24,7 @@ class AppServiceProvider extends ServiceProvider
         );
 
         Vite::prefetch(concurrency: 3);
+
+        Servicio::observe(ServicioObserver::class);
     }
 }

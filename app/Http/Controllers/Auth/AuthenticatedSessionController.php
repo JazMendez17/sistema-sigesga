@@ -10,6 +10,7 @@ use App\Models\Usuario;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -32,6 +33,11 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
 
         $request->session()->regenerate();
+
+        // Si debe cambiar contraseña, redirigir a la página de cambio
+        if (Auth::user()->debe_cambiar_password) {
+            return redirect()->route('password.cambiar');
+        }
 
         return redirect()->intended(route('panel.dashboard', absolute: false));
     }
@@ -84,6 +90,24 @@ class AuthenticatedSessionController extends Controller
         ]);
 
         return redirect()->route('login')->with('status', 'Cuenta desbloqueada correctamente. Ya puedes iniciar sesión.');
+    }
+
+    // Cambiar contraseña obligatoria al primer inicio de sesión
+    public function cambiarPassword(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'password' => ['required', 'string', 'min:8', 'confirmed', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/', 'regex:/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?~]/'],
+        ], [
+            'password.regex' => 'La contraseña debe contener mayúscula, minúscula, número y carácter especial.',
+        ]);
+
+        $user = Auth::user();
+        $user->update([
+            'password' => Hash::make($request->password),
+            'debe_cambiar_password' => false,
+        ]);
+
+        return redirect()->route('panel.dashboard')->with('success', 'Contraseña actualizada correctamente.');
     }
 
     // Reenviar código de desbloqueo por correo

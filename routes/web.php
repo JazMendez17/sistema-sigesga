@@ -69,6 +69,8 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
         Route::get('/cotizaciones/{id}/edit', [CotizacionesController::class, 'edit'])->name('cotizaciones.edit');
         Route::put('/cotizaciones/{id}', [CotizacionesController::class, 'update'])->name('cotizaciones.update');
         Route::delete('/cotizaciones/{id}', [CotizacionesController::class, 'destroy'])->name('cotizaciones.destroy');
+        Route::post('/cotizaciones/{id}/aprobar', [CotizacionesController::class, 'aprobar'])->name('cotizaciones.aprobar');
+        Route::post('/cotizaciones/{id}/rechazar', [CotizacionesController::class, 'rechazar'])->name('cotizaciones.rechazar');
 
         Route::get('/facturacion', [FacturacionController::class, 'index'])->name('facturacion.index');
         Route::post('/facturacion', [FacturacionController::class, 'store'])->name('facturacion.store');
@@ -145,12 +147,15 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
 
     // === Módulos accesibles para admin, cotizador y operador ===
     Route::middleware('role:admin,cotizador,operador')->group(function () {
+        Route::get('/api/cotizacion/tarifa', [\App\Http\Controllers\Panel\CotizacionesController::class, 'obtenerTarifa'])->name('api.cotizacion.tarifa');
+
         Route::get('/servicios', [ServiciosController::class, 'index'])->name('servicios.index');
         Route::get('/servicios/create', [ServiciosController::class, 'create'])->name('servicios.create');
         Route::post('/servicios', [ServiciosController::class, 'store'])->name('servicios.store');
         Route::get('/servicios/{id}', [ServiciosController::class, 'show'])->name('servicios.show');
         Route::get('/servicios/{id}/edit', [ServiciosController::class, 'edit'])->name('servicios.edit');
         Route::put('/servicios/{id}', [ServiciosController::class, 'update'])->name('servicios.update');
+        Route::post('/servicios/{id}/avanzar', [ServiciosController::class, 'avanzarEstado'])->name('servicios.avanzar');
         Route::delete('/servicios/{id}', [ServiciosController::class, 'destroy'])->name('servicios.destroy');
 
         Route::get('/autorizaciones-cancelacion', [AutorizacionesCancelacionController::class, 'index'])->name('autorizaciones-cancelacion.index');

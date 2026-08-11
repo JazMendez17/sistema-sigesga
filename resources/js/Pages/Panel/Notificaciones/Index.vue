@@ -69,8 +69,6 @@ function getBadgeVariant(estado) {
               </div>
               <div class="flex items-center gap-3 mt-1.5">
                 <span class="text-xs text-gray-400">{{ n.fecha }}</span>
-                <span class="text-xs text-gray-300">|</span>
-                <span class="text-xs text-gray-400 capitalize">{{ n.canal }}</span>
                 <button v-if="n.estado !== 'leido'" @click="marcarLeida(n.id)"
                   class="ml-auto text-xs text-[var(--color-primary)] hover:underline font-medium">
                   Marcar como leída

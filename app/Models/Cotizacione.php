@@ -38,6 +38,11 @@ class Cotizacione extends Model
         'costo_banderazo',
         'costo_km',
         'km_excedente',
+        'km_incluidos',
+        'subtotal',
+        'monto_descuento',
+        'descuento_pct',
+        'monto_iva',
         'costo_total',
         'estatus',
     ];

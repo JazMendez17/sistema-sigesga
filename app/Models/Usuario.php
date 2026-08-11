@@ -22,6 +22,7 @@ class Usuario extends Authenticatable
         'email',
         'telefono',
         'password',
+        'debe_cambiar_password',
         'foto',
         'password_reset_token',
         'password_reset_expires_at',

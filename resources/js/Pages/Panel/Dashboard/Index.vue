@@ -223,20 +223,19 @@ const statusColors = {
               <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-text-muted)]">Servicio</p>
               <h3 class="mt-1 text-xl font-semibold text-[var(--color-text)]">Mi Solicitud Activa</h3>
             </div>
-            <div class="rounded-[24px] bg-gradient-to-br from-[#D97706] to-[#F59E0B] p-5 text-white shadow-[10px_10px_20px_var(--neumorphic-dark),-10px_-10px_20px_var(--neumorphic-light)]">
+            <div v-if="historialCliente && historialCliente.length > 0" class="rounded-[24px] bg-gradient-to-br from-[#D97706] to-[#F59E0B] p-5 text-white shadow-[10px_10px_20px_var(--neumorphic-dark),-10px_-10px_20px_var(--neumorphic-light)]">
               <div class="flex items-center justify-between gap-3">
-                <span class="text-sm font-medium opacity-80">Servicio #0089</span>
-                <Badge variant="en_curso">En Curso</Badge>
+                <span class="text-sm font-medium opacity-80">Servicio #{{ String(historialCliente[0].id).padStart(5, '0') }}</span>
+                <Badge :variant="historialCliente[0].status">{{ historialCliente[0].status }}</Badge>
               </div>
-              <p class="mt-3 text-xl font-bold">Transporte Local</p>
-              <p class="mt-2 text-sm opacity-80">Origen: Av. Principal #123</p>
-              <p class="text-sm opacity-80">Destino: Zona Industrial</p>
-              <div class="mt-4 border-t border-white/20 pt-4 text-sm">
-                <div class="flex justify-between gap-3">
-                  <span class="opacity-80">Operador asignado:</span>
-                  <span class="font-semibold">Roberto Méndez</span>
-                </div>
-              </div>
+              <p class="mt-3 text-xl font-bold">{{ historialCliente[0].servicio }}</p>
+              <p class="mt-2 text-sm opacity-80">Fecha: {{ historialCliente[0].fecha }}</p>
+              <p class="mt-2 text-sm opacity-80">Monto: {{ historialCliente[0].monto }}</p>
+            </div>
+            <div v-else class="rounded-[24px] bg-gradient-to-br from-gray-400 to-gray-500 p-6 text-white text-center shadow-[10px_10px_20px_var(--neumorphic-dark),-10px_-10px_20px_var(--neumorphic-light)]">
+              <svg class="w-12 h-12 mx-auto mb-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+              <p class="text-lg font-bold">Sin servicios activos</p>
+              <p class="text-sm opacity-80 mt-1">No tienes ningún servicio registrado actualmente.</p>
             </div>
           </div>
 
