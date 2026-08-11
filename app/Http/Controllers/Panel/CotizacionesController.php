@@ -181,6 +181,28 @@ class CotizacionesController extends Controller
             ->with('success', 'Cotización eliminada correctamente');
     }
 
+    // Vista de cotizaciones para el cliente
+    public function misCotizaciones()
+    {
+        $cliente = \App\Models\Cliente::where('usuario_id', auth()->id())->first();
+        $cotizaciones = Cotizacione::where('cliente_id', $cliente?->id)
+            ->with('tipoServicio')
+            ->latest()
+            ->get()
+            ->map(fn ($c) => [
+                'id' => $c->id,
+                'folio' => $c->folio ?? 'COT-' . str_pad($c->id, 5, '0', STR_PAD_LEFT),
+                'tipo' => $c->tipoServicio?->nombre ?? '—',
+                'origen' => $c->origen_direccion ?? '—',
+                'destino' => $c->destino_direccion ?? '—',
+                'estatus' => $c->estatus,
+                'fecha' => $c->created_at?->format('d/m/Y'),
+                'total' => '$' . number_format($c->costo_total ?? 0, 2),
+            ]);
+
+        return Inertia::render('Panel/ClienteCotizaciones', ['cotizaciones' => $cotizaciones]);
+    }
+
     // API: Obtener tarifa según cliente y tipo de servicio para auto-llenado
     public function obtenerTarifa(Request $request)
     {

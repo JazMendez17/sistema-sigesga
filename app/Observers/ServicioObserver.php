@@ -99,11 +99,11 @@ class ServicioObserver
     protected function notificarFinalizado($s, $folio, $opNombre, $kms, $clienteId, $operadorId): void
     {
         $this->notificar($s, $clienteId,
-            "El servicio {$folio} ha sido finalizado. ¡Evalúa nuestra atención!");
+            "El servicio {$folio} ha sido finalizado. Evalúa nuestra atención: " . url('/panel/evaluar-servicio/' . $s->id));
         $this->notificar($s, $operadorId,
             "Servicio {$folio} concluido con éxito. Unidad disponible.");
         $this->notificarRoles($s, ['admin', 'cotizador'],
-            "El servicio {$folio} fue finalizado por {$opNombre}. Odómetro final: {$kms}.");
+            "{$this->actor()} - El operador {$opNombre} finalizó el servicio {$folio}. Odómetro: {$kms} km.");
     }
 
     // ─── Helpers ──────────────────────────────────────────────

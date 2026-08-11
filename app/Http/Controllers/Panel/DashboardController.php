@@ -74,8 +74,10 @@ class DashboardController extends Controller
 
         if ($user->rol === 'cliente') {
             $cliente = Cliente::where('usuario_id', $user->id)->first();
+            $clienteId = $cliente?->id;
+
             $data['historialCliente'] = Servicio::with('cotizacion')
-                ->whereHas('cotizacion', fn ($q) => $q->where('cliente_id', $cliente?->id))
+                ->whereHas('cotizacion', fn ($q) => $q->where('cliente_id', $clienteId))
                 ->latest()
                 ->take(5)
                 ->get()
@@ -85,6 +87,28 @@ class DashboardController extends Controller
                     'fecha' => $s->created_at?->format('d M Y'),
                     'status' => $s->estado ?? 'finalizado',
                     'monto' => '$' . number_format($s->costo_final_real ?? $s->cotizacion?->costo_total ?? 0, 2),
+                    'evaluado' => $s->calificacionesServicio()->exists(),
+                ]);
+
+            $data['cotizacionesCliente'] = Cotizacione::where('cliente_id', $clienteId)
+                ->latest()->take(5)->get()
+                ->map(fn ($c) => [
+                    'id' => $c->id,
+                    'folio' => $c->folio ?? 'COT-' . str_pad($c->id, 5, '0', STR_PAD_LEFT),
+                    'tipo' => $c->tipoServicio?->nombre ?? '—',
+                    'estatus' => $c->estatus,
+                    'fecha' => $c->created_at?->format('d/m/Y'),
+                    'total' => '$' . number_format($c->costo_total ?? 0, 2),
+                ]);
+
+            $data['facturasCliente'] = \App\Models\Factura::where('cliente_id', $clienteId)
+                ->latest()->take(5)->get()
+                ->map(fn ($f) => [
+                    'id' => $f->id,
+                    'folio' => $f->folio_factura,
+                    'total' => '$' . number_format($f->total ?? 0, 2),
+                    'estatus' => $f->estatus,
+                    'fecha' => $f->created_at?->format('d/m/Y'),
                 ]);
         }
 

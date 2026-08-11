@@ -152,7 +152,7 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
         Route::get('/servicios', [ServiciosController::class, 'index'])->name('servicios.index');
         Route::get('/servicios/create', [ServiciosController::class, 'create'])->name('servicios.create');
         Route::post('/servicios', [ServiciosController::class, 'store'])->name('servicios.store');
-        Route::get('/servicios/{id}', [ServiciosController::class, 'show'])->name('servicios.show');
+        Route::get('/servicios/{id}', [ServiciosController::class, 'show'])->name('servicios.show')->withoutMiddleware('role:admin,cotizador,operador')->middleware('auth');
         Route::get('/servicios/{id}/edit', [ServiciosController::class, 'edit'])->name('servicios.edit');
         Route::put('/servicios/{id}', [ServiciosController::class, 'update'])->name('servicios.update');
         Route::post('/servicios/{id}/avanzar', [ServiciosController::class, 'avanzarEstado'])->name('servicios.avanzar');
@@ -237,6 +237,18 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
 
     Route::get('/notificaciones', [NotificacionesController::class, 'index'])->name('notificaciones.index');
     Route::post('/notificaciones/{id}/marcar-leida', [NotificacionesController::class, 'marcarLeida'])->name('notificaciones.marcar-leida');
+
+    Route::get('/evaluar-servicio/{id}', [ServiciosController::class, 'evaluar'])->name('servicios.evaluar');
+    Route::post('/evaluar-servicio/{id}', [ServiciosController::class, 'guardarEvaluacion'])->name('servicios.evaluar.store');
+    Route::get('/mis-evaluaciones', [ServiciosController::class, 'misEvaluaciones'])->name('cliente.evaluaciones');
+
+    // Vistas de solo lectura para clientes
+    Route::get('/cliente/servicios/{id}', [ServiciosController::class, 'show'])->name('servicios.show.cliente');
+    Route::get('/cliente/cotizaciones/{id}', [CotizacionesController::class, 'show'])->name('cotizaciones.show.cliente');
+    Route::get('/cliente/facturacion/{id}', [FacturacionController::class, 'show'])->name('facturacion.show.cliente');
+
+    Route::get('/mis-cotizaciones', [CotizacionesController::class, 'misCotizaciones'])->name('cliente.cotizaciones');
+    Route::get('/mis-facturas', [FacturacionController::class, 'misFacturas'])->name('cliente.facturas');
 });
 
 require __DIR__.'/auth.php';

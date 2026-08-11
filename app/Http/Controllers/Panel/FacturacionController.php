@@ -138,6 +138,7 @@ class FacturacionController extends Controller
     }
 
     // Ver detalle de factura
+    // Ver detalle de factura
     public function show($id)
     {
         $factura = Factura::with(['cliente.aseguradora', 'servicio.cotizacion.tipoServicio'])->where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
@@ -175,5 +176,21 @@ class FacturacionController extends Controller
                 ],
             ],
         ]);
+    }
+
+    // Vista de facturas para el cliente
+    public function misFacturas()
+    {
+        $cliente = \App\Models\Cliente::where('usuario_id', auth()->id())->first();
+        $facturas = Factura::where('cliente_id', $cliente?->id)->latest()->get()
+            ->map(fn ($f) => [
+                'id' => $f->id,
+                'folio' => $f->folio_factura ?? '—',
+                'total' => '$' . number_format($f->total ?? 0, 2),
+                'estatus' => $f->estatus ?? '—',
+                'fecha' => $f->created_at?->format('d/m/Y'),
+            ]);
+
+        return Inertia::render('Panel/ClienteFacturas', ['facturas' => $facturas]);
     }
 }

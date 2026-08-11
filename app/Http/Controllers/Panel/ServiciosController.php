@@ -229,6 +229,63 @@ class ServiciosController extends Controller
         return back()->with('success', "Servicio actualizado a: {$nuevoEstado}");
     }
 
+    // Página de evaluación del servicio para el cliente
+    public function evaluar($id)
+    {
+        $servicio = Servicio::with('cotizacion.cliente')->findOrFail($id);
+        return Inertia::render('Panel/EvaluarServicio', [
+            'servicio' => [
+                'id' => $servicio->id,
+                'folio' => 'SVC-' . str_pad($servicio->id, 5, '0', STR_PAD_LEFT),
+                'cliente' => $servicio->cotizacion?->cliente?->nombre ?? '—',
+                'tipo' => $servicio->cotizacion?->tipoServicio?->nombre ?? '—',
+                'fecha' => $servicio->created_at?->format('d/m/Y'),
+            ],
+        ]);
+    }
+
+    // Guardar evaluación del cliente
+    public function guardarEvaluacion(Request $request, $id)
+    {
+        $request->validate([
+            'estrellas' => 'required|integer|min:1|max:5',
+            'comentario' => 'nullable|string|max:500',
+        ]);
+
+        $servicio = Servicio::findOrFail($id);
+
+        \App\Models\CalificacionesServicio::updateOrCreate(
+            ['servicio_id' => $servicio->id],
+            [
+                'cliente_id' => $servicio->cotizacion?->cliente_id,
+                'estrellas' => $request->estrellas,
+                'comentario' => $request->comentario,
+            ]
+        );
+
+        return redirect()->route('panel.dashboard')->with('success', '¡Gracias por evaluar nuestro servicio!');
+    }
+
+    // Lista de servicios pendientes de evaluar por el cliente
+    public function misEvaluaciones()
+    {
+        $cliente = \App\Models\Cliente::where('usuario_id', auth()->id())->first();
+        $servicios = Servicio::with('cotizacion.tipoServicio')
+            ->whereHas('cotizacion', fn($q) => $q->where('cliente_id', $cliente?->id))
+            ->where('estado', 'finalizado')
+            ->whereDoesntHave('calificacionesServicio')
+            ->latest()->get()
+            ->map(fn ($s) => [
+                'id' => $s->id,
+                'folio' => 'SVC-' . str_pad($s->id, 5, '0', STR_PAD_LEFT),
+                'tipo' => $s->cotizacion?->tipoServicio?->nombre ?? '—',
+                'fecha' => $s->created_at?->format('d/m/Y'),
+                'monto' => '$' . number_format($s->costo_final_real ?? $s->cotizacion?->costo_total ?? 0, 2),
+            ]);
+
+        return Inertia::render('Panel/ClienteEvaluaciones', ['servicios' => $servicios]);
+    }
+
     // Eliminar servicio
     public function destroy($id)
     {
