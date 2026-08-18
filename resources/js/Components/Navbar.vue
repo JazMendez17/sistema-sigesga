@@ -1,14 +1,37 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { Link, usePage, router } from '@inertiajs/vue3'
+import axios from 'axios'
 
 const page = usePage()
 const user = computed(() => page.props.auth.user)
 const empresa = computed(() => page.props.empresa)
+const unreadCount = ref(page.props.unreadNotifications || 0)
 const menuOpen = ref(false)
 const userMenuOpen = ref(false)
 const activeMega = ref(null)
 let megaTimeout = null
+let pollInterval = null
+
+watch(
+  () => page.props.unreadNotifications,
+  (val) => { unreadCount.value = val || 0 }
+)
+
+onMounted(() => {
+  pollInterval = setInterval(async () => {
+    try {
+      const { data } = await axios.get(route('panel.notificaciones.no-leidas'))
+      unreadCount.value = data.count
+    } catch (e) {
+      // ignorar silenciosamente
+    }
+  }, 30000)
+})
+
+onUnmounted(() => {
+  if (pollInterval) clearInterval(pollInterval)
+})
 
 function logout() {
   router.post(route('logout'))
@@ -110,8 +133,6 @@ const menuGroups = computed(() => [
     roles: ['admin'],
     items: [
       { label: 'Configuración', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z', route: 'panel.configuracion.index', roles: ['admin'] },
-      { label: 'Integraciones', icon: 'M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z', route: 'panel.integraciones.index', roles: ['admin'] },
-      { label: 'Reportes', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', route: 'panel.reportes.index', roles: ['admin', 'cotizador'] },
     ],
   },
   {
@@ -223,6 +244,15 @@ const visibleGroups = computed(() => {
 
       <!-- Menú de usuario y botón de cierre de sesión -->
       <div class="flex items-center gap-2 sm:gap-4">
+        <!-- Campana de notificaciones -->
+        <Link :href="route('panel.notificaciones.index')" class="relative neumorphic-raised-sm rounded-xl p-2.5 transition-all hover:scale-105">
+          <svg class="w-5 h-5 text-[var(--color-text)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+          </svg>
+          <span v-if="unreadCount >= 0" class="absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-bold text-white shadow-[0_0_8px_rgba(239,68,68,0.5)]" :class="unreadCount > 0 ? 'bg-red-500' : 'bg-gray-400'">
+            {{ unreadCount > 99 ? '99+' : unreadCount }}
+          </span>
+        </Link>
         <!-- Menú desplegable de usuario -->
         <div class="relative">
           <button @click="userMenuOpen = !userMenuOpen" class="flex items-center gap-3 neumorphic-raised-sm rounded-2xl px-4 py-2 cursor-pointer">

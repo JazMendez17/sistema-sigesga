@@ -35,19 +35,19 @@ class StoreOficinaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'nombre' => 'required|string|max:255',
-            'telefono' => 'nullable|string|max:20',
-            'email' => 'nullable|email|max:255',
-            'encargado' => 'nullable|string|max:255',
-            'calle' => 'nullable|string|max:255',
+            'nombre' => 'required|string|max:100',
+            'telefono' => 'nullable|string|max:25',
+            'email' => 'nullable|email|max:150',
+            'encargado' => 'nullable|string|max:150',
+            'calle' => 'nullable|string|max:150',
             'numero_exterior' => 'nullable|string|max:50',
             'numero_interior' => 'nullable|string|max:50',
-            'colonia' => 'nullable|string|max:255',
+            'colonia' => 'nullable|string|max:100',
             'codigo_postal' => 'nullable|string|max:10',
-            'municipio_alcaldia' => 'nullable|string|max:255',
-            'ciudad' => 'nullable|string|max:255',
-            'estado' => 'nullable|string|max:255',
-            'pais' => 'nullable|string|max:255',
+            'municipio_alcaldia' => 'nullable|string|max:100',
+            'ciudad' => 'nullable|string|max:100',
+            'estado' => 'nullable|string|max:60',
+            'pais' => 'nullable|string|max:60',
             'referencias' => 'nullable|string|max:500',
         ];
     }
@@ -57,11 +57,11 @@ class StoreOficinaRequest extends FormRequest
     {
         return [
             'nombre.required' => 'El nombre de la oficina es obligatorio.',
-            'nombre.max' => 'El nombre no debe exceder los 255 caracteres.',
-            'telefono.max' => 'El teléfono no debe exceder los 20 caracteres.',
+            'nombre.max' => 'El nombre no debe exceder los 100 caracteres.',
+            'telefono.max' => 'El teléfono no debe exceder los 25 caracteres.',
             'email.email' => 'El formato del correo electrónico no es válido.',
-            'email.max' => 'El correo electrónico no debe exceder los 255 caracteres.',
-            'encargado.max' => 'El encargado no debe exceder los 255 caracteres.',
+            'email.max' => 'El correo electrónico no debe exceder los 150 caracteres.',
+            'encargado.max' => 'El encargado no debe exceder los 150 caracteres.',
             'codigo_postal.max' => 'El código postal no debe exceder los 10 caracteres.',
             'referencias.max' => 'Las referencias no deben exceder los 500 caracteres.',
         ];

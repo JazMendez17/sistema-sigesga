@@ -273,24 +273,19 @@ export function useFormValidation(form, rules) {
   // Maneja el envío del formulario con validación previa
   function handleSubmit(callback) {
     return function () {
-      console.log('[useFormValidation] handleSubmit INVOCADO')
       try {
         trimAll()
-        console.log('[useFormValidation] post trimAll, validando...')
         if (!validate()) {
           const all = Object.values(clientErrors.value).filter(Boolean)
           if (all.length > 0) {
-            console.log('[useFormValidation] Errores de validacion:', all)
             try {
               showValidationErrors(all)
             } catch (notifError) {
               console.error('[useFormValidation] Error al mostrar errores:', notifError)
             }
           }
-          console.log('[useFormValidation] Abortado por validacion')
           return
         }
-        console.log('[useFormValidation] Validacion OK, llamando callback...')
         callback()
       } catch (err) {
         console.error('[useFormValidation] Error en handleSubmit:', err)

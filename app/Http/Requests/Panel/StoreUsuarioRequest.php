@@ -6,6 +6,7 @@ namespace App\Http\Requests\Panel;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class StoreUsuarioRequest extends FormRequest
@@ -35,10 +36,13 @@ class StoreUsuarioRequest extends FormRequest
     public function rules(): array
     {
         $id = $this->route('id');
+        $empresaId = $this->user()?->empresa_id;
 
         $rules = [
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:usuarios,email,' . $id,
+            'name' => 'required|string|max:150',
+            'email' => ['required', 'email', 'max:150', Rule::unique('usuarios', 'email')
+                ->where('empresa_id', $empresaId)
+                ->ignore($id)],
             'rol' => 'required|in:admin,cotizador,operador,cliente',
             'empleado_id' => 'nullable|exists:empleados,id',
             'telefono' => 'nullable|string|max:20',
@@ -59,11 +63,11 @@ class StoreUsuarioRequest extends FormRequest
     {
         return [
             'name.required' => 'El nombre de usuario es obligatorio.',
-            'name.max' => 'El nombre no debe exceder los 255 caracteres.',
+            'name.max' => 'El nombre no debe exceder los 150 caracteres.',
             'email.required' => 'El correo electrónico es obligatorio.',
             'email.email' => 'El formato del correo electrónico no es válido.',
-            'email.max' => 'El correo electrónico no debe exceder los 255 caracteres.',
-            'email.unique' => 'El correo electrónico ya está registrado en el sistema.',
+            'email.max' => 'El correo electrónico no debe exceder los 150 caracteres.',
+            'email.unique' => 'El correo electrónico ya está registrado en esta empresa.',
             'password.required' => 'La contraseña es obligatoria.',
             'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
             'password.regex' => 'La contraseña debe contener al menos una mayúscula, una minúscula, un número y un carácter especial (!@#$%^&*()_+-=[]{}|;:,.<>?~).',

@@ -10,6 +10,7 @@ use App\Models\Factura;
 use App\Models\Servicio;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 
@@ -99,9 +100,12 @@ class FacturacionController extends Controller
 
         $data['empresa_id'] = $user->empresa_id;
         $data['estatus'] = 'vigente';
-        $data['folio_factura'] = 'FAC-' . str_pad(Factura::max('id') + 1, 5, '0', STR_PAD_LEFT);
 
-        $factura = Factura::create($data);
+        $factura = DB::transaction(function () use ($data) {
+            $data['folio_factura'] = 'FAC-' . str_pad((Factura::query()->lockForUpdate()->max('id') ?? 0) + 1, 5, '0', STR_PAD_LEFT);
+
+            return Factura::create($data);
+        });
 
         // Enviar factura por email automáticamente si se proporcionó correo
         $this->enviarFacturaPorEmail($factura);
@@ -141,7 +145,19 @@ class FacturacionController extends Controller
     // Ver detalle de factura
     public function show($id)
     {
-        $factura = Factura::with(['cliente.aseguradora', 'servicio.cotizacion.tipoServicio'])->where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+        $user = auth()->user();
+
+        $query = Factura::with(['cliente.aseguradora', 'servicio.cotizacion.tipoServicio'])->where('empresa_id', $user->empresa_id);
+
+        if ($user->rol === 'cliente') {
+            $cliente = \App\Models\Cliente::where('usuario_id', $user->id)->first();
+            if (!$cliente) {
+                abort(404);
+            }
+            $query->where('cliente_id', $cliente->id);
+        }
+
+        $factura = $query->findOrFail($id);
 
         $cot = $factura->servicio?->cotizacion;
 

@@ -42,19 +42,6 @@ Route::post('/solicitar', [LandingController::class, 'solicitarStore'])->name('s
 Route::get('/rastrear', [LandingController::class, 'rastrear']);
 Route::get('/soporte', [LandingController::class, 'soporte']);
 
-// Ruta temporal para probar el envío de emails
-Route::get('/test-email', function () {
-    try {
-        \Illuminate\Support\Facades\Mail::raw('Este es un correo de prueba enviado desde SIGESGA. La configuración SMTP de Gmail funciona correctamente.', function ($message) {
-            $message->to(env('MAIL_FROM_ADDRESS'))
-                    ->subject('Prueba de conexión Gmail - SIGESGA');
-        });
-        return 'Correo enviado exitosamente. Revisa tu bandeja de entrada.';
-    } catch (\Exception $e) {
-        return 'Error al enviar: ' . $e->getMessage();
-    }
-});
-
 // === Rutas protegidas del panel ===
 Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () {
 
@@ -149,6 +136,8 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
     Route::middleware('role:admin,cotizador,operador')->group(function () {
         Route::get('/api/cotizacion/tarifa', [\App\Http\Controllers\Panel\CotizacionesController::class, 'obtenerTarifa'])->name('api.cotizacion.tarifa');
 
+        Route::put('/operadores/disponibilidad', [OperadoresController::class, 'cambiarDisponibilidad'])->name('operadores.disponibilidad');
+
         Route::get('/servicios', [ServiciosController::class, 'index'])->name('servicios.index');
         Route::get('/servicios/create', [ServiciosController::class, 'create'])->name('servicios.create');
         Route::post('/servicios', [ServiciosController::class, 'store'])->name('servicios.store');
@@ -156,6 +145,7 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
         Route::get('/servicios/{id}/edit', [ServiciosController::class, 'edit'])->name('servicios.edit');
         Route::put('/servicios/{id}', [ServiciosController::class, 'update'])->name('servicios.update');
         Route::post('/servicios/{id}/avanzar', [ServiciosController::class, 'avanzarEstado'])->name('servicios.avanzar');
+        Route::post('/servicios/{id}/solicitar-cancelacion', [ServiciosController::class, 'solicitarCancelacion'])->name('servicios.solicitar-cancelacion');
         Route::delete('/servicios/{id}', [ServiciosController::class, 'destroy'])->name('servicios.destroy');
 
         Route::get('/autorizaciones-cancelacion', [AutorizacionesCancelacionController::class, 'index'])->name('autorizaciones-cancelacion.index');
@@ -219,6 +209,8 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
         Route::get('/usuarios/{id}/edit', [UsuariosController::class, 'edit'])->name('usuarios.edit');
         Route::put('/usuarios/{id}', [UsuariosController::class, 'update'])->name('usuarios.update');
         Route::delete('/usuarios/{id}', [UsuariosController::class, 'destroy'])->name('usuarios.destroy');
+        Route::put('/usuarios/{id}/rol', [UsuariosController::class, 'cambiarRol'])->name('usuarios.rol');
+        Route::put('/usuarios/{id}/desbloquear', [UsuariosController::class, 'desbloquear'])->name('usuarios.desbloquear');
 
         Route::get('/configuracion', [ConfiguracionController::class, 'index'])->name('configuracion.index');
         Route::post('/configuracion', [ConfiguracionController::class, 'update'])->name('configuracion.update');
@@ -237,6 +229,7 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
 
     Route::get('/notificaciones', [NotificacionesController::class, 'index'])->name('notificaciones.index');
     Route::post('/notificaciones/{id}/marcar-leida', [NotificacionesController::class, 'marcarLeida'])->name('notificaciones.marcar-leida');
+    Route::get('/notificaciones/no-leidas', [NotificacionesController::class, 'unreadCount'])->name('notificaciones.no-leidas');
 
     Route::get('/evaluar-servicio/{id}', [ServiciosController::class, 'evaluar'])->name('servicios.evaluar');
     Route::post('/evaluar-servicio/{id}', [ServiciosController::class, 'guardarEvaluacion'])->name('servicios.evaluar.store');

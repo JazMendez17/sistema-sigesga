@@ -171,7 +171,7 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
       <!-- Tabs -->
       <div class="flex flex-wrap gap-2">
         <button
-          v-for="tab in ['general', 'apariencia', 'nosotros', 'servicios', 'modulos', 'contacto']"
+          v-for="tab in ['general', 'apariencia', 'nosotros', 'servicios', 'contacto']"
           :key="tab"
           @click="activeTab = tab"
           class="rounded-xl px-5 py-2 text-sm font-medium capitalize transition-all duration-200"
@@ -348,21 +348,6 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- Módulos -->
-      <div v-if="activeTab === 'modulos'" class="rounded-3xl bg-[var(--color-surface)] p-6 shadow-[8px_8px_16px_var(--neumorphic-dark),-8px_-8px_16px_var(--neumorphic-light)] space-y-5">
-        <h3 class="text-sm font-medium text-[var(--color-text)] mb-4">Colores de Módulos</h3>
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div v-for="(color, modulo) in moduloColores" :key="modulo" class="space-y-2 rounded-2xl bg-[var(--color-bg)] p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]">
-            <label class="block text-sm font-medium text-[var(--color-text)] capitalize">{{ modulo }}</label>
-            <div class="flex items-center gap-3">
-              <input type="color" :value="moduloColores[modulo]" @input="moduloColores[modulo] = $event.target.value" class="h-10 w-10 rounded-xl border-0 bg-transparent cursor-pointer" />
-              <input :value="moduloColores[modulo]" @input="moduloColores[modulo] = $event.target.value" class="w-full rounded-xl bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text)] shadow-[inset_3px_3px_6px_var(--neumorphic-dark),inset_-3px_-3px_6px_var(--neumorphic-light)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]" />
-            </div>
-          </div>
-        </div>
-        <p class="text-xs text-gray-400 mt-2">Si no ves todos los módulos, guarda la configuración general primero para inicializarlos.</p>
       </div>
 
       <!-- Contacto -->

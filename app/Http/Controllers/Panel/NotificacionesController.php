@@ -50,9 +50,29 @@ class NotificacionesController extends Controller
     // Marcar una notificación como leída
     public function marcarLeida($id)
     {
-        $notificacion = Notificacione::where('usuario_id', auth()->id())->findOrFail($id);
+        $user = Auth::user();
+
+        $query = Notificacione::where('empresa_id', $user->empresa_id);
+        if (!in_array($user->rol, ['admin', 'cotizador'])) {
+            $query->where('usuario_id', $user->id);
+        }
+
+        $notificacion = $query->findOrFail($id);
         $notificacion->update(['estado' => 'leido']);
 
         return back()->with('success', 'Notificación marcada como leída.');
+    }
+
+    // Endpoint para polling: devuelve conteo de no leídas
+    public function unreadCount()
+    {
+        $user = Auth::user();
+
+        return response()->json([
+            'count' => Notificacione::where('empresa_id', $user->empresa_id)
+                ->when(!in_array($user->rol, ['admin', 'cotizador']), fn($q) => $q->where('usuario_id', $user->id))
+                ->where('estado', '!=', 'leido')
+                ->count(),
+        ]);
     }
 }

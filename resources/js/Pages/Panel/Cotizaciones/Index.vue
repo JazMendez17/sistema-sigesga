@@ -10,7 +10,7 @@ import Badge from '@/Components/Badge.vue'
 const filtroActivo = ref('todas')
 const busqueda = ref('')
 
-const filtros = ['todas', 'pendiente', 'aprobada', 'rechazada']
+const filtros = ['todas', 'pendiente', 'aprobado', 'rechazado']
 
 function eliminarCotizacion(id) {
   if (confirm('¿Eliminar esta cotización?')) {
@@ -81,7 +81,7 @@ const filteredCotizaciones = computed(() => {
         <DataTable :columns="columns" :data="filteredCotizaciones" @rowClick="(row) => router.visit(route('panel.cotizaciones.show', { id: row.id }))">
           <template #cell-estatus="{ row }">
             <Badge
-              :variant="row.estatus === 'aprobada' ? 'success' : row.estatus === 'rechazada' ? 'danger' : row.estatus === 'pendiente' ? 'warning' : 'neutral'"
+              :variant="row.estatus === 'aprobado' ? 'success' : row.estatus === 'rechazado' ? 'danger' : row.estatus === 'pendiente' ? 'warning' : 'neutral'"
             >
               {{ row.estatus }}
             </Badge>

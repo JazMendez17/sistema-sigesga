@@ -9,25 +9,32 @@ import NeumorphicInput from '@/Components/NeumorphicInput.vue'
 const props = defineProps({ servicio: Object })
 
 const mostrarModal = ref(false)
+const mostrarModalCancelacion = ref(false)
 const form = useForm({
   estado: '',
   kms_termino_servicio: '',
   observaciones: '',
 })
 
-function formatKm(val) {
-  if (val === null || val === undefined || val === '') return null
-  return Number(val).toLocaleString() + ' km'
-}
-
-function avanzar(estado) {
-  if (estado === 'finalizado') { mostrarModal.value = true; return }
-  router.post(route('panel.servicios.avanzar', { id: props.servicio.id }), { estado })
-}
+const formCancelacion = useForm({
+  motivo_cancelacion: '',
+  tipo_incidencia: 'otro',
+})
 
 function finalizar() {
   form.estado = 'finalizado'
   form.post(route('panel.servicios.avanzar', { id: props.servicio.id }), { onSuccess: () => mostrarModal.value = false })
+}
+
+function enviarCancelacion() {
+  formCancelacion.post(route('panel.servicios.solicitar-cancelacion', { id: props.servicio.id }), { onSuccess: () => mostrarModalCancelacion.value = false })
+}
+
+const esActivo = computed(() => ['asignado','inicio_servicio','en_sitio_origen','salida_destino','en_destino'].includes(props.servicio?.estatus))
+
+function avanzar(estado) {
+  if (estado === 'finalizado') { mostrarModal.value = true; return }
+  router.post(route('panel.servicios.avanzar', { id: props.servicio.id }), { estado })
 }
 
 const pasos = [
@@ -92,12 +99,21 @@ const botonFlujo = {
           </div>
 
           <!-- Botón de acción -->
-          <div v-if="!finalizado" class="border-t border-gray-200 pt-4">
+          <div v-if="!finalizado" class="border-t border-gray-200 pt-4 space-y-3">
             <button @click="avanzar(botonFlujo[servicio?.estatus]?.next)"
+              v-if="esActivo"
               class="w-full py-4 px-6 text-white font-bold text-lg rounded-2xl transition-all duration-200 shadow-lg hover:scale-[1.02]"
               :style="{ backgroundColor: 'var(--color-primary)' }">
               {{ botonFlujo[servicio?.estatus]?.label || 'Actualizar' }}
             </button>
+            <button @click="mostrarModalCancelacion = true"
+              v-if="esActivo"
+              class="w-full py-3 px-6 text-red-600 font-semibold rounded-2xl bg-[#EEF2F7] shadow-[3px_3px_6px_#d0d5da,-3px_-3px_6px_#ffffff] transition-all duration-200 hover:text-red-700 border border-red-200">
+              Solicitar Cancelación
+            </button>
+            <p v-if="servicio?.estatus === 'solicitud_cancelacion'" class="text-center text-amber-600 font-medium py-4">
+              Cancelación pendiente de autorización
+            </p>
           </div>
           <div v-else class="border-t border-gray-200 pt-4 text-center text-sm text-gray-500">
             Servicio completado
@@ -140,6 +156,33 @@ const botonFlujo = {
         <div class="flex gap-3 pt-2">
           <NeumorphicButton @click="finalizar()" :loading="form.processing">Confirmar Finalización</NeumorphicButton>
           <NeumorphicButton variant="secondary" @click="mostrarModal = false">Cancelar</NeumorphicButton>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Solicitar Cancelación -->
+    <div v-if="mostrarModalCancelacion" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="mostrarModalCancelacion = false">
+      <div class="bg-white rounded-3xl p-6 w-full max-w-md mx-4 shadow-2xl space-y-4">
+        <h2 class="text-lg font-semibold text-gray-800">Solicitar Cancelación</h2>
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Tipo de Incidencia</label>
+          <select v-model="formCancelacion.tipo_incidencia" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
+            <option value="cliente_cancela">El cliente cancela</option>
+            <option value="operador_siniestro">Siniestro del operador</option>
+            <option value="falla_mecanica">Falla mecánica</option>
+            <option value="unidad_ponchada">Unidad ponchada</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">Motivo</label>
+          <textarea v-model="formCancelacion.motivo_cancelacion" rows="3" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none" placeholder="Describe el motivo..."></textarea>
+          <p v-if="formCancelacion.errors.motivo_cancelacion" class="mt-1 text-xs text-red-500">{{ formCancelacion.errors.motivo_cancelacion }}</p>
+          <p v-if="formCancelacion.errors.tipo_incidencia" class="mt-1 text-xs text-red-500">{{ formCancelacion.errors.tipo_incidencia }}</p>
+        </div>
+        <div class="flex gap-3 pt-2">
+          <NeumorphicButton variant="danger" @click="enviarCancelacion()" :loading="formCancelacion.processing">Enviar Solicitud</NeumorphicButton>
+          <NeumorphicButton variant="secondary" @click="mostrarModalCancelacion = false">Cancelar</NeumorphicButton>
         </div>
       </div>
     </div>

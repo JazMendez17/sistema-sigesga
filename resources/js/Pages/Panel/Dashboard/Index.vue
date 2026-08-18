@@ -7,27 +7,51 @@ import ProgressDonut from '@/Components/ProgressDonut.vue'
 import Badge from '@/Components/Badge.vue'
 import NeumorphicButton from '@/Components/NeumorphicButton.vue'
 
-defineProps({
+const props = defineProps({
   role: { type: String, default: 'admin' },
   kpis: { type: Array, default: () => [] },
   recentActivity: { type: Array, default: () => [] },
+  serviciosPorDia: { type: Array, default: () => [] },
+  ventasPorSemana: { type: Array, default: () => [] },
+  eficiencia: { type: Number, default: 0 },
+  resumenOperacion: { type: Object, default: () => ({ asignados: 0, enTransito: 0, finalizados: 0 }) },
   serviciosHoy: { type: Array, default: () => [] },
+  disponible: { type: Boolean, default: true },
+  tieneOperador: { type: Boolean, default: true },
+  siguienteServicio: { type: Object, default: null },
   historialCliente: { type: Array, default: () => [] },
   cotizacionesCliente: { type: Array, default: () => [] },
   facturasCliente: { type: Array, default: () => [] },
 })
 
-const disponible = ref(true)
+const disponibleLocal = ref(props.disponible ?? true)
 
-const statusColors = {
-  pendiente: 'bg-yellow-100 text-yellow-800',
-  aprobada: 'bg-green-100 text-green-800',
-  rechazada: 'bg-red-100 text-red-800',
-  en_curso: 'bg-blue-100 text-blue-800',
-  finalizado: 'bg-green-100 text-green-800',
-  asignado: 'bg-[var(--color-primary-light)] text-[var(--color-primary)]',
-  cancelado: 'bg-gray-100 text-gray-800',
+function toggleDisponibilidad() {
+  disponibleLocal.value = !disponibleLocal.value
+  router.put(route('panel.operadores.disponibilidad'), { disponible: disponibleLocal.value }, {
+    preserveScroll: true,
+    onError: () => { disponibleLocal.value = props.disponible ?? true },
+  })
 }
+
+// Variantes de Badge según el estado real de cotizaciones y servicios
+const badgeVariant = (status) => ({
+  pendiente: 'warning',
+  aprobado: 'success',
+  aprobada: 'success',
+  rechazado: 'danger',
+  rechazada: 'danger',
+  asignado: 'info',
+  inicio_servicio: 'info',
+  en_sitio_origen: 'info',
+  salida_destino: 'info',
+  en_destino: 'info',
+  finalizado: 'success',
+  solicitud_cancelacion: 'warning',
+  cancelado: 'danger',
+  vigente: 'success',
+  cancelada: 'danger',
+}[status] || 'neutral')
 </script>
 
 <template>
@@ -61,18 +85,19 @@ const statusColors = {
             <div class="mb-5 flex items-center justify-between gap-3">
               <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-text-muted)]">Tráfico</p>
-                <h3 class="mt-1 text-xl font-semibold text-[var(--color-text)]">Servicios por Día</h3>
+                <h3 class="mt-1 text-xl font-semibold text-[var(--color-text)]">Facturas por Semana</h3>
               </div>
               <div class="rounded-full bg-[var(--color-bg)] px-3 py-1 text-xs font-medium text-[var(--color-text-muted)] shadow-[inset_2px_2px_6px_var(--neumorphic-dark),inset_-2px_-2px_6px_var(--neumorphic-light)]">
-                Últimos 7 días
+                Mes actual · 4 semanas
               </div>
             </div>
             <div class="flex h-56 items-end justify-between gap-3 rounded-[24px] bg-[var(--color-bg)] p-4 shadow-[inset_6px_6px_12px_var(--neumorphic-dark),inset_-6px_-6px_12px_var(--neumorphic-light)]">
-              <div v-for="(bar, i) in [{day:'Lun',h:60},{day:'Mar',h:45},{day:'Mié',h:80},{day:'Jue',h:55},{day:'Vie',h:90},{day:'Sáb',h:40},{day:'Dom',h:20}]" :key="i" class="flex flex-1 flex-col items-center gap-2">
+              <div v-for="(bar, i) in ventasPorSemana || serviciosPorDia" :key="i" class="flex flex-1 flex-col items-center gap-2">
                 <div class="flex h-full w-full items-end">
-                  <div class="w-full rounded-t-[18px] transition-all duration-500 ease-out" :style="{ height: bar.h + '%', background: 'linear-gradient(180deg, var(--color-primary), var(--color-secondary))' }"></div>
+                  <div class="w-full rounded-t-[18px] transition-all duration-500 ease-out" :style="{ height: Math.max(bar.height, 2) + '%', background: bar.count > 0 ? 'linear-gradient(180deg, var(--color-primary), var(--color-secondary))' : '#cbd5e1' }"></div>
                 </div>
                 <span class="text-xs font-medium text-[var(--color-text-muted)]">{{ bar.day }}</span>
+                <span class="text-[10px] text-[var(--color-text-muted)]">{{ bar.count }}</span>
               </div>
             </div>
           </div>
@@ -83,9 +108,9 @@ const statusColors = {
               <h3 class="mt-1 text-xl font-semibold text-[var(--color-text)]">Estadísticas</h3>
             </div>
             <div class="flex flex-col items-center justify-center gap-4 rounded-[24px] bg-[var(--color-bg)] p-4 shadow-[inset_6px_6px_12px_var(--neumorphic-dark),inset_-6px_-6px_12px_var(--neumorphic-light)]">
-              <ProgressDonut :percentage="0" :color="'var(--color-primary)'" :size="140" />
+              <ProgressDonut :percentage="eficiencia" :color="'var(--color-primary)'" :size="140" />
               <div class="text-center">
-                <p class="text-2xl font-bold text-[var(--color-text)]">0%</p>
+                <p class="text-2xl font-bold text-[var(--color-text)]">{{ eficiencia }}%</p>
                 <p class="text-sm text-[var(--color-text-muted)]">Eficiencia General</p>
               </div>
             </div>
@@ -103,7 +128,7 @@ const statusColors = {
             <div class="space-y-3">
               <div
                 v-for="item in recentActivity"
-                :key="item.id"
+                :key="item.key || item.type + '-' + item.id"
                 @click="router.visit(route(item.type === 'cotizacion' ? 'panel.cotizaciones.show' : 'panel.servicios.show', { id: item.id }))"
                 class="flex cursor-pointer items-center justify-between gap-3 rounded-[22px] bg-[var(--color-bg)] p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)] transition-transform duration-200 hover:translate-x-0.5"
               >
@@ -118,7 +143,7 @@ const statusColors = {
                   </div>
                 </div>
                 <div class="flex items-center gap-3">
-                  <Badge :variant="item.status">{{ item.status }}</Badge>
+                  <Badge :variant="badgeVariant(item.status)">{{ item.status }}</Badge>
                   <span class="text-xs text-[var(--color-text-muted)]">{{ item.time }}</span>
                 </div>
               </div>
@@ -133,15 +158,15 @@ const statusColors = {
             <div class="space-y-3">
               <div class="rounded-[22px] bg-[var(--color-bg)] p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]">
                 <p class="text-xs uppercase tracking-[0.2em] text-[var(--color-text-muted)]">Asignados</p>
-                <p class="mt-2 min-h-[2rem] text-2xl font-bold text-[var(--color-text)]"></p>
+                <p class="mt-2 min-h-[2rem] text-2xl font-bold text-[var(--color-text)]">{{ resumenOperacion.asignados }}</p>
               </div>
               <div class="rounded-[22px] bg-[var(--color-bg)] p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]">
                 <p class="text-xs uppercase tracking-[0.2em] text-[var(--color-text-muted)]">En tránsito</p>
-                <p class="mt-2 min-h-[2rem] text-2xl font-bold text-[var(--color-text)]"></p>
+                <p class="mt-2 min-h-[2rem] text-2xl font-bold text-[var(--color-text)]">{{ resumenOperacion.enTransito }}</p>
               </div>
               <div class="rounded-[22px] bg-[var(--color-bg)] p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]">
                 <p class="text-xs uppercase tracking-[0.2em] text-[var(--color-text-muted)]">Finalizados</p>
-                <p class="mt-2 min-h-[2rem] text-2xl font-bold text-[var(--color-text)]"></p>
+                <p class="mt-2 min-h-[2rem] text-2xl font-bold text-[var(--color-text)]">{{ resumenOperacion.finalizados }}</p>
               </div>
             </div>
           </div>
@@ -174,7 +199,7 @@ const statusColors = {
                 </div>
                 <div class="flex items-center gap-3">
                   <span class="text-xs text-[var(--color-text-muted)]">{{ sv.horario }}</span>
-                  <Badge :variant="sv.status">{{ sv.status }}</Badge>
+                  <Badge :variant="badgeVariant(sv.status)">{{ sv.status }}</Badge>
                 </div>
               </div>
             </div>
@@ -187,14 +212,17 @@ const statusColors = {
                 <h3 class="mt-1 text-xl font-semibold text-[var(--color-text)]">Servicio</h3>
               </div>
               <div class="rounded-[24px] bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] p-5 text-white shadow-[10px_10px_20px_var(--neumorphic-dark),-10px_-10px_20px_var(--neumorphic-light)]">
-                <p class="text-sm font-medium opacity-80">Próximo destino</p>
-                <p class="mt-2 text-xl font-bold">Zona Industrial</p>
-                <p class="mt-2 text-sm opacity-80">Cliente: María García</p>
-                <p class="text-sm opacity-80">Horario: 09:00 - 11:00</p>
-                <div class="mt-4 flex items-center gap-2">
-                  <div class="h-2 w-2 animate-pulse rounded-full bg-white"></div>
-                  <span class="text-xs font-medium">Inicia en 30 min</span>
-                </div>
+                <template v-if="siguienteServicio">
+                  <p class="text-sm font-medium opacity-80">{{ siguienteServicio.folio }}</p>
+                  <p class="mt-2 text-xl font-bold">{{ siguienteServicio.destino }}</p>
+                  <p class="mt-2 text-sm opacity-80">Cliente: {{ siguienteServicio.cliente }}</p>
+                  <p class="text-sm opacity-80">Inicio: {{ siguienteServicio.inicio }}</p>
+                </template>
+                <template v-else>
+                  <p class="text-sm font-medium opacity-80">Próximo</p>
+                  <p class="mt-2 text-xl font-bold">Sin servicios pendientes</p>
+                  <p class="mt-2 text-sm opacity-80">No tienes servicios asignados por el momento.</p>
+                </template>
               </div>
             </div>
 
@@ -204,15 +232,16 @@ const statusColors = {
                 <h3 class="mt-1 text-xl font-semibold text-[var(--color-text)]">Disponibilidad</h3>
               </div>
               <button
-                @click="disponible = !disponible; router.put(route('panel.operadores.update', { id: 'me' }), { disponible: disponible }, { preserveScroll: true })"
+                @click="toggleDisponibilidad"
                 class="flex w-full items-center justify-between rounded-[22px] bg-[var(--color-bg)] p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)] transition-all duration-300"
               >
                 <div class="flex items-center gap-3">
-                  <div class="h-4 w-4 rounded-full transition-colors duration-300" :class="disponible ? 'bg-green-500 shadow-[0_0_12px_rgba(34,197,94,0.5)]' : 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.5)]'"></div>
-                  <span class="text-sm font-semibold text-[var(--color-text)]">{{ disponible ? 'Disponible' : 'No Disponible' }}</span>
+                  <div class="h-4 w-4 rounded-full transition-colors duration-300" :class="disponibleLocal ? 'bg-green-500 shadow-[0_0_12px_rgba(34,197,94,0.5)]' : 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.5)]'"></div>
+                  <span class="text-sm font-semibold text-[var(--color-text)]">{{ disponibleLocal ? 'Disponible' : 'No Disponible' }}</span>
                 </div>
-                <span class="text-xs text-[var(--color-text-muted)]">{{ disponible ? 'Tocando para desactivar' : 'Tocando para activar' }}</span>
+                <span class="text-xs text-[var(--color-text-muted)]">{{ disponibleLocal ? 'Tocando para desactivar' : 'Tocando para activar' }}</span>
               </button>
+              <p v-if="tieneOperador === false" class="text-xs text-[var(--color-text-muted)] mt-2">No tienes un perfil de operador asignado. Contacta al administrador para activar tu disponibilidad.</p>
             </div>
           </div>
         </div>

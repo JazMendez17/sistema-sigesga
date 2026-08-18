@@ -115,6 +115,7 @@ class ServicioObserver
             'empresa_id' => $s->empresa_id,
             'usuario_id' => $usuarioId,
             'mensaje' => $mensaje,
+            'canal' => 'sistema_push',
             'estado' => 'pendiente',
         ]);
     }

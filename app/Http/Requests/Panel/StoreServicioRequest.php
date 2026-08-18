@@ -37,9 +37,9 @@ class StoreServicioRequest extends FormRequest
         $id = $this->route('id');
 
         $rules = [
-            'cotizacion_id' => 'nullable|exists:cotizaciones,id',
-            'operador_id' => 'nullable|exists:operadores,id',
-            'unidad_id' => 'nullable|exists:unidades,id',
+            'cotizacion_id' => 'required|exists:cotizaciones,id',
+            'operador_id' => 'required|exists:operadores,id',
+            'unidad_id' => 'required|exists:unidades,id',
             'oficina_id' => 'nullable|exists:oficinas,id',
             'observaciones' => 'nullable|string|max:1000',
         ];
@@ -62,8 +62,11 @@ class StoreServicioRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'cotizacion_id.required' => 'La cotización es obligatoria.',
             'cotizacion_id.exists' => 'La cotización seleccionada no existe.',
+            'operador_id.required' => 'El operador es obligatorio.',
             'operador_id.exists' => 'El operador seleccionado no existe.',
+            'unidad_id.required' => 'La unidad es obligatoria.',
             'unidad_id.exists' => 'La unidad seleccionada no existe.',
             'oficina_id.exists' => 'La oficina seleccionada no existe.',
             'observaciones.max' => 'Las observaciones no deben exceder los 1000 caracteres.',

@@ -103,7 +103,7 @@ class AuthenticatedSessionController extends Controller
 
         $user = Auth::user();
         $user->update([
-            'password' => Hash::make($request->password),
+            'password' => $request->password,
             'debe_cambiar_password' => false,
         ]);
 

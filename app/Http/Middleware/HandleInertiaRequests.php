@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\Empresa;
 use App\Models\EmpresaModuloColore;
+use App\Models\Notificacione;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -72,7 +73,12 @@ class HandleInertiaRequests extends Middleware
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
                 'uploaded_path' => $request->session()->get('uploaded_path'),
+                'reporte' => $request->session()->get('reporte'),
             ],
+            'unreadNotifications' => $user ? Notificacione::where('empresa_id', $user->empresa_id)
+                ->when(!in_array($user->rol, ['admin', 'cotizador']), fn($q) => $q->where('usuario_id', $user->id))
+                ->where('estado', '!=', 'leido')
+                ->count() : 0,
         ];
     }
 }

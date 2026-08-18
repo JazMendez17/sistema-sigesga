@@ -11,11 +11,29 @@ use App\Models\Direccion;
 use App\Models\Usuario;
 use App\Http\Requests\Panel\StoreEmpleadoRequest;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 
 class EmpleadosController extends Controller
 {
+    // Mapea el puesto de un empleado a un rol válido del sistema
+    protected function mapearRol(string $puesto): string
+    {
+        $puesto = mb_strtolower(trim($puesto));
+
+        if (str_contains($puesto, 'operador')) {
+            return 'operador';
+        }
+
+        if (str_contains($puesto, 'cotizador') || str_contains($puesto, 'cotización') || str_contains($puesto, 'ventas')) {
+            return 'cotizador';
+        }
+
+        if (str_contains($puesto, 'admin') || str_contains($puesto, 'gerente') || str_contains($puesto, 'director') || str_contains($puesto, 'dueño') || str_contains($puesto, 'dueno')) {
+            return 'admin';
+        }
+
+        return 'cotizador';
+    }
     // Lista de empleados
     public function index()
     {
@@ -78,9 +96,9 @@ class EmpleadosController extends Controller
                     'empresa_id' => $user->empresa_id,
                     'empleado_id' => $empleado->id,
                     'name' => trim($empleado->nombre . ' ' . ($empleado->apellido_paterno ?? '') . ' ' . ($empleado->apellido_materno ?? '')),
-                    'password' => Hash::make('Empleado123.'),
+                    'password' => 'Empleado123.',
                     'debe_cambiar_password' => true,
-                    'rol' => $empleado->puesto,
+                    'rol' => $this->mapearRol($empleado->puesto),
                 ]
             );
             if ($usuario->wasRecentlyCreated) $usuarioCreado = $usuario;

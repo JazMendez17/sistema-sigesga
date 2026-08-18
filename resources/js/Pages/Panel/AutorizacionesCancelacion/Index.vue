@@ -37,11 +37,23 @@ const filtradas = computed(() => {
 })
 
 function aprobar(id) {
-  router.post(route('panel.autorizaciones-cancelacion.aprobar', { id }))
+  if (confirm('¿Aprobar esta cancelación? El servicio será cancelado.')) {
+    router.post(route('panel.autorizaciones-cancelacion.aprobar', { id }))
+  }
 }
 
 function rechazar(id) {
-  router.post(route('panel.autorizaciones-cancelacion.rechazar', { id }))
+  if (confirm('¿Rechazar esta solicitud de cancelación?')) {
+    router.post(route('panel.autorizaciones-cancelacion.rechazar', { id }))
+  }
+}
+
+const badgeVariant = {
+  pendiente: 'warning',
+  aprobada: 'success',
+  rechazada: 'danger',
+  cancelado_por_cotizador: 'info',
+  cancelado_por_admin: 'info',
 }
 </script>
 
@@ -77,13 +89,10 @@ function rechazar(id) {
       <div class="rounded-3xl bg-[#EEF2F7] p-6 shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
         <DataTable :columns="columns" :data="filtradas">
           <template #cell-estatus="{ row }">
-            <Badge :variant="row.estatus">{{ row.estatus }}</Badge>
+            <Badge :variant="badgeVariant[row.estatus] || 'neutral'">{{ row.estatus }}</Badge>
           </template>
           <template #actions="{ row }">
             <div class="flex items-center gap-2">
-              <button @click="router.visit(route('panel.autorizaciones-cancelacion.edit', { id: row.id }))" class="rounded-lg bg-[#EEF2F7] p-2 text-gray-500 shadow-[3px_3px_6px_#d0d5da,-3px_-3px_6px_#ffffff] transition-all hover:text-[#4F46E5]">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-              </button>
               <button v-if="row.estatus === 'pendiente'" @click="aprobar(row.id)" class="rounded-lg bg-[#EEF2F7] p-2 text-gray-500 shadow-[3px_3px_6px_#d0d5da,-3px_-3px_6px_#ffffff] transition-all hover:text-[#059669]">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
               </button>

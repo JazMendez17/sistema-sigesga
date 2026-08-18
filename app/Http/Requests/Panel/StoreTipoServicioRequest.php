@@ -6,6 +6,7 @@ namespace App\Http\Requests\Panel;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class StoreTipoServicioRequest extends FormRequest
@@ -42,7 +43,11 @@ class StoreTipoServicioRequest extends FormRequest
         ];
 
         if (!$id || $this->has('nombre')) {
-            $rules['nombre'] = 'required|string|max:255|unique:catalogo_servicios,nombre,' . $id . ',id,deleted_at,NULL';
+            $empresaId = $this->user()?->empresa_id;
+            $rules['nombre'] = ['required', 'string', 'max:100', Rule::unique('catalogo_servicios', 'nombre')
+                ->where('empresa_id', $empresaId)
+                ->whereNull('deleted_at')
+                ->ignore($id)];
         }
 
         return $rules;
@@ -53,7 +58,7 @@ class StoreTipoServicioRequest extends FormRequest
     {
         return [
             'nombre.required' => 'El nombre del tipo de servicio es obligatorio.',
-            'nombre.max' => 'El nombre no debe exceder los 255 caracteres.',
+            'nombre.max' => 'El nombre no debe exceder los 100 caracteres.',
             'nombre.unique' => 'El nombre del tipo de servicio ya está registrado.',
             'requiere_maniobra.boolean' => 'El campo requiere maniobra debe ser verdadero o falso.',
             'activo.boolean' => 'El campo activo debe ser verdadero o falso.',

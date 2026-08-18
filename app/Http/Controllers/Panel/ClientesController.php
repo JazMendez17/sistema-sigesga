@@ -11,7 +11,6 @@ use App\Models\Direccion;
 use App\Models\Usuario;
 use App\Http\Requests\Panel\StoreClienteRequest;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 
 class ClientesController extends Controller
@@ -83,7 +82,7 @@ class ClientesController extends Controller
                 [
                     'empresa_id' => $user->empresa_id,
                     'name' => trim(($data['nombre'] ?? '') . ' ' . ($data['apellido_paterno'] ?? '') . ' ' . ($data['apellido_materno'] ?? '')),
-                    'password' => Hash::make('Cliente123.'),
+                    'password' => 'Cliente123.',
                     'debe_cambiar_password' => true,
                     'rol' => 'cliente',
                 ]

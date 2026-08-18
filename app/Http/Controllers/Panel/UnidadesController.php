@@ -53,7 +53,7 @@ class UnidadesController extends Controller
 
         return Inertia::render('Panel/Unidades/Create', [
             'operadores' => Empleado::where('empresa_id', $empresaId)
-                ->where('puesto', 'operador')
+                ->where('puesto', 'like', '%operador%')
                 ->get()
                 ->map(fn ($e) => [
                     'id' => $e->operador?->id ?? null,
@@ -99,7 +99,7 @@ class UnidadesController extends Controller
         return Inertia::render('Panel/Unidades/Create', [
             'unidad' => Unidade::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id),
             'operadores' => Empleado::where('empresa_id', $empresaId)
-                ->where('puesto', 'operador')
+                ->where('puesto', 'like', '%operador%')
                 ->get()
                 ->map(fn ($e) => [
                     'id' => $e->operador?->id ?? null,

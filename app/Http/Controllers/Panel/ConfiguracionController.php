@@ -66,6 +66,18 @@ class ConfiguracionController extends Controller
             'modo_oscuro' => 'nullable|boolean',
             'logo' => 'nullable|string|max:500',
             'imagen_fondo' => 'nullable|string|max:500',
+            'nosotros' => 'nullable|array',
+            'nosotros.quienes_somos' => 'nullable|string',
+            'nosotros.mision' => 'nullable|string',
+            'nosotros.vision' => 'nullable|string',
+            'valores' => 'nullable|array',
+            'valores.*.valor' => 'nullable|string|max:100',
+            'valores.*.descripcion' => 'nullable|string|max:255',
+            'servicios_landing' => 'nullable|array',
+            'servicios_landing.*.tipo' => 'nullable|string|max:100',
+            'servicios_landing.*.foto' => 'nullable|string|max:255',
+            'modulo_colores' => 'nullable|array',
+            'modulo_colores.*' => 'nullable|string|max:20|regex:/^#[0-9A-Fa-f]{6}$/',
         ]);
 
         $data['modo_oscuro'] = $request->boolean('modo_oscuro');

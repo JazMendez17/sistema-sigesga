@@ -11,6 +11,7 @@ use App\Models\Operadore;
 use App\Models\Unidade;
 use App\Models\Oficina;
 use App\Http\Requests\Panel\StoreServicioRequest;
+use App\Models\AutorizacionesCancelacione;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -95,10 +96,22 @@ class ServiciosController extends Controller
     // Ver detalle de servicio con bitácora
     public function show($id)
     {
-        $servicio = Servicio::with([
+        $user = Auth::user();
+
+        $query = Servicio::with([
             'cotizacion.cliente', 'cotizacion.tipoServicio',
             'operador.empleado', 'unidad', 'bitacoraTiemposServicio',
-        ])->where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+        ])->where('empresa_id', $user->empresa_id);
+
+        if ($user->rol === 'cliente') {
+            $cliente = \App\Models\Cliente::where('usuario_id', $user->id)->first();
+            if (!$cliente) {
+                abort(404);
+            }
+            $query->whereHas('cotizacion', fn ($q) => $q->where('cliente_id', $cliente->id));
+        }
+
+        $servicio = $query->findOrFail($id);
 
         return Inertia::render('Panel/Servicios/Show', [
             'servicio' => [
@@ -189,6 +202,14 @@ class ServiciosController extends Controller
             return back()->with('error', 'Estado no válido.');
         }
 
+        $indiceActual = array_search($servicio->estado, $flujo);
+        $indiceNuevo = array_search($nuevoEstado, $flujo);
+
+        // Solo se permite avanzar un paso a la vez dentro del flujo activo
+        if ($indiceActual === false || $indiceNuevo !== $indiceActual + 1) {
+            return back()->with('error', 'Transición no permitida: el servicio debe avanzar paso a paso desde su estado actual.');
+        }
+
         $data = ['estado' => $nuevoEstado];
 
         // Registrar bitácora de tiempos
@@ -229,10 +250,57 @@ class ServiciosController extends Controller
         return back()->with('success', "Servicio actualizado a: {$nuevoEstado}");
     }
 
+    // Solicitar cancelación de un servicio (genera autorización)
+    public function solicitarCancelacion(Request $request, $id)
+    {
+        $request->validate([
+            'motivo_cancelacion' => 'required|string|max:500',
+            'tipo_incidencia' => 'required|in:cliente_cancela,operador_siniestro,falla_mecanica,unidad_ponchada,otro',
+        ]);
+
+        $servicio = Servicio::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+
+        if (!in_array($servicio->estado, ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino'])) {
+            return back()->with('error', 'Este servicio no se puede solicitar en cancelación en su estado actual.');
+        }
+
+        $existente = AutorizacionesCancelacione::where('servicio_id', $servicio->id)
+            ->where('estatus', 'pendiente')
+            ->exists();
+        if ($existente) {
+            return back()->with('error', 'Este servicio ya tiene una solicitud de cancelación pendiente.');
+        }
+
+        AutorizacionesCancelacione::create([
+            'servicio_id' => $servicio->id,
+            'usuario_solicitante_id' => auth()->id(),
+            'motivo_cancelacion' => $request->motivo_cancelacion,
+            'tipo_incidencia' => $request->tipo_incidencia,
+            'estatus' => 'pendiente',
+            'fecha_solicitud' => now(),
+        ]);
+
+        $servicio->update(['estado' => 'solicitud_cancelacion']);
+
+        return back()->with('success', 'Solicitud de cancelación enviada. Queda pendiente de autorización.');
+    }
+
     // Página de evaluación del servicio para el cliente
     public function evaluar($id)
     {
-        $servicio = Servicio::with('cotizacion.cliente')->findOrFail($id);
+        $user = Auth::user();
+
+        $query = Servicio::with('cotizacion.cliente')->where('empresa_id', $user->empresa_id);
+
+        if ($user->rol === 'cliente') {
+            $cliente = \App\Models\Cliente::where('usuario_id', $user->id)->first();
+            if (!$cliente) {
+                abort(404);
+            }
+            $query->whereHas('cotizacion', fn ($q) => $q->where('cliente_id', $cliente->id));
+        }
+
+        $servicio = $query->findOrFail($id);
         return Inertia::render('Panel/EvaluarServicio', [
             'servicio' => [
                 'id' => $servicio->id,
@@ -252,12 +320,26 @@ class ServiciosController extends Controller
             'comentario' => 'nullable|string|max:500',
         ]);
 
-        $servicio = Servicio::findOrFail($id);
+        $usuario = auth()->user();
+        $clienteId = null;
+
+        $query = Servicio::with('cotizacion')->where('empresa_id', $usuario->empresa_id);
+
+        if ($usuario->rol === 'cliente') {
+            $cliente = \App\Models\Cliente::where('usuario_id', $usuario->id)->first();
+            if (!$cliente) {
+                abort(404);
+            }
+            $clienteId = $cliente->id;
+            $query->whereHas('cotizacion', fn ($q) => $q->where('cliente_id', $cliente->id));
+        }
+
+        $servicio = $query->findOrFail($id);
 
         \App\Models\CalificacionesServicio::updateOrCreate(
             ['servicio_id' => $servicio->id],
             [
-                'cliente_id' => $servicio->cotizacion?->cliente_id,
+                'cliente_id' => $clienteId ?? $servicio->cotizacion?->cliente_id,
                 'estrellas' => $request->estrellas,
                 'comentario' => $request->comentario,
             ]

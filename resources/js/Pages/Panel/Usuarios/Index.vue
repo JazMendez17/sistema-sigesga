@@ -19,11 +19,11 @@ const usuarios = computed(() => page.props.usuarios || [])
 const rolesDisponibles = computed(() => page.props.roles || ['admin', 'cotizador', 'operador', 'cliente'])
 
 function cambiarRol(usuarioId, nuevoRol) {
-  router.put(route('panel.usuarios.update', { id: usuarioId }), { rol: nuevoRol })
+  router.put(route('panel.usuarios.rol', { id: usuarioId }), { rol: nuevoRol })
 }
 
 function desbloquear(id) {
-  router.put(route('panel.usuarios.update', { id }), { cuenta_bloqueada: false })
+  router.put(route('panel.usuarios.desbloquear', { id }))
 }
 
 function eliminarUsuario(id) {

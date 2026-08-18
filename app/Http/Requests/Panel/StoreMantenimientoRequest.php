@@ -36,9 +36,9 @@ class StoreMantenimientoRequest extends FormRequest
     {
         return [
             'unidad_id' => 'required|exists:unidades,id',
-            'tipo' => 'required|string|max:255',
+            'tipo' => 'required|string|max:100',
             'fecha' => 'required|date',
-            'kilometraje' => 'required|integer|min:0',
+            'kilometraje' => 'nullable|integer|min:0',
             'costo' => 'required|numeric|min:0',
             'proximo_mantenimiento_fecha' => 'nullable|date|after:today',
             'proximo_mantenimiento_km' => 'nullable|integer|min:0',
@@ -53,10 +53,9 @@ class StoreMantenimientoRequest extends FormRequest
             'unidad_id.required' => 'La unidad es obligatoria.',
             'unidad_id.exists' => 'La unidad seleccionada no existe.',
             'tipo.required' => 'El tipo de mantenimiento es obligatorio.',
-            'tipo.max' => 'El tipo de mantenimiento no debe exceder los 255 caracteres.',
+            'tipo.max' => 'El tipo de mantenimiento no debe exceder los 100 caracteres.',
             'fecha.required' => 'La fecha es obligatoria.',
             'fecha.date' => 'La fecha no tiene un formato válido.',
-            'kilometraje.required' => 'El kilometraje es obligatorio.',
             'kilometraje.integer' => 'El kilometraje debe ser un número entero.',
             'kilometraje.min' => 'El kilometraje debe ser mayor o igual a 0.',
             'costo.required' => 'El costo es obligatorio.',

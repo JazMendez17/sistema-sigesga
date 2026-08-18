@@ -1,12 +1,16 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, getCurrentInstance } from 'vue'
 
 const props = defineProps({
   percentage: { type: Number, default: 73 },
   size: { type: Number, default: 140 },
   strokeWidth: { type: Number, default: 10 },
-  color: { type: String, default: 'url(#progressGradient)' },
+  color: { type: String, default: '' },
 })
+
+const uid = getCurrentInstance().uid
+const gradientId = `progressGradient-${uid}`
+const glowId = `glow-${uid}`
 
 const radius = computed(() => (props.size - props.strokeWidth) / 2)
 const circumference = computed(() => 2 * Math.PI * radius.value)
@@ -28,11 +32,11 @@ const center = computed(() => props.size / 2)
     <!-- SVG de la dona -->
     <svg :width="size" :height="size" class="relative z-10 transform -rotate-90 overflow-visible">
       <defs>
-        <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+        <linearGradient :id="gradientId" x1="0%" y1="0%" x2="100%" y2="0%">
           <stop offset="0%" stop-color="var(--color-primary)" />
           <stop offset="100%" stop-color="var(--color-secondary)" />
         </linearGradient>
-        <filter id="glow">
+        <filter :id="glowId">
           <feGaussianBlur stdDeviation="3" result="coloredBlur" />
           <feMerge>
             <feMergeNode in="coloredBlur" />
@@ -68,7 +72,7 @@ const center = computed(() => props.size / 2)
         stroke-linecap="round"
         :stroke-dasharray="circumference"
         :stroke-dashoffset="offset"
-        filter="url(#glow)"
+        :filter="`url(#${glowId})`"
         class="transition-all duration-1000 ease-out"
       />
     </svg>

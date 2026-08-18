@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Operadore;
 use App\Models\Empleado;
 use App\Http\Requests\Panel\StoreOperadorRequest;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
@@ -25,7 +26,7 @@ class OperadoresController extends Controller
             ->get()
             ->map(fn ($o) => [
                 'id' => $o->id,
-                'nombre' => $o->empleado?->nombre ?? '—',
+                'nombre' => $o->empleado ? trim(($o->empleado->nombre ?? '') . ' ' . ($o->empleado->apellido_paterno ?? '') . ' ' . ($o->empleado->apellido_materno ?? '')) : '—',
                 'tipo_licencia' => $o->tipo_licencia ?? '—',
                 'numero_licencia' => $o->numero_licencia ?? '—',
                 'fecha_expedicion' => $o->fecha_expedicion ? \Carbon\Carbon::parse($o->fecha_expedicion)->format('Y-m-d') : '—',
@@ -53,7 +54,12 @@ class OperadoresController extends Controller
         $empresaId = $user->empresa_id;
 
         return Inertia::render('Panel/Operadores/Create', [
-            'empleados' => Empleado::where('empresa_id', $empresaId)->where('puesto', 'operador')->get(['id', 'nombre', 'apellido_paterno', 'apellido_materno']),
+            'empleados' => Empleado::where('empresa_id', $empresaId)
+                ->where(function ($q) {
+                    $q->where('puesto', 'LIKE', '%operador%')
+                      ->orWhere('puesto', 'LIKE', '%Operador%');
+                })
+                ->get(['id', 'nombre', 'apellido_paterno', 'apellido_materno']),
         ]);
     }
 
@@ -88,7 +94,12 @@ class OperadoresController extends Controller
 
         return Inertia::render('Panel/Operadores/Create', [
             'operador' => Operadore::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id),
-            'empleados' => Empleado::where('empresa_id', $empresaId)->where('puesto', 'operador')->get(['id', 'nombre', 'apellido_paterno', 'apellido_materno']),
+            'empleados' => Empleado::where('empresa_id', $empresaId)
+                ->where(function ($q) {
+                    $q->where('puesto', 'LIKE', '%operador%')
+                      ->orWhere('puesto', 'LIKE', '%Operador%');
+                })
+                ->get(['id', 'nombre', 'apellido_paterno', 'apellido_materno']),
         ]);
     }
 
@@ -103,6 +114,28 @@ class OperadoresController extends Controller
 
         return redirect()->route('panel.operadores.index')
             ->with('success', 'Operador actualizado correctamente');
+    }
+
+    // Cambiar disponibilidad del operador autenticado (panel del operador)
+    public function cambiarDisponibilidad(Request $request)
+    {
+        $request->validate([
+            'disponible' => 'required|boolean',
+        ]);
+
+        $operador = Operadore::where('empresa_id', auth()->user()->empresa_id)
+            ->where('empleado_id', auth()->user()->empleado_id)
+            ->first();
+
+        if (!$operador) {
+            return back()->with('error', 'No tienes un perfil de operador asignado.');
+        }
+
+        $operador->update(['disponible' => $request->boolean('disponible')]);
+
+        return back()->with('success', $request->boolean('disponible')
+            ? 'Ahora estás disponible para nuevos servicios.'
+            : 'Disponibilidad desactivada.');
     }
 
     // Eliminar operador

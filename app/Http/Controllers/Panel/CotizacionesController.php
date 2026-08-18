@@ -19,6 +19,7 @@ use App\Models\Oficina;
 use App\Http\Requests\Panel\StoreCotizacionRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class CotizacionesController extends Controller
@@ -73,10 +74,12 @@ class CotizacionesController extends Controller
         $data['estatus'] = 'pendiente';
 
         if (empty($data['folio'])) {
-            $data['folio'] = 'COT-' . str_pad((Cotizacione::max('id') ?? 0) + 1, 5, '0', STR_PAD_LEFT);
+            $data['folio'] = 'COT-' . str_pad((Cotizacione::query()->lockForUpdate()->max('id') ?? 0) + 1, 5, '0', STR_PAD_LEFT);
         }
 
-        Cotizacione::create($data);
+        DB::transaction(function () use ($data) {
+            Cotizacione::create($data);
+        });
 
         return redirect()->route('panel.cotizaciones.index')
             ->with('success', 'Cotización creada correctamente');
@@ -86,7 +89,18 @@ class CotizacionesController extends Controller
     public function show($id)
     {
         $user = Auth::user();
-        $cotizacion = Cotizacione::with(['cliente', 'tipoServicio', 'usuarioCreador', 'servicio'])->where('empresa_id', $user->empresa_id)->findOrFail($id);
+
+        $query = Cotizacione::with(['cliente', 'tipoServicio', 'usuarioCreador', 'servicio'])->where('empresa_id', $user->empresa_id);
+
+        if ($user->rol === 'cliente') {
+            $cliente = Cliente::where('usuario_id', $user->id)->first();
+            if (!$cliente) {
+                abort(404);
+            }
+            $query->where('cliente_id', $cliente->id);
+        }
+
+        $cotizacion = $query->findOrFail($id);
 
         return Inertia::render('Panel/Cotizaciones/Show', [
             'cotizacion' => [
@@ -113,25 +127,32 @@ class CotizacionesController extends Controller
     // Aprobar cotización y crear servicio
     public function aprobar(Request $request, $id)
     {
-        $cotizacion = Cotizacione::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+        $empresaId = auth()->user()->empresa_id;
+        $cotizacion = Cotizacione::where('empresa_id', $empresaId)->findOrFail($id);
+
+        if ($cotizacion->estatus === 'aprobado' || $cotizacion->servicio) {
+            return back()->with('error', 'Esta cotización ya fue aprobada y tiene un servicio asociado.');
+        }
 
         $request->validate([
-            'operador_id' => 'required|exists:operadores,id',
-            'unidad_id' => 'required|exists:unidades,id',
+            'operador_id' => 'required|exists:operadores,id,empresa_id,' . $empresaId,
+            'unidad_id' => 'required|exists:unidades,id,empresa_id,' . $empresaId,
         ]);
 
-        $cotizacion->update(['estatus' => 'aprobado']);
+        DB::transaction(function () use ($cotizacion, $request) {
+            $cotizacion->update(['estatus' => 'aprobado']);
 
-        Servicio::create([
-            'empresa_id' => $cotizacion->empresa_id,
-            'cotizacion_id' => $cotizacion->id,
-            'operador_id' => $request->operador_id,
-            'unidad_id' => $request->unidad_id,
-            'estado' => 'asignado',
-            'costo_final_real' => $cotizacion->costo_total,
-        ]);
+            Servicio::create([
+                'empresa_id' => $cotizacion->empresa_id,
+                'cotizacion_id' => $cotizacion->id,
+                'operador_id' => $request->operador_id,
+                'unidad_id' => $request->unidad_id,
+                'estado' => 'asignado',
+                'costo_final_real' => $cotizacion->costo_total,
+            ]);
 
-        Operadore::where('id', $request->operador_id)->update(['disponible' => false]);
+            Operadore::where('id', $request->operador_id)->update(['disponible' => false]);
+        });
 
         return back()->with('success', 'Cotización aprobada y servicio creado correctamente.');
     }

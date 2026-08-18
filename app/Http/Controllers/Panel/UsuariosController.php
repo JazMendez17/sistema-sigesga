@@ -8,8 +8,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Usuario;
 use App\Models\Empleado;
 use App\Http\Requests\Panel\StoreUsuarioRequest;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 
 class UsuariosController extends Controller
@@ -56,7 +56,6 @@ class UsuariosController extends Controller
 
         $data = $request->validated();
         $data['empresa_id'] = $user->empresa_id;
-        $data['password'] = Hash::make($data['password']);
 
         Usuario::create($data);
 
@@ -109,17 +108,53 @@ class UsuariosController extends Controller
 
         $data = $request->validated();
 
-        if ($request->filled('password')) {
-            $data['password'] = Hash::make($request->password);
-        } else {
+        if (!$request->filled('password')) {
             unset($data['password']);
         }
 
-        $data['cuenta_bloqueada'] = $request->boolean('cuenta_bloqueada');
+        if ($request->has('cuenta_bloqueada')) {
+            $data['cuenta_bloqueada'] = $request->boolean('cuenta_bloqueada');
+        } else {
+            unset($data['cuenta_bloqueada']);
+        }
+
         $usuario->update($data);
 
         return redirect()->route('panel.usuarios.index')
             ->with('success', 'Usuario actualizado correctamente');
+    }
+
+    // Cambiar el rol de un usuario (acción parcial)
+    public function cambiarRol(Request $request, $id)
+    {
+        $request->validate([
+            'rol' => 'required|in:admin,cotizador,operador,cliente',
+        ]);
+
+        $usuario = Usuario::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+
+        if ($usuario->id === Auth::id()) {
+            return back()->with('error', 'No puedes cambiar tu propio rol.');
+        }
+
+        $usuario->update(['rol' => $request->rol]);
+
+        return back()->with('success', 'Rol actualizado correctamente');
+    }
+
+    // Desbloquear la cuenta de un usuario (acción parcial)
+    public function desbloquear($id)
+    {
+        $usuario = Usuario::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+
+        $usuario->update([
+            'cuenta_bloqueada' => false,
+            'intentos_fallidos' => 0,
+            'codigo_desbloqueo' => null,
+            'codigo_desbloqueo_expira' => null,
+        ]);
+
+        return back()->with('success', 'Cuenta desbloqueada correctamente');
     }
 
     // Eliminar usuario
@@ -129,6 +164,10 @@ class UsuariosController extends Controller
 
         if ($usuario->id === Auth::id()) {
             return redirect()->back()->with('error', 'No puedes eliminar tu propio usuario.');
+        }
+
+        if ($usuario->email === 'admin@sigesga.com') {
+            return redirect()->back()->with('error', 'El administrador principal del sistema no puede ser eliminado.');
         }
 
         $usuario->delete();

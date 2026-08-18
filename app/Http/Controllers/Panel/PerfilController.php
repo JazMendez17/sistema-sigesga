@@ -115,7 +115,7 @@ class PerfilController extends Controller
         }
 
         $user->update([
-            'password' => Hash::make($request->nueva),
+            'password' => $request->nueva,
         ]);
 
         return back()->with('success', 'Contraseña actualizada correctamente');
