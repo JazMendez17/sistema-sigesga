@@ -5,6 +5,7 @@
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
+use App\Support\Auditoria;
 use App\Models\Aseguradora;
 use App\Models\AseguradoraContacto;
 use App\Models\Convenio;
@@ -124,6 +125,7 @@ class AseguradorasController extends Controller
         // Reemplazar lista de contactos: elimina los anteriores y crea los nuevos
         if ($request->has('contactos')) {
             foreach ($aseguradora->aseguradoraContactos as $contactoExistente) {
+                Auditoria::registrar($contactoExistente);
                 $contactoExistente->delete();
             }
             foreach ($contactos as $contacto) {
@@ -153,6 +155,9 @@ class AseguradorasController extends Controller
     {
         $aseguradora = Aseguradora::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
         $contacto = $aseguradora->aseguradoraContactos()->findOrFail($contactoId);
+
+        Auditoria::registrar($contacto);
+
         $contacto->delete();
 
         return back()->with('success', 'Contacto eliminado correctamente');
@@ -166,6 +171,8 @@ class AseguradorasController extends Controller
         if ($aseguradora->convenios()->count() > 0) {
             return redirect()->back()->with('error', 'No se puede eliminar la aseguradora porque tiene convenios asociados.');
         }
+
+        Auditoria::registrar($aseguradora);
 
         $aseguradora->delete();
 

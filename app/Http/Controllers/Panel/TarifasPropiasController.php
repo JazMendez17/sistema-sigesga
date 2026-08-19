@@ -5,6 +5,7 @@
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
+use App\Support\Auditoria;
 use App\Models\TarifasEmpresa;
 use App\Models\CatalogoServicio;
 use App\Http\Requests\Panel\StoreTarifaPropiaRequest;
@@ -94,7 +95,11 @@ class TarifasPropiasController extends Controller
     // Eliminar tarifa propia
     public function destroy($id)
     {
-        TarifasEmpresa::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id)->delete();
+        $tarifa = TarifasEmpresa::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+
+        Auditoria::registrar($tarifa);
+
+        $tarifa->delete();
 
         return redirect()->route('panel.tarifas-propias.index')
             ->with('success', 'Tarifa eliminada correctamente');

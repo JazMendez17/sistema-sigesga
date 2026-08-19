@@ -5,6 +5,7 @@
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
+use App\Support\Auditoria;
 use App\Models\Usuario;
 use App\Models\Empleado;
 use App\Http\Requests\Panel\StoreUsuarioRequest;
@@ -169,6 +170,8 @@ class UsuariosController extends Controller
         if ($usuario->email === 'admin@sigesga.com') {
             return redirect()->back()->with('error', 'El administrador principal del sistema no puede ser eliminado.');
         }
+
+        Auditoria::registrar($usuario);
 
         $usuario->delete();
 

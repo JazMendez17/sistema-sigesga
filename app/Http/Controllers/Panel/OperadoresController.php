@@ -5,6 +5,7 @@
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
+use App\Support\Auditoria;
 use App\Models\Operadore;
 use App\Models\Empleado;
 use App\Http\Requests\Panel\StoreOperadorRequest;
@@ -146,6 +147,8 @@ class OperadoresController extends Controller
         if ($operadore->servicios()->whereIn('estado', ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino'])->count() > 0) {
             return redirect()->back()->with('error', 'No se puede eliminar el operador porque tiene servicios activos asignados.');
         }
+
+        Auditoria::registrar($operadore);
 
         $operadore->delete();
 

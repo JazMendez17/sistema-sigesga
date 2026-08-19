@@ -5,6 +5,7 @@
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
+use App\Support\Auditoria;
 use App\Models\UnidadMantenimiento;
 use App\Models\Unidade;
 use App\Http\Requests\Panel\StoreMantenimientoRequest;
@@ -113,7 +114,11 @@ class MantenimientosController extends Controller
     // Eliminar mantenimiento
     public function destroy($id)
     {
-        UnidadMantenimiento::whereHas('unidad', fn($q) => $q->where('empresa_id', auth()->user()->empresa_id))->findOrFail($id)->delete();
+        $mantenimiento = UnidadMantenimiento::whereHas('unidad', fn($q) => $q->where('empresa_id', auth()->user()->empresa_id))->findOrFail($id);
+
+        Auditoria::registrar($mantenimiento);
+
+        $mantenimiento->delete();
 
         return redirect()->route('panel.mantenimientos.index')
             ->with('success', 'Mantenimiento eliminado correctamente');

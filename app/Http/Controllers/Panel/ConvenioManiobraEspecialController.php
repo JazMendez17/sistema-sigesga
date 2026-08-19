@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
+use App\Support\Auditoria;
 use App\Http\Requests\Panel\StoreManiobraEspecialRequest;
 use App\Models\ConvenioManiobrasEspeciale;
 use App\Models\Convenio;
@@ -62,7 +63,11 @@ class ConvenioManiobraEspecialController extends Controller
 
     public function destroy($id)
     {
-        ConvenioManiobrasEspeciale::findOrFail($id)->delete();
+        $maniobra = ConvenioManiobrasEspeciale::findOrFail($id);
+
+        Auditoria::registrar($maniobra);
+
+        $maniobra->delete();
         return redirect()->route('panel.servicios-especiales.index')->with('success', 'Maniobra especial eliminada.');
     }
 }

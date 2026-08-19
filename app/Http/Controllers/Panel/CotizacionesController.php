@@ -5,6 +5,7 @@
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
+use App\Support\Auditoria;
 use App\Models\Cotizacione;
 use App\Models\Cliente;
 use App\Models\CatalogoServicio;
@@ -196,7 +197,11 @@ class CotizacionesController extends Controller
     // Eliminar cotización
     public function destroy($id)
     {
-        Cotizacione::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id)->delete();
+        $cotizacion = Cotizacione::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+
+        Auditoria::registrar($cotizacion);
+
+        $cotizacion->delete();
 
         return redirect()->route('panel.cotizaciones.index')
             ->with('success', 'Cotización eliminada correctamente');

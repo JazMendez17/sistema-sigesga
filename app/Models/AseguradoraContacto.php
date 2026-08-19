@@ -4,13 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 // Modelo de Contacto de Aseguradora
 class AseguradoraContacto extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     public $timestamps = false;
 
@@ -24,7 +23,7 @@ class AseguradoraContacto extends Model
         'activo',
     ];
 
-    // Relación con aseguradora
+    // RelaciÃ³n con aseguradora
     public function aseguradora(): BelongsTo
     {
         return $this->belongsTo(Aseguradora::class);

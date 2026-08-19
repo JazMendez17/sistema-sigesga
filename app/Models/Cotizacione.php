@@ -4,14 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-// Modelo de Cotización
+// Modelo de CotizaciÃ³n
 class Cotizacione extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     protected $table = 'cotizaciones';
 
@@ -47,43 +46,43 @@ class Cotizacione extends Model
         'estatus',
     ];
 
-    // Relación con empresa
+    // RelaciÃ³n con empresa
     public function empresa(): BelongsTo
     {
         return $this->belongsTo(Empresa::class);
     }
 
-    // Relación con cliente
+    // RelaciÃ³n con cliente
     public function cliente(): BelongsTo
     {
         return $this->belongsTo(Cliente::class);
     }
 
-    // Relación con convenio aplicado
+    // RelaciÃ³n con convenio aplicado
     public function convenioAplicado(): BelongsTo
     {
         return $this->belongsTo(Convenio::class, 'convenio_aplicado_id');
     }
 
-    // Relación con tarifa de empresa aplicada
+    // RelaciÃ³n con tarifa de empresa aplicada
     public function tarifaEmpresaAplicada(): BelongsTo
     {
         return $this->belongsTo(TarifasEmpresa::class, 'tarifa_empresa_aplicada_id');
     }
 
-    // Relación con usuario creador
+    // RelaciÃ³n con usuario creador
     public function usuarioCreador(): BelongsTo
     {
         return $this->belongsTo(Usuario::class, 'usuario_creador_id');
     }
 
-    // Relación con tipo de servicio
+    // RelaciÃ³n con tipo de servicio
     public function tipoServicio(): BelongsTo
     {
         return $this->belongsTo(CatalogoServicio::class, 'tipo_servicio_id');
     }
 
-    // Relación con servicio
+    // RelaciÃ³n con servicio
     public function servicio(): HasOne
     {
         return $this->hasOne(Servicio::class, 'cotizacion_id');

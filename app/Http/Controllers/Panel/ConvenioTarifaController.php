@@ -5,6 +5,7 @@
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
+use App\Support\Auditoria;
 use App\Http\Requests\Panel\StoreConvenioTarifaRequest;
 use App\Models\ConvenioTarifa;
 use App\Models\Convenio;
@@ -93,7 +94,11 @@ class ConvenioTarifaController extends Controller
     // Eliminar tarifa
     public function destroy($id)
     {
-        ConvenioTarifa::findOrFail($id)->delete();
+        $tarifa = ConvenioTarifa::findOrFail($id);
+
+        Auditoria::registrar($tarifa);
+
+        $tarifa->delete();
 
         return redirect()->route('panel.convenio-tarifas.index')
             ->with('success', 'Tarifa de convenio eliminada correctamente');

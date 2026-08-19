@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
+use App\Support\Auditoria;
 use App\Models\ConvenioSla;
 use App\Models\Convenio;
 use Illuminate\Http\Request;
@@ -65,7 +66,11 @@ class PenalizacionController extends Controller
 
     public function destroy($id)
     {
-        ConvenioSla::findOrFail($id)->delete();
+        $sla = ConvenioSla::findOrFail($id);
+
+        Auditoria::registrar($sla);
+
+        $sla->delete();
         return redirect()->route('panel.penalizaciones.index')->with('success', 'SLA eliminado correctamente.');
     }
 

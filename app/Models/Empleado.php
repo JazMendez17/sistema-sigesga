@@ -4,12 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 // Modelo de Empleado
 class Empleado extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     protected $table = 'empleados';
 
@@ -32,31 +31,31 @@ class Empleado extends Model
         'sueldo_diario',
     ];
 
-    // Relación con empresa
+    // RelaciÃ³n con empresa
     public function empresa()
     {
         return $this->belongsTo(Empresa::class, 'empresa_id');
     }
 
-    // Relación con oficina
+    // RelaciÃ³n con oficina
     public function oficina()
     {
         return $this->belongsTo(Oficina::class, 'oficina_id');
     }
 
-    // Relación con dirección
+    // RelaciÃ³n con direcciÃ³n
     public function direccion()
     {
         return $this->belongsTo(Direccion::class, 'direccion_id');
     }
 
-    // Relación con usuario
+    // RelaciÃ³n con usuario
     public function usuario()
     {
         return $this->hasOne(Usuario::class, 'empleado_id');
     }
 
-    // Relación con operador
+    // RelaciÃ³n con operador
     public function operador()
     {
         return $this->hasOne(Operadore::class, 'empleado_id');

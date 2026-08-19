@@ -4,13 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-// Modelo de Notificación
+// Modelo de NotificaciÃ³n
 class Notificacione extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     protected $table = 'notificaciones';
 
@@ -25,13 +24,13 @@ class Notificacione extends Model
         'error_detalle',
     ];
 
-    // Relación con empresa
+    // RelaciÃ³n con empresa
     public function empresa(): BelongsTo
     {
         return $this->belongsTo(Empresa::class);
     }
 
-    // Relación con usuario
+    // RelaciÃ³n con usuario
     public function usuario(): BelongsTo
     {
         return $this->belongsTo(Usuario::class);

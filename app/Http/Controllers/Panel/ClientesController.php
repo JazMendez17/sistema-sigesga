@@ -5,6 +5,7 @@
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
+use App\Support\Auditoria;
 use App\Models\Cliente;
 use App\Models\Aseguradora;
 use App\Models\Direccion;
@@ -233,6 +234,8 @@ class ClientesController extends Controller
         if ($cotizacionesCount > 0) {
             return redirect()->back()->with('error', 'No se puede eliminar el cliente porque tiene cotizaciones asociadas.');
         }
+
+        Auditoria::registrar($cliente);
 
         $cliente->delete();
 

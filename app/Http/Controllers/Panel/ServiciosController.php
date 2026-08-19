@@ -5,6 +5,7 @@
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
+use App\Support\Auditoria;
 use App\Models\Servicio;
 use App\Models\Cotizacione;
 use App\Models\Operadore;
@@ -371,7 +372,11 @@ class ServiciosController extends Controller
     // Eliminar servicio
     public function destroy($id)
     {
-        Servicio::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id)->delete();
+        $servicio = Servicio::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+
+        Auditoria::registrar($servicio);
+
+        $servicio->delete();
 
         return redirect()->route('panel.servicios.index')
             ->with('success', 'Servicio eliminado correctamente');

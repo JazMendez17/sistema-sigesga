@@ -5,6 +5,7 @@
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
+use App\Support\Auditoria;
 use App\Models\Empleado;
 use App\Models\Oficina;
 use App\Models\Direccion;
@@ -165,6 +166,8 @@ class EmpleadosController extends Controller
         if ($empleado->operador || $empleado->usuario) {
             return redirect()->back()->with('error', 'No se puede eliminar el empleado porque está vinculado a un operador o usuario.');
         }
+
+        Auditoria::registrar($empleado);
 
         $empleado->delete();
 

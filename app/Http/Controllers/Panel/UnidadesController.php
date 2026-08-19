@@ -5,6 +5,7 @@
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
+use App\Support\Auditoria;
 use App\Models\Unidade;
 use App\Models\Operadore;
 use App\Models\Empleado;
@@ -134,6 +135,8 @@ class UnidadesController extends Controller
         if ($unidad->unidadMantenimientos()->count() > 0 || $unidad->servicios()->whereIn('estado', ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino'])->count() > 0) {
             return redirect()->back()->with('error', 'No se puede eliminar la unidad porque tiene mantenimientos o servicios activos.');
         }
+
+        Auditoria::registrar($unidad);
 
         $unidad->delete();
 

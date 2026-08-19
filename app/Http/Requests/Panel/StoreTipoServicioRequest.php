@@ -46,7 +46,6 @@ class StoreTipoServicioRequest extends FormRequest
             $empresaId = $this->user()?->empresa_id;
             $rules['nombre'] = ['required', 'string', 'max:100', Rule::unique('catalogo_servicios', 'nombre')
                 ->where('empresa_id', $empresaId)
-                ->whereNull('deleted_at')
                 ->ignore($id)];
         }
 

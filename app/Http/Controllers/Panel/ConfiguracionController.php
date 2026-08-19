@@ -5,6 +5,7 @@
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
+use App\Support\Auditoria;
 use App\Models\EmpresaNosotros;
 use App\Models\EmpresaValore;
 use App\Models\EmpresaServicio;
@@ -98,6 +99,9 @@ class ConfiguracionController extends Controller
         // Guardar Valores
         $valoresData = $request->input('valores', []);
         if (!empty($valoresData)) {
+            foreach ($empresa->empresaValores()->get() as $valor) {
+                Auditoria::registrar($valor);
+            }
             $empresa->empresaValores()->delete();
             foreach ($valoresData as $i => $v) {
                 $empresa->empresaValores()->create([
@@ -111,6 +115,9 @@ class ConfiguracionController extends Controller
         // Guardar Servicios (landing)
         $serviciosData = $request->input('servicios_landing', []);
         if (!empty($serviciosData)) {
+            foreach ($empresa->empresaServicios()->get() as $servicioLanding) {
+                Auditoria::registrar($servicioLanding);
+            }
             $empresa->empresaServicios()->delete();
             foreach ($serviciosData as $i => $s) {
                 $empresa->empresaServicios()->create([

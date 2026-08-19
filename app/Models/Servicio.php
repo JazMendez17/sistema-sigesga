@@ -4,14 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 // Modelo de Servicio
 class Servicio extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     protected $fillable = [
         'empresa_id',
@@ -30,55 +29,55 @@ class Servicio extends Model
         'observaciones',
     ];
 
-    // Relación con empresa
+    // RelaciÃ³n con empresa
     public function empresa(): BelongsTo
     {
         return $this->belongsTo(Empresa::class);
     }
 
-    // Relación con cotización
+    // RelaciÃ³n con cotizaciÃ³n
     public function cotizacion(): BelongsTo
     {
         return $this->belongsTo(Cotizacione::class, 'cotizacion_id');
     }
 
-    // Relación con operador
+    // RelaciÃ³n con operador
     public function operador(): BelongsTo
     {
         return $this->belongsTo(Operadore::class);
     }
 
-    // Relación con unidad
+    // RelaciÃ³n con unidad
     public function unidad(): BelongsTo
     {
         return $this->belongsTo(Unidade::class);
     }
 
-    // Relación con oficina
+    // RelaciÃ³n con oficina
     public function oficina(): BelongsTo
     {
         return $this->belongsTo(Oficina::class);
     }
 
-    // Relación con bitácora de tiempos
+    // RelaciÃ³n con bitÃ¡cora de tiempos
     public function bitacoraTiemposServicio(): HasOne
     {
         return $this->hasOne(BitacoraTiemposServicio::class);
     }
 
-    // Relación con autorizaciones de cancelación
+    // RelaciÃ³n con autorizaciones de cancelaciÃ³n
     public function autorizacionesCancelacion(): HasOne
     {
         return $this->hasOne(AutorizacionesCancelacione::class);
     }
 
-    // Relación con calificaciones
+    // RelaciÃ³n con calificaciones
     public function calificacionesServicio(): HasOne
     {
         return $this->hasOne(CalificacionesServicio::class);
     }
 
-    // Relación con factura
+    // RelaciÃ³n con factura
     public function factura(): HasOne
     {
         return $this->hasOne(Factura::class);

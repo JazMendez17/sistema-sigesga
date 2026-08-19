@@ -5,12 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 // Modelo de Tarifa de Convenio
 class ConvenioTarifa extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     protected $table = 'convenio_tarifas';
 
@@ -30,13 +29,13 @@ class ConvenioTarifa extends Model
         'tipo_descuento',
     ];
 
-    // Relación con convenio
+    // RelaciÃ³n con convenio
     public function convenio(): BelongsTo
     {
         return $this->belongsTo(Convenio::class);
     }
 
-    // Relación con tipo de servicio
+    // RelaciÃ³n con tipo de servicio
     public function tipoServicio(): BelongsTo
     {
         return $this->belongsTo(CatalogoServicio::class, 'servicio_id');

@@ -4,12 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 // Modelo de Operador
 class Operadore extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     protected $table = 'operadores';
 
@@ -32,25 +31,25 @@ class Operadore extends Model
         ];
     }
 
-    // Relación con empresa
+    // RelaciÃ³n con empresa
     public function empresa()
     {
         return $this->belongsTo(Empresa::class, 'empresa_id');
     }
 
-    // Relación con empleado
+    // RelaciÃ³n con empleado
     public function empleado()
     {
         return $this->belongsTo(Empleado::class, 'empleado_id');
     }
 
-    // Relación con servicios
+    // RelaciÃ³n con servicios
     public function servicios()
     {
         return $this->hasMany(Servicio::class, 'operador_id');
     }
 
-    // Relación con unidad
+    // RelaciÃ³n con unidad
     public function unidad()
     {
         return $this->hasOne(Unidade::class, 'operador_asignado_id');

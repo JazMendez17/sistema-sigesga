@@ -5,6 +5,7 @@
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
+use App\Support\Auditoria;
 use App\Models\Oficina;
 use App\Models\Direccion;
 use App\Http\Requests\Panel\StoreOficinaRequest;
@@ -138,7 +139,11 @@ class OficinasController extends Controller
     // Eliminar oficina
     public function destroy($id)
     {
-        Oficina::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id)->delete();
+        $oficina = Oficina::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+
+        Auditoria::registrar($oficina);
+
+        $oficina->delete();
 
         return redirect()->route('panel.oficinas.index')
             ->with('success', 'Oficina eliminada correctamente');

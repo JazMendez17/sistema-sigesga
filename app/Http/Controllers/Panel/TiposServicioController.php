@@ -5,6 +5,7 @@
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
+use App\Support\Auditoria;
 use App\Models\CatalogoServicio;
 use App\Http\Requests\Panel\StoreTipoServicioRequest;
 use Illuminate\Support\Facades\Auth;
@@ -84,7 +85,11 @@ class TiposServicioController extends Controller
     // Eliminar tipo de servicio
     public function destroy($id)
     {
-        CatalogoServicio::findOrFail($id)->delete();
+        $tipo = CatalogoServicio::findOrFail($id);
+
+        Auditoria::registrar($tipo);
+
+        $tipo->delete();
 
         return back()->with('success', 'Tipo de servicio eliminado correctamente');
     }

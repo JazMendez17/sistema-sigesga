@@ -4,13 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 // Modelo de Tarifa de Empresa
 class TarifasEmpresa extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     protected $table = 'tarifas_empresa';
 
@@ -26,13 +25,13 @@ class TarifasEmpresa extends Model
         'activo',
     ];
 
-    // Relación con empresa
+    // RelaciÃ³n con empresa
     public function empresa(): BelongsTo
     {
         return $this->belongsTo(Empresa::class);
     }
 
-    // Relación con tipo de servicio
+    // RelaciÃ³n con tipo de servicio
     public function tipoServicio(): BelongsTo
     {
         return $this->belongsTo(CatalogoServicio::class, 'tipo_servicio_id');

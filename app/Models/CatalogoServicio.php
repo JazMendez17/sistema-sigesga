@@ -4,12 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
-// Modelo de Catálogo de Servicios
+// Modelo de CatÃ¡logo de Servicios
 class CatalogoServicio extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     protected $table = 'catalogo_servicios';
 
@@ -20,25 +19,25 @@ class CatalogoServicio extends Model
         'activo',
     ];
 
-    // Relación con empresa
+    // RelaciÃ³n con empresa
     public function empresa()
     {
         return $this->belongsTo(Empresa::class, 'empresa_id');
     }
 
-    // Relación con convenios
+    // RelaciÃ³n con convenios
     public function convenios()
     {
         return $this->hasMany(Convenio::class, 'tipo_servicio_id');
     }
 
-    // Relación con tarifas de empresa
+    // RelaciÃ³n con tarifas de empresa
     public function tarifasEmpresa()
     {
         return $this->hasMany(TarifasEmpresa::class, 'tipo_servicio_id');
     }
 
-    // Relación con cotizaciones
+    // RelaciÃ³n con cotizaciones
     public function cotizaciones()
     {
         return $this->hasMany(Cotizacione::class, 'tipo_servicio_id');

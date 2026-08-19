@@ -4,12 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 // Modelo de Oficina
 class Oficina extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     protected $table = 'oficinas';
 
@@ -22,31 +21,31 @@ class Oficina extends Model
         'encargado',
     ];
 
-    // Relación con empresa
+    // RelaciÃ³n con empresa
     public function empresa()
     {
         return $this->belongsTo(Empresa::class, 'empresa_id');
     }
 
-    // Relación con dirección
+    // RelaciÃ³n con direcciÃ³n
     public function direccion()
     {
         return $this->belongsTo(Direccion::class, 'direccion_id');
     }
 
-    // Relación con empleados
+    // RelaciÃ³n con empleados
     public function empleados()
     {
         return $this->hasMany(Empleado::class, 'oficina_id');
     }
 
-    // Relación con unidades
+    // RelaciÃ³n con unidades
     public function unidades()
     {
         return $this->hasMany(Unidade::class, 'oficina_id');
     }
 
-    // Relación con servicios
+    // RelaciÃ³n con servicios
     public function servicios()
     {
         return $this->hasMany(Servicio::class, 'oficina_id');

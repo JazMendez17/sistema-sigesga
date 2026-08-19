@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
+use App\Support\Auditoria;
 use App\Models\ConvenioConceptoAdicional;
 use App\Models\Convenio;
 use Illuminate\Http\Request;
@@ -66,7 +67,11 @@ class ConvenioConceptoAdicionalController extends Controller
 
     public function destroy($id)
     {
-        ConvenioConceptoAdicional::findOrFail($id)->delete();
+        $concepto = ConvenioConceptoAdicional::findOrFail($id);
+
+        Auditoria::registrar($concepto);
+
+        $concepto->delete();
         return redirect()->route('panel.conceptos-adicionales.index')->with('success', 'Conceptos adicionales eliminados.');
     }
 

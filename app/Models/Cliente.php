@@ -4,14 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 // Modelo de Cliente
 class Cliente extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     protected $fillable = [
         'empresa_id',
@@ -42,43 +41,43 @@ class Cliente extends Model
         ];
     }
 
-    // Relación con empresa
+    // RelaciÃ³n con empresa
     public function empresa(): BelongsTo
     {
         return $this->belongsTo(Empresa::class);
     }
 
-    // Relación con usuario
+    // RelaciÃ³n con usuario
     public function usuario(): BelongsTo
     {
         return $this->belongsTo(Usuario::class);
     }
 
-    // Relación con aseguradora
+    // RelaciÃ³n con aseguradora
     public function aseguradora(): BelongsTo
     {
         return $this->belongsTo(Aseguradora::class);
     }
 
-    // Relación con dirección
+    // RelaciÃ³n con direcciÃ³n
     public function direccion(): BelongsTo
     {
         return $this->belongsTo(Direccion::class);
     }
 
-    // Relación con cotizaciones
+    // RelaciÃ³n con cotizaciones
     public function cotizaciones(): HasMany
     {
         return $this->hasMany(Cotizacione::class);
     }
 
-    // Relación con facturas
+    // RelaciÃ³n con facturas
     public function facturas(): HasMany
     {
         return $this->hasMany(Factura::class);
     }
 
-    // Relación con calificaciones de servicio
+    // RelaciÃ³n con calificaciones de servicio
     public function calificacionesServicio(): HasMany
     {
         return $this->hasMany(CalificacionesServicio::class);

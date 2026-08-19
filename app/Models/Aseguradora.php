@@ -4,14 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 // Modelo de Aseguradora
 class Aseguradora extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     protected $fillable = [
         'empresa_id',
@@ -21,25 +20,25 @@ class Aseguradora extends Model
         'telefono',
     ];
 
-    // Relación con empresa
+    // RelaciÃ³n con empresa
     public function empresa(): BelongsTo
     {
         return $this->belongsTo(Empresa::class);
     }
 
-    // Relación con contactos de aseguradora
+    // RelaciÃ³n con contactos de aseguradora
     public function aseguradoraContactos(): HasMany
     {
         return $this->hasMany(AseguradoraContacto::class);
     }
 
-    // Relación con clientes
+    // RelaciÃ³n con clientes
     public function clientes(): HasMany
     {
         return $this->hasMany(Cliente::class);
     }
 
-    // Relación con convenios
+    // RelaciÃ³n con convenios
     public function convenios(): HasMany
     {
         return $this->hasMany(Convenio::class);

@@ -38,7 +38,10 @@ const submit = () => {
         <div class="fixed top-0 left-0 right-0 z-50 h-1" :style="{ backgroundColor: 'var(--color-secondary)' }"></div>
         <div class="w-full max-w-md">
             <div class="text-center mb-8">
-                <div class="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center text-white font-bold text-2xl" :style="{ backgroundColor: 'var(--color-primary)', boxShadow: '0 10px 15px -3px color-mix(in srgb, var(--color-primary) 20%, transparent), 0 4px 6px -4px color-mix(in srgb, var(--color-primary) 20%, transparent)' }">
+                <div v-if="empresa?.logo" class="w-20 h-20 mx-auto mb-4 rounded-2xl overflow-hidden shadow-[4px_4px_8px_var(--neumorphic-dark),-4px_-4px_8px_var(--neumorphic-light)]">
+                    <img :src="'/storage/' + empresa.logo" class="w-full h-full object-contain" alt="Logo" />
+                </div>
+                <div v-else class="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center text-white font-bold text-2xl" :style="{ backgroundColor: 'var(--color-primary)', boxShadow: '0 10px 15px -3px color-mix(in srgb, var(--color-primary) 20%, transparent), 0 4px 6px -4px color-mix(in srgb, var(--color-primary) 20%, transparent)' }">
                     {{ empresa?.siglas?.charAt(0) || 'S' }}
                 </div>
                 <h1 class="text-2xl font-bold text-[var(--color-text)]">Crear Cuenta</h1>
