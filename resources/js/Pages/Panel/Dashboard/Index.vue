@@ -184,8 +184,8 @@ const badgeVariant = (status) => ({
             <p class="mt-3 text-center text-xs font-medium text-[var(--color-text-muted)]">{{ periodos[periodo].info }} — <span class="font-bold text-[var(--color-text)]">{{ totalPeriodo }}</span> registros <span v-if="totalPeriodo === 0" class="text-[var(--color-text-muted)]">(aún no hay cotizaciones en este periodo)</span></p>
           </div>
 
-          <!-- Facturación: facturas terminadas por periodo (solo admin) -->
-          <div v-if="role === 'admin'" class="rounded-[30px] border border-white/40 bg-[var(--color-surface)] p-5 shadow-[10px_10px_20px_var(--neumorphic-dark),-10px_-10px_20px_var(--neumorphic-light)] sm:p-6">
+          <!-- Facturación: facturas terminadas por periodo (admin y cotizador) -->
+          <div v-if="role === 'admin' || role === 'cotizador'" class="rounded-[30px] border border-white/40 bg-[var(--color-surface)] p-5 shadow-[10px_10px_20px_var(--neumorphic-dark),-10px_-10px_20px_var(--neumorphic-light)] sm:p-6">
             <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-text-muted)]">Facturación</p>
@@ -242,7 +242,7 @@ const badgeVariant = (status) => ({
           </div>
 
           <!-- Rendimiento / Estadísticas (solo cotizador) -->
-          <div v-else class="rounded-[30px] border border-white/40 bg-[var(--color-surface)] p-5 shadow-[10px_10px_20px_var(--neumorphic-dark),-10px_-10px_20px_var(--neumorphic-light)] sm:p-6">
+          <div v-if="role === 'cotizador'" class="rounded-[30px] border border-white/40 bg-[var(--color-surface)] p-5 shadow-[10px_10px_20px_var(--neumorphic-dark),-10px_-10px_20px_var(--neumorphic-light)] sm:p-6">
             <div class="mb-5">
               <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-text-muted)]">Rendimiento</p>
               <h3 class="mt-1 text-xl font-semibold text-[var(--color-text)]">Estadísticas</h3>

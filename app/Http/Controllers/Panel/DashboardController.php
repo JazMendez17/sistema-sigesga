@@ -96,8 +96,8 @@ class DashboardController extends Controller
                 'height' => $r['count'] > 0 ? round(($r['count'] / $maxCount) * 100) : 0,
             ])->values();
 
-            // Facturas terminadas (vigentes) por periodo: día, semana y mes (solo admin)
-            if ($user->rol === 'admin') {
+            // Facturas terminadas (vigentes) por periodo: día, semana y mes (admin y cotizador)
+            if (in_array($user->rol, ['admin', 'cotizador'])) {
                 $facturasPorDia = collect(range(0, 6))->map(function ($i) use ($empresaId, $diasEs) {
                     $d = now()->startOfWeek()->addDays($i);
                     $stats = $d->gt(now())
@@ -188,7 +188,7 @@ class DashboardController extends Controller
                 $data['resumenOperacion'] = ['asignados' => 4, 'enTransito' => 6, 'finalizados' => 18];
                 $data['demoData'] = true;
 
-                if ($user->rol === 'admin') {
+                if (in_array($user->rol, ['admin', 'cotizador'])) {
                     $demoFacturas = $this->facturasDemo();
                     $data['facturasPorDia'] = $demoFacturas['dia'];
                     $data['facturasPorSemana'] = $demoFacturas['semana'];
