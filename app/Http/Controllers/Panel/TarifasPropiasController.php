@@ -99,7 +99,7 @@ class TarifasPropiasController extends Controller
 
         Auditoria::registrar($tarifa);
 
-        $tarifa->delete();
+        $tarifa->update(['eliminado' => true]);
 
         return redirect()->route('panel.tarifas-propias.index')
             ->with('success', 'Tarifa eliminada correctamente');

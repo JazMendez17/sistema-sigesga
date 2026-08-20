@@ -126,7 +126,7 @@ class AseguradorasController extends Controller
         if ($request->has('contactos')) {
             foreach ($aseguradora->aseguradoraContactos as $contactoExistente) {
                 Auditoria::registrar($contactoExistente);
-                $contactoExistente->delete();
+                $contactoExistente->update(['eliminado' => true]);
             }
             foreach ($contactos as $contacto) {
                 if (!empty($contacto['nombre_contacto'])) {
@@ -158,7 +158,7 @@ class AseguradorasController extends Controller
 
         Auditoria::registrar($contacto);
 
-        $contacto->delete();
+        $contacto->update(['eliminado' => true]);
 
         return back()->with('success', 'Contacto eliminado correctamente');
     }
@@ -174,7 +174,7 @@ class AseguradorasController extends Controller
 
         Auditoria::registrar($aseguradora);
 
-        $aseguradora->delete();
+        $aseguradora->update(['eliminado' => true]);
 
         return redirect()->route('panel.aseguradoras.index')
             ->with('success', 'Aseguradora eliminada correctamente');

@@ -168,7 +168,7 @@ class ConveniosController extends Controller
 
         Auditoria::registrar($convenio);
 
-        $convenio->delete();
+        $convenio->update(['eliminado' => true]);
 
         return redirect()->route('panel.convenios.index')
             ->with('success', 'Convenio eliminado correctamente');

@@ -2,13 +2,16 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Ocultable;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 // Modelo de Oficina
 class Oficina extends Model
 {
-    use HasFactory;
+        use Ocultable;
+use HasFactory;
 
     protected $table = 'oficinas';
 

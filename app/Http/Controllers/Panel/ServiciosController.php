@@ -376,7 +376,7 @@ class ServiciosController extends Controller
 
         Auditoria::registrar($servicio);
 
-        $servicio->delete();
+        $servicio->update(['eliminado' => true]);
 
         return redirect()->route('panel.servicios.index')
             ->with('success', 'Servicio eliminado correctamente');

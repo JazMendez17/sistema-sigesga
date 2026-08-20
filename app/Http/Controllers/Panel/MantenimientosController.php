@@ -118,7 +118,7 @@ class MantenimientosController extends Controller
 
         Auditoria::registrar($mantenimiento);
 
-        $mantenimiento->delete();
+        $mantenimiento->update(['eliminado' => true]);
 
         return redirect()->route('panel.mantenimientos.index')
             ->with('success', 'Mantenimiento eliminado correctamente');

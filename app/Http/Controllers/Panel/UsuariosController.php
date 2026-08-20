@@ -173,7 +173,7 @@ class UsuariosController extends Controller
 
         Auditoria::registrar($usuario);
 
-        $usuario->delete();
+        $usuario->update(['eliminado' => true]);
 
         return redirect()->route('panel.usuarios.index')
             ->with('success', 'Usuario eliminado correctamente');

@@ -98,7 +98,7 @@ class ConvenioTarifaController extends Controller
 
         Auditoria::registrar($tarifa);
 
-        $tarifa->delete();
+        $tarifa->update(['eliminado' => true]);
 
         return redirect()->route('panel.convenio-tarifas.index')
             ->with('success', 'Tarifa de convenio eliminada correctamente');

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Ocultable;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +11,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 // Modelo de Factura
 class Factura extends Model
 {
-    use HasFactory;
+        use Ocultable;
+use HasFactory;
 
     protected $fillable = [
         'empresa_id',

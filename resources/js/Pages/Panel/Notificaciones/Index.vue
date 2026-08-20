@@ -21,6 +21,10 @@ function marcarLeida(id) {
   router.post(route('panel.notificaciones.marcar-leida', { id }))
 }
 
+function marcarTodas() {
+  router.post(route('panel.notificaciones.marcar-todas'))
+}
+
 function getBadgeVariant(estado) {
   if (estado === 'leido') return 'neutral'
   if (estado === 'fallido') return 'danger'
@@ -36,6 +40,9 @@ function getBadgeVariant(estado) {
           <h1 class="text-2xl font-bold text-gray-800">Notificaciones</h1>
           <p class="text-sm text-gray-500 mt-1">Eventos operativos de servicios y cotizaciones</p>
         </div>
+        <NeumorphicButton type="button" @click="marcarTodas" :disabled="!(page.props.noLeidas > 0)">
+          Marcar todas como leídas
+        </NeumorphicButton>
       </div>
 
       <div class="flex flex-wrap gap-2">

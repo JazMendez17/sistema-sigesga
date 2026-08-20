@@ -2,13 +2,16 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Ocultable;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 // Modelo de Conceptos Adicionales por Convenio (casetas, estancia, resguardo)
 class ConvenioConceptoAdicional extends Model
 {
-    public $timestamps = false;
+        use Ocultable;
+public $timestamps = false;
 
     protected $table = 'convenio_conceptos_adicionales';
 

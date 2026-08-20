@@ -201,7 +201,7 @@ class CotizacionesController extends Controller
 
         Auditoria::registrar($cotizacion);
 
-        $cotizacion->delete();
+        $cotizacion->update(['eliminado' => true]);
 
         return redirect()->route('panel.cotizaciones.index')
             ->with('success', 'Cotización eliminada correctamente');

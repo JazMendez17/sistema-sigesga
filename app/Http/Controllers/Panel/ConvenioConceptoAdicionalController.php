@@ -71,7 +71,7 @@ class ConvenioConceptoAdicionalController extends Controller
 
         Auditoria::registrar($concepto);
 
-        $concepto->delete();
+        $concepto->update(['eliminado' => true]);
         return redirect()->route('panel.conceptos-adicionales.index')->with('success', 'Conceptos adicionales eliminados.');
     }
 

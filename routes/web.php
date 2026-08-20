@@ -229,6 +229,7 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
 
     Route::get('/notificaciones', [NotificacionesController::class, 'index'])->name('notificaciones.index');
     Route::post('/notificaciones/{id}/marcar-leida', [NotificacionesController::class, 'marcarLeida'])->name('notificaciones.marcar-leida');
+    Route::post('/notificaciones/marcar-todas', [NotificacionesController::class, 'marcarTodas'])->name('notificaciones.marcar-todas');
     Route::get('/notificaciones/no-leidas', [NotificacionesController::class, 'unreadCount'])->name('notificaciones.no-leidas');
 
     Route::get('/evaluar-servicio/{id}', [ServiciosController::class, 'evaluar'])->name('servicios.evaluar');

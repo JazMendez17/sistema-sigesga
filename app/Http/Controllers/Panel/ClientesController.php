@@ -237,7 +237,7 @@ class ClientesController extends Controller
 
         Auditoria::registrar($cliente);
 
-        $cliente->delete();
+        $cliente->update(['eliminado' => true]);
 
         return redirect()->route('panel.clientes.index')
             ->with('success', 'Cliente eliminado correctamente');

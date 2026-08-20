@@ -89,7 +89,7 @@ class TiposServicioController extends Controller
 
         Auditoria::registrar($tipo);
 
-        $tipo->delete();
+        $tipo->update(['eliminado' => true]);
 
         return back()->with('success', 'Tipo de servicio eliminado correctamente');
     }

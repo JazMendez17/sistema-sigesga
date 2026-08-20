@@ -54,9 +54,9 @@ class ProfileController extends Controller
 
         Auditoria::registrar($user, $user->id);
 
-        Auth::logout();
+        $user->update(['eliminado' => true]);
 
-        $user->delete();
+        Auth::logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

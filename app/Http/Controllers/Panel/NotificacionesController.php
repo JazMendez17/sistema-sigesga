@@ -63,6 +63,21 @@ class NotificacionesController extends Controller
         return back()->with('success', 'Notificación marcada como leída.');
     }
 
+    // Marcar todas las notificaciones visibles como leídas
+    public function marcarTodas()
+    {
+        $user = Auth::user();
+
+        $query = Notificacione::where('empresa_id', $user->empresa_id);
+        if (!in_array($user->rol, ['admin', 'cotizador'])) {
+            $query->where('usuario_id', $user->id);
+        }
+
+        $query->where('estado', '!=', 'leido')->update(['estado' => 'leido']);
+
+        return back()->with('success', 'Todas las notificaciones fueron marcadas como leídas.');
+    }
+
     // Endpoint para polling: devuelve conteo de no leídas
     public function unreadCount()
     {
