@@ -12,9 +12,10 @@ const uid = getCurrentInstance().uid
 const gradientId = `progressGradient-${uid}`
 const glowId = `glow-${uid}`
 
+const percentage = computed(() => Math.min(100, Math.max(0, Number(props.percentage) || 0)))
 const radius = computed(() => (props.size - props.strokeWidth) / 2)
 const circumference = computed(() => 2 * Math.PI * radius.value)
-const offset = computed(() => circumference.value - (props.percentage / 100) * circumference.value)
+const offset = computed(() => circumference.value - (percentage.value / 100) * circumference.value)
 const center = computed(() => props.size / 2)
 </script>
 
@@ -78,7 +79,8 @@ const center = computed(() => props.size / 2)
     </svg>
     <!-- Porcentaje en el centro -->
     <div class="absolute inset-0 z-20 flex items-center justify-center">
-      <span class="text-2xl font-bold text-[var(--color-text)]">{{ percentage }}%</span>
+      <span v-if="percentage > 0" class="text-2xl font-bold text-[var(--color-text)]">{{ percentage }}%</span>
+      <span v-else class="text-sm font-semibold text-[var(--color-text-muted)]">Sin datos</span>
     </div>
   </div>
 </template>

@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { router } from '@inertiajs/vue3'
 import AppLayout from '@/Pages/Panel/AppLayout.vue'
 import KPICard from '@/Components/KPICard.vue'
@@ -11,8 +11,13 @@ const props = defineProps({
   role: { type: String, default: 'admin' },
   kpis: { type: Array, default: () => [] },
   recentActivity: { type: Array, default: () => [] },
-  serviciosPorDia: { type: Array, default: () => [] },
-  ventasPorSemana: { type: Array, default: () => [] },
+  registrosPorDia: { type: Array, default: () => [] },
+  registrosPorSemana: { type: Array, default: () => [] },
+  registrosPorMes: { type: Array, default: () => [] },
+  facturasPorDia: { type: Array, default: () => [] },
+  facturasPorSemana: { type: Array, default: () => [] },
+  facturasPorMes: { type: Array, default: () => [] },
+  demoData: { type: Boolean, default: false },
   eficiencia: { type: Number, default: 0 },
   resumenOperacion: { type: Object, default: () => ({ asignados: 0, enTransito: 0, finalizados: 0 }) },
   serviciosHoy: { type: Array, default: () => [] },
@@ -25,6 +30,65 @@ const props = defineProps({
 })
 
 const disponibleLocal = ref(props.disponible ?? true)
+
+const periodo = ref('mes')
+const periodos = {
+  dia: { label: 'Día', info: 'Últimos 7 días' },
+  semana: { label: 'Semana', info: 'Últimas 4 semanas' },
+  mes: { label: 'Mes', info: 'Últimos 6 meses' },
+}
+const chartData = computed(() => ({
+  dia: props.registrosPorDia,
+  semana: props.registrosPorSemana,
+  mes: props.registrosPorMes,
+}[periodo.value]))
+const totalPeriodo = computed(() => chartData.value.reduce((acc, bar) => acc + (bar.count || 0), 0))
+
+const periodoFacturas = ref('mes')
+const chartDataFacturas = computed(() => ({
+  dia: props.facturasPorDia,
+  semana: props.facturasPorSemana,
+  mes: props.facturasPorMes,
+}[periodoFacturas.value]))
+const totalPeriodoFacturas = computed(() => chartDataFacturas.value.reduce((acc, bar) => acc + (bar.count || 0), 0))
+const montoPeriodoFacturas = computed(() => chartDataFacturas.value.reduce((acc, bar) => acc + (bar.monto || 0), 0))
+
+const sliceColors = [
+  'var(--color-primary)',
+  '#EC4899',
+  '#F59E0B',
+  '#10B981',
+  'var(--color-secondary)',
+  '#EF4444',
+  '#0EA5E9',
+]
+
+function barGradient(i) {
+  const color = sliceColors[i % sliceColors.length]
+  return `linear-gradient(180deg, color-mix(in srgb, ${color} 85%, white), ${color})`
+}
+
+const facturasSize = 192
+const facturasRadius = 84
+const facturasStroke = 18
+const facturasCircumference = 2 * Math.PI * facturasRadius
+
+const facturasSlices = computed(() => {
+  const bars = chartDataFacturas.value
+  const total = totalPeriodoFacturas.value
+  if (!bars.length || total === 0) return []
+  let acc = 0
+  return bars.map((bar, i) => {
+    const len = (bar.count / total) * facturasCircumference
+    const rotate = (acc / total) * 360
+    acc += bar.count
+    return { len, rotate, color: sliceColors[i % sliceColors.length] }
+  })
+})
+
+function formatMoney(v) {
+  return '$' + Number(v || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
 
 function toggleDisponibilidad() {
   disponibleLocal.value = !disponibleLocal.value
@@ -80,29 +144,105 @@ const badgeVariant = (status) => ({
           />
         </div>
 
-        <div class="grid grid-cols-1 gap-6 xl:grid-cols-[1.7fr_1fr]">
+        <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <div class="rounded-[30px] border border-white/40 bg-[var(--color-surface)] p-5 shadow-[10px_10px_20px_var(--neumorphic-dark),-10px_-10px_20px_var(--neumorphic-light)] sm:p-6">
-            <div class="mb-5 flex items-center justify-between gap-3">
+            <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-text-muted)]">Tráfico</p>
-                <h3 class="mt-1 text-xl font-semibold text-[var(--color-text)]">Facturas por Semana</h3>
+                <h3 class="mt-1 text-xl font-semibold text-[var(--color-text)]">Cotizaciones Registradas</h3>
               </div>
-              <div class="rounded-full bg-[var(--color-bg)] px-3 py-1 text-xs font-medium text-[var(--color-text-muted)] shadow-[inset_2px_2px_6px_var(--neumorphic-dark),inset_-2px_-2px_6px_var(--neumorphic-light)]">
-                Mes actual · 4 semanas
+              <div class="flex gap-1 rounded-full bg-[var(--color-bg)] p-1 shadow-[inset_2px_2px_6px_var(--neumorphic-dark),inset_-2px_-2px_6px_var(--neumorphic-light)]">
+                <button
+                  v-for="(opts, key) in periodos"
+                  :key="key"
+                  @click="periodo = key"
+                  class="rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-200"
+                  :class="periodo === key ? 'bg-[var(--color-primary)] text-white shadow-[4px_4px_8px_var(--neumorphic-dark),-4px_-4px_8px_var(--neumorphic-light)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'"
+                >
+                  {{ opts.label }}
+                </button>
               </div>
             </div>
-            <div class="flex h-56 items-end justify-between gap-3 rounded-[24px] bg-[var(--color-bg)] p-4 shadow-[inset_6px_6px_12px_var(--neumorphic-dark),inset_-6px_-6px_12px_var(--neumorphic-light)]">
-              <div v-for="(bar, i) in ventasPorSemana || serviciosPorDia" :key="i" class="flex flex-1 flex-col items-center gap-2">
-                <div class="flex h-full w-full items-end">
-                  <div class="w-full rounded-t-[18px] transition-all duration-500 ease-out" :style="{ height: Math.max(bar.height, 2) + '%', background: bar.count > 0 ? 'linear-gradient(180deg, var(--color-primary), var(--color-secondary))' : '#cbd5e1' }"></div>
+            <Transition name="chart-fade" mode="out-in">
+              <div :key="periodo" class="flex h-56 items-end justify-between gap-3 rounded-[24px] bg-[var(--color-bg)] p-4 shadow-[inset_6px_6px_12px_var(--neumorphic-dark),inset_-6px_-6px_12px_var(--neumorphic-light)]">
+                <div v-for="(bar, i) in chartData" :key="i" class="flex h-full flex-1 flex-col items-center justify-end gap-2">
+                  <div class="flex w-full items-end justify-center" style="height: 176px">
+                    <div
+                      class="bar-grow relative flex w-full items-start justify-center rounded-t-[18px] rounded-b-[4px] pt-1"
+                      :style="{ '--h': Math.max(bar.height, 4) + '%', animationDelay: i * 0.15 + 's', background: bar.count > 0 ? barGradient(i) : 'rgba(148,163,184,0.25)', boxShadow: bar.count > 0 ? '0 8px 16px -6px color-mix(in srgb, ' + sliceColors[i % sliceColors.length] + ' 50%, transparent)' : 'none' }"
+                      :title="bar.sub + ' · ' + bar.count + ' registros'"
+                    >
+                      <span v-if="bar.count > 0" class="text-[11px] font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)]">{{ bar.count }}</span>
+                    </div>
+                  </div>
+                  <div class="flex flex-col items-center">
+                    <span class="text-xs font-medium text-[var(--color-text-muted)]">{{ bar.label }}</span>
+                  </div>
                 </div>
-                <span class="text-xs font-medium text-[var(--color-text-muted)]">{{ bar.day }}</span>
-                <span class="text-[10px] text-[var(--color-text-muted)]">{{ bar.count }}</span>
               </div>
-            </div>
+            </Transition>
+            <p class="mt-3 text-center text-xs font-medium text-[var(--color-text-muted)]">{{ periodos[periodo].info }} — <span class="font-bold text-[var(--color-text)]">{{ totalPeriodo }}</span> registros <span v-if="totalPeriodo === 0" class="text-[var(--color-text-muted)]">(aún no hay cotizaciones en este periodo)</span></p>
           </div>
 
-          <div class="rounded-[30px] border border-white/40 bg-[var(--color-surface)] p-5 shadow-[10px_10px_20px_var(--neumorphic-dark),-10px_-10px_20px_var(--neumorphic-light)] sm:p-6">
+          <!-- Facturación: facturas terminadas por periodo (solo admin) -->
+          <div v-if="role === 'admin'" class="rounded-[30px] border border-white/40 bg-[var(--color-surface)] p-5 shadow-[10px_10px_20px_var(--neumorphic-dark),-10px_-10px_20px_var(--neumorphic-light)] sm:p-6">
+            <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-text-muted)]">Facturación</p>
+                <h3 class="mt-1 text-xl font-semibold text-[var(--color-text)]">Facturas Terminadas</h3>
+              </div>
+              <div class="flex gap-1 rounded-full bg-[var(--color-bg)] p-1 shadow-[inset_2px_2px_6px_var(--neumorphic-dark),inset_-2px_-2px_6px_var(--neumorphic-light)]">
+                  <button
+                    v-for="(opts, key) in periodos"
+                    :key="key"
+                    @click="periodoFacturas = key"
+                    class="rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-200"
+                    :class="periodoFacturas === key ? 'bg-[var(--color-primary)] text-white shadow-[4px_4px_8px_var(--neumorphic-dark),-4px_-4px_8px_var(--neumorphic-light)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'"
+                  >
+                    {{ opts.label }}
+                  </button>
+                </div>
+            </div>
+            <Transition name="chart-fade" mode="out-in">
+              <div :key="periodoFacturas" class="flex flex-col items-center justify-center gap-4 rounded-[24px] bg-[var(--color-bg)] p-4 shadow-[inset_6px_6px_12px_var(--neumorphic-dark),inset_-6px_-6px_12px_var(--neumorphic-light)]">
+                <div class="relative flex h-48 w-48 items-center justify-center rounded-full shadow-[10px_10px_20px_var(--neumorphic-dark),-10px_-10px_20px_var(--neumorphic-light)]">
+                  <svg :width="facturasSize" :height="facturasSize" class="-rotate-90">
+                    <circle v-if="totalPeriodoFacturas === 0" cx="96" cy="96" :r="facturasRadius" fill="none" stroke="rgba(148,163,184,0.25)" :stroke-width="facturasStroke" />
+                    <circle
+                      v-for="(slice, i) in facturasSlices"
+                      :key="i"
+                      cx="96"
+                      cy="96"
+                      :r="facturasRadius"
+                      fill="none"
+                      :stroke="slice.color"
+                      :stroke-width="facturasStroke"
+                      :transform="`rotate(${slice.rotate} 96 96)`"
+                      class="facturas-slice"
+                      :style="{ '--len': slice.len.toFixed(2) + 'px', '--circ': facturasCircumference.toFixed(2) + 'px', animationDelay: i * 0.18 + 's' }"
+                    />
+                  </svg>
+                  <div class="absolute inset-7 rounded-full bg-[var(--color-bg)] shadow-[inset_6px_6px_12px_var(--neumorphic-dark),inset_-6px_-6px_12px_var(--neumorphic-light)]"></div>
+                  <div class="absolute inset-0 z-10 flex items-center justify-center text-center">
+                    <div>
+                      <p class="text-3xl font-bold text-[var(--color-text)]">{{ totalPeriodoFacturas }}</p>
+                      <p class="text-xs font-medium text-[var(--color-text-muted)]">facturas</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5">
+                  <div v-for="(bar, i) in chartDataFacturas" :key="i" class="legend-item flex items-center gap-1.5" :style="{ animationDelay: i * 70 + 'ms' }">
+                    <span class="legend-dot h-2.5 w-2.5 rounded-full" :style="{ backgroundColor: sliceColors[i % sliceColors.length] }"></span>
+                    <span class="text-xs text-[var(--color-text-muted)]">{{ bar.label }} · {{ bar.count }}</span>
+                  </div>
+                </div>
+              </div>
+            </Transition>
+            <p class="mt-3 text-center text-xs font-medium text-[var(--color-text-muted)]">{{ periodos[periodoFacturas].info }} — <span class="font-bold text-[var(--color-text)]">{{ totalPeriodoFacturas }}</span> facturas <span v-if="montoPeriodoFacturas > 0" class="text-[var(--color-text)]">· {{ formatMoney(montoPeriodoFacturas) }}</span> <span v-if="totalPeriodoFacturas === 0" class="text-[var(--color-text-muted)]">(aún no hay facturas en este periodo)</span></p>
+          </div>
+
+          <!-- Rendimiento / Estadísticas (solo cotizador) -->
+          <div v-else class="rounded-[30px] border border-white/40 bg-[var(--color-surface)] p-5 shadow-[10px_10px_20px_var(--neumorphic-dark),-10px_-10px_20px_var(--neumorphic-light)] sm:p-6">
             <div class="mb-5">
               <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-text-muted)]">Rendimiento</p>
               <h3 class="mt-1 text-xl font-semibold text-[var(--color-text)]">Estadísticas</h3>
@@ -110,7 +250,8 @@ const badgeVariant = (status) => ({
             <div class="flex flex-col items-center justify-center gap-4 rounded-[24px] bg-[var(--color-bg)] p-4 shadow-[inset_6px_6px_12px_var(--neumorphic-dark),inset_-6px_-6px_12px_var(--neumorphic-light)]">
               <ProgressDonut :percentage="eficiencia" :color="'var(--color-primary)'" :size="140" />
               <div class="text-center">
-                <p class="text-2xl font-bold text-[var(--color-text)]">{{ eficiencia }}%</p>
+                <p v-if="eficiencia > 0" class="text-2xl font-bold text-[var(--color-text)]">{{ eficiencia }}%</p>
+                <p v-else class="text-lg font-semibold text-[var(--color-text-muted)]">Sin servicios finalizados</p>
                 <p class="text-sm text-[var(--color-text-muted)]">Eficiencia General</p>
               </div>
             </div>
@@ -330,3 +471,47 @@ const badgeVariant = (status) => ({
     </div>
   </AppLayout>
 </template>
+
+<style>
+.chart-fade-enter-active,
+.chart-fade-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.chart-fade-enter-from {
+  opacity: 0;
+  transform: scale(0.9) translateY(6px);
+}
+.chart-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.95) translateY(-6px);
+}
+.legend-item {
+  opacity: 0;
+  animation: legend-in 0.4s ease forwards;
+}
+.legend-dot {
+  animation: dot-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes legend-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes dot-pop {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+.facturas-slice {
+  stroke-dasharray: 0 var(--circ);
+  animation: fill-slice 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes fill-slice {
+  to { stroke-dasharray: var(--len) var(--circ); }
+}
+.bar-grow {
+  height: 0%;
+  animation: bar-grow 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes bar-grow {
+  to { height: var(--h); }
+}
+</style>
