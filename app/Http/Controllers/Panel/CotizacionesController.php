@@ -18,6 +18,8 @@ use App\Models\Operadore;
 use App\Models\Unidade;
 use App\Models\Oficina;
 use App\Http\Requests\Panel\StoreCotizacionRequest;
+use App\Http\Requests\Panel\BuscarRutasCotizacionRequest;
+use App\Services\GoogleMapsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -61,7 +63,27 @@ class CotizacionesController extends Controller
         return Inertia::render('Panel/Cotizaciones/Create', [
             'clientes' => Cliente::where('empresa_id', $empresaId)->get(['id', 'nombre', 'apellido_paterno', 'apellido_materno']),
             'tiposServicio' => CatalogoServicio::where('empresa_id', $empresaId)->get(['id', 'nombre']),
+            // Llave del navegador para Places Autocomplete + Maps JS (restringida por referrer).
+            'googleMapsKey' => config('services.google.frontend_key'),
         ]);
+    }
+
+    // Calcular rutas (distancias, tiempos y peajes) para una cotización.
+    // Actúa como proxy seguro hacia Google Routes API v2: el frontend nunca ve
+    // la llave de servidor ni decide el field mask.
+    public function rutas(BuscarRutasCotizacionRequest $request)
+    {
+        try {
+            $resultado = app(GoogleMapsService::class)->rutas($request->validated());
+
+            return response()->json(['ok' => true] + $resultado);
+        } catch (\Throwable $e) {
+            // Errores de Google o de conexión se devuelven como mensaje amigable.
+            return response()->json([
+                'ok' => false,
+                'error' => $e->getMessage(),
+            ], 422);
+        }
     }
 
     // Guardar cotización en base de datos

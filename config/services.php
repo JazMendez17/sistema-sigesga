@@ -35,4 +35,20 @@ return [
         ],
     ],
 
+    'google' => [
+        // Llave del SERVIDOR (nunca exponer en el frontend):
+        // usada por el backend para llamar a Google Routes API v2 (rutas, peajes).
+        'api_key' => env('GOOGLE_MAPS_API_KEY'),
+
+        // Llave del NAVEGADOR (restringida por HTTP referrer):
+        // usada por el frontend para Places Autocomplete y Maps JavaScript API.
+        // No hay fallback a la llave de servidor: nunca debe exponerse en HTML.
+        'frontend_key' => env('GOOGLE_MAPS_FRONTEND_KEY'),
+
+        // Región y lenguaje para rutas, autocomplete y cantidades de peaje.
+        'country' => env('GOOGLE_MAPS_COUNTRY', 'MX'),
+        'language' => env('GOOGLE_MAPS_LANGUAGE', 'es'),
+
+    ],
+
 ];

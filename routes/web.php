@@ -50,6 +50,7 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
     // === Módulos accesibles para admin y cotizador ===
     Route::middleware('role:admin,cotizador')->group(function () {
         Route::get('/cotizaciones', [CotizacionesController::class, 'index'])->name('cotizaciones.index');
+        Route::post('/cotizaciones/rutas', [CotizacionesController::class, 'rutas'])->name('cotizaciones.rutas');
         Route::get('/cotizaciones/create', [CotizacionesController::class, 'create'])->name('cotizaciones.create');
         Route::post('/cotizaciones', [CotizacionesController::class, 'store'])->name('cotizaciones.store');
         Route::get('/cotizaciones/{id}', [CotizacionesController::class, 'show'])->name('cotizaciones.show');

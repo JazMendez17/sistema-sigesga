@@ -5,6 +5,7 @@ import axios from 'axios'
 import AppLayout from '@/Pages/Panel/AppLayout.vue'
 import NeumorphicInput from '@/Components/NeumorphicInput.vue'
 import NeumorphicButton from '@/Components/NeumorphicButton.vue'
+import CotizacionRutas from '@/Components/CotizacionRutas.vue'
 import { useFormValidation } from '@/Composables/useFormValidation'
 import { ESTADOS, municipiosPorEstado } from '@/Data/estadosMunicipios'
 import { showValidationErrors } from '@/stores/notification'
@@ -17,6 +18,25 @@ const cargandoTarifa = ref(false)
 const tarifaAplicada = ref(null)
 const municipiosOrigen = ref([])
 const municipiosDestino = ref([])
+const casetasPeaje = ref(0)
+const monedaCasetas = ref('MXN')
+
+// Aplica la ruta seleccionada en el mapa al formulario de cotización:
+// distancia (alimenta el cálculo por km) y coordenadas (se guardan en la cotización).
+function aplicarRuta(r) {
+  form.distancia_km = r.distancia_km
+  form.origen_lat = r.origen_lat
+  form.origen_lng = r.origen_lng
+  form.destino_lat = r.destino_lat
+  form.destino_lng = r.destino_lng
+  casetasPeaje.value = r.costo_peaje || 0
+  monedaCasetas.value = r.moneda_peaje || 'MXN'
+  calcularTotal()
+}
+
+function formatearCasetas() {
+  return new Intl.NumberFormat('es-MX', { style: 'currency', currency: monedaCasetas.value }).format(casetasPeaje.value)
+}
 
 function actualizarMunicipiosOrigen() {
   municipiosOrigen.value = municipiosPorEstado(form.origen.estado)
@@ -79,7 +99,9 @@ function calcularTotal() {
   const montoDescuento = subtotalBruto * (descuentoPct / 100)
   const subtotalNeto = subtotalBruto - montoDescuento
   const iva = subtotalNeto * 0.16
-  const total = Math.max(banderazo, subtotalNeto) + iva
+  // Casetas: si la empresa las cubre (cubre_casetas) no se cargan al cliente.
+  const casetas = form.cubre_casetas ? 0 : casetasPeaje.value
+  const total = Math.max(banderazo, subtotalNeto) + iva + casetas
   form.costo_total = total.toFixed(2)
 }
 
@@ -95,10 +117,11 @@ function calculosDetalle() {
   const montoDescuento = subtotalBruto * (descuentoPct / 100)
   const subtotalNeto = Math.max(banderazo, subtotalBruto - montoDescuento)
   const iva = subtotalNeto * 0.16
+  const casetas = form.cubre_casetas ? 0 : casetasPeaje.value
   return {
     banderazo, kmExcedentes, costoKm, costoKmTotal,
     descuentoPct, montoDescuento, subtotalBruto,
-    subtotalNeto, iva, total: subtotalNeto + iva
+    subtotalNeto, iva, casetas, total: subtotalNeto + iva + casetas
   }
 }
 
@@ -238,6 +261,18 @@ function aseguradoraNombre() {
             </div>
           </div>
 
+          <!-- Cálculo de rutas y peajes (Google Maps) -->
+          <div class="border-t border-gray-200 pt-4">
+            <p class="text-sm font-medium text-gray-600 mb-3">Ruta y Peajes (Google Maps)</p>
+            <p class="text-xs text-gray-400 mb-3">Selecciona origen y destino con el autocompletado, calcula las rutas y elige una opción. La distancia se aplica automáticamente a la cotización.</p>
+            <CotizacionRutas @seleccionada="aplicarRuta" />
+            <p v-if="casetasPeaje > 0" class="mt-3 text-xs font-medium" :class="form.cubre_casetas ? 'text-gray-400' : 'text-orange-600'">
+              Casetas estimadas de la ruta seleccionada: {{ formatearCasetas() }}
+              <template v-if="form.cubre_casetas">(incluidas por la empresa — no se cargan al cliente)</template>
+              <template v-else>(se suman al total de la cotización)</template>
+            </p>
+          </div>
+
           <!-- Info de tarifa aplicada -->
           <div v-if="tarifaAplicada" class="rounded-2xl bg-green-50 border border-green-200 p-4">
             <p class="text-sm text-green-700 font-medium">
@@ -282,6 +317,7 @@ function aseguradoraNombre() {
               <div v-if="calculosDetalle().descuentoPct > 0" class="flex justify-between"><span class="text-gray-500">Descuento ({{ calculosDetalle().descuentoPct }}%):</span><span class="font-medium text-red-600">-${{ calculosDetalle().montoDescuento.toFixed(2) }}</span></div>
               <div class="flex justify-between font-semibold"><span class="text-gray-700">Subtotal Neto:</span><span>${{ calculosDetalle().subtotalNeto.toFixed(2) }}</span></div>
               <div class="flex justify-between"><span class="text-gray-500">IVA (16%):</span><span class="font-medium">+${{ calculosDetalle().iva.toFixed(2) }}</span></div>
+              <div v-if="calculosDetalle().casetas > 0" class="flex justify-between"><span class="text-gray-500">Peajes / Casetas ({{ formatearCasetas() }}):</span><span class="font-medium text-orange-600">+${{ calculosDetalle().casetas.toFixed(2) }}</span></div>
               <div class="border-t pt-2 flex justify-between font-bold text-base"><span class="text-gray-800">TOTAL FINAL:</span><span class="text-lg">${{ calculosDetalle().total.toFixed(2) }}</span></div>
               <div v-if="form.cubre_casetas" class="text-xs text-gray-400 mt-1">* Incluye cobertura de casetas/peaje</div>
               <div v-if="form.observaciones" class="border-t pt-2"><span class="text-gray-500 text-xs">Obs:</span> {{ form.observaciones }}</div>
