@@ -31,11 +31,35 @@ use App\Http\Controllers\Panel\NotificacionesController;
 use App\Http\Controllers\Panel\PerfilController;
 use App\Http\Controllers\ContactoController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 // === Rutas públicas (Landing Page) ===
 Route::get('/', [LandingController::class, 'index']);
 
 Route::post('/contacto', [ContactoController::class, 'store']);
+
+// === Recursos subidos (imágenes) — servidos desde disco ===
+// Las imágenes se muestran como /storage/... En hosting compartido el enlace
+// public/storage a veces no se crea o se rompe; esta ruta las sirve igual.
+Route::get('/storage/{path}', function (string $path) {
+    $path = ltrim($path, '/');
+
+    // Evita path traversal y bytes nulos.
+    if (str_contains($path, '..') || str_contains($path, "\0")) {
+        abort(404);
+    }
+
+    $disk = Storage::disk('public');
+
+    if (!$disk->exists($path)) {
+        abort(404);
+    }
+
+    return response()
+        ->file($disk->path($path))
+        ->header('Cache-Control', 'public, max-age=86400, immutable')
+        ->header('X-Content-Type-Options', 'nosniff');
+})->where('path', '.*');
 
 Route::get('/solicitar', [LandingController::class, 'solicitar'])->name('solicitar');
 Route::post('/solicitar', [LandingController::class, 'solicitarStore'])->name('solicitar.store');
