@@ -27,12 +27,9 @@
 /auth.json
 /node_modules
 /public/hot
-/public/storage
-!public/storage/
+/public/storage/*
 !public/storage/empresa/
-!public/storage/empresa/*.png
 !public/storage/fotos/
-!public/storage/fotos/*.jpg
 !storage/app/public/
 !storage/app/public/empresa/
 !storage/app/public/empresa/*.png
