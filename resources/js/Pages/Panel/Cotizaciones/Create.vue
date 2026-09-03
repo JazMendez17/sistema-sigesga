@@ -18,6 +18,10 @@ const cargandoTarifa = ref(false)
 const tarifaAplicada = ref(null)
 const municipiosOrigen = ref([])
 const municipiosDestino = ref([])
+const coloniasOrigen = ref([])
+const coloniasDestino = ref([])
+const cargandoColoniasOrigen = ref(false)
+const cargandoColoniasDestino = ref(false)
 const casetasPeaje = ref(0)
 const monedaCasetas = ref('MXN')
 
@@ -45,6 +49,74 @@ function actualizarMunicipiosOrigen() {
 function actualizarMunicipiosDestino() {
   municipiosDestino.value = municipiosPorEstado(form.destino.estado)
   if (!municipiosDestino.value.includes(form.destino.municipio_alcaldia)) form.destino.municipio_alcaldia = ''
+}
+
+async function buscarColoniasOrigen() {
+  const cp = form.origen.codigo_postal?.trim()
+  if (!cp || cp.length < 5) { coloniasOrigen.value = []; return }
+  cargandoColoniasOrigen.value = true
+  try {
+    const { data } = await axios.get(`/panel/api/colonias/${cp}`)
+    coloniasOrigen.value = data
+    if (data.length === 1) {
+      form.origen.colonia = data[0].colonia
+      form.origen.estado = data[0].estado
+      form.origen.municipio_alcaldia = data[0].municipio
+      actualizarMunicipiosOrigen()
+    } else if (data.length > 1) {
+      form.origen.colonia = ''
+      form.origen.estado = data[0].estado
+      form.origen.municipio_alcaldia = data[0].municipio
+      actualizarMunicipiosOrigen()
+    } else {
+      form.origen.colonia = ''
+    }
+  } catch (e) {
+    coloniasOrigen.value = []
+  } finally {
+    cargandoColoniasOrigen.value = false
+  }
+}
+
+async function buscarColoniasDestino() {
+  const cp = form.destino.codigo_postal?.trim()
+  if (!cp || cp.length < 5) { coloniasDestino.value = []; return }
+  cargandoColoniasDestino.value = true
+  try {
+    const { data } = await axios.get(`/panel/api/colonias/${cp}`)
+    coloniasDestino.value = data
+    if (data.length === 1) {
+      form.destino.colonia = data[0].colonia
+      form.destino.estado = data[0].estado
+      form.destino.municipio_alcaldia = data[0].municipio
+      actualizarMunicipiosDestino()
+    } else if (data.length > 1) {
+      form.destino.colonia = ''
+      form.destino.estado = data[0].estado
+      form.destino.municipio_alcaldia = data[0].municipio
+      actualizarMunicipiosDestino()
+    } else {
+      form.destino.colonia = ''
+    }
+  } catch (e) {
+    coloniasDestino.value = []
+  } finally {
+    cargandoColoniasDestino.value = false
+  }
+}
+
+function seleccionarColoniaOrigen(colonia) {
+  form.origen.colonia = colonia.colonia
+  form.origen.estado = colonia.estado
+  form.origen.municipio_alcaldia = colonia.municipio
+  actualizarMunicipiosOrigen()
+}
+
+function seleccionarColoniaDestino(colonia) {
+  form.destino.colonia = colonia.colonia
+  form.destino.estado = colonia.estado
+  form.destino.municipio_alcaldia = colonia.municipio
+  actualizarMunicipiosDestino()
 }
 
 const form = useForm({
@@ -211,8 +283,20 @@ function aseguradoraNombre() {
               <NeumorphicInput v-model="form.origen.calle" label="Calle" placeholder="Av. Reforma" />
               <NeumorphicInput v-model="form.origen.numero_exterior" label="Núm. Exterior" placeholder="123" />
               <NeumorphicInput v-model="form.origen.numero_interior" label="Núm. Interior" placeholder="Opcional" />
-              <NeumorphicInput v-model="form.origen.colonia" label="Colonia" placeholder="Centro" />
-              <NeumorphicInput v-model="form.origen.codigo_postal" label="Código Postal" placeholder="06600" />
+              <div>
+                <label class="block text-sm font-medium text-gray-600 mb-2">Código Postal</label>
+                <input v-model="form.origen.codigo_postal" @input="buscarColoniasOrigen" maxlength="5" placeholder="06600" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-600 mb-2">Colonia</label>
+                <select v-if="coloniasOrigen.length > 1" v-model="form.origen.colonia" @change="seleccionarColoniaOrigen(coloniasOrigen.find(c => c.colonia === form.origen.colonia))" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                  <option value="">Seleccionar colonia...</option>
+                  <option v-for="c in coloniasOrigen" :key="c.colonia" :value="c.colonia">{{ c.colonia }}</option>
+                </select>
+                <input v-else v-model="form.origen.colonia" placeholder="Colonia" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                <p v-if="cargandoColoniasOrigen" class="text-xs text-gray-400 mt-1">Buscando colonias...</p>
+                <p v-if="form.origen.codigo_postal && coloniasOrigen.length === 0 && !cargandoColoniasOrigen && form.origen.codigo_postal.length === 5" class="text-xs text-orange-500 mt-1">Sin colonias para este CP</p>
+              </div>
               <div>
                 <label class="block text-sm font-medium text-gray-600 mb-2">Estado</label>
                 <select v-model="form.origen.estado" @change="actualizarMunicipiosOrigen()" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
@@ -239,8 +323,20 @@ function aseguradoraNombre() {
               <NeumorphicInput v-model="form.destino.calle" label="Calle" placeholder="Av. Reforma" />
               <NeumorphicInput v-model="form.destino.numero_exterior" label="Núm. Exterior" placeholder="123" />
               <NeumorphicInput v-model="form.destino.numero_interior" label="Núm. Interior" placeholder="Opcional" />
-              <NeumorphicInput v-model="form.destino.colonia" label="Colonia" placeholder="Centro" />
-              <NeumorphicInput v-model="form.destino.codigo_postal" label="Código Postal" placeholder="06600" />
+              <div>
+                <label class="block text-sm font-medium text-gray-600 mb-2">Código Postal</label>
+                <input v-model="form.destino.codigo_postal" @input="buscarColoniasDestino" maxlength="5" placeholder="06600" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-600 mb-2">Colonia</label>
+                <select v-if="coloniasDestino.length > 1" v-model="form.destino.colonia" @change="seleccionarColoniaDestino(coloniasDestino.find(c => c.colonia === form.destino.colonia))" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                  <option value="">Seleccionar colonia...</option>
+                  <option v-for="c in coloniasDestino" :key="c.colonia" :value="c.colonia">{{ c.colonia }}</option>
+                </select>
+                <input v-else v-model="form.destino.colonia" placeholder="Colonia" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+                <p v-if="cargandoColoniasDestino" class="text-xs text-gray-400 mt-1">Buscando colonias...</p>
+                <p v-if="form.destino.codigo_postal && coloniasDestino.length === 0 && !cargandoColoniasDestino && form.destino.codigo_postal.length === 5" class="text-xs text-orange-500 mt-1">Sin colonias para este CP</p>
+              </div>
               <div>
                 <label class="block text-sm font-medium text-gray-600 mb-2">Estado</label>
                 <select v-model="form.destino.estado" @change="actualizarMunicipiosDestino()" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">

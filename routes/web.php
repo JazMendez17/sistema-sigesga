@@ -136,6 +136,7 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
     // === Módulos accesibles para admin, cotizador y operador ===
     Route::middleware('role:admin,cotizador,operador')->group(function () {
         Route::get('/api/cotizacion/tarifa', [\App\Http\Controllers\Panel\CotizacionesController::class, 'obtenerTarifa'])->name('api.cotizacion.tarifa');
+        Route::get('/api/colonias/{cp}', [\App\Http\Controllers\Panel\ColoniaController::class, 'buscarPorCP'])->name('api.colonias.cp');
 
         Route::put('/operadores/disponibilidad', [OperadoresController::class, 'cambiarDisponibilidad'])->name('operadores.disponibilidad');
 
