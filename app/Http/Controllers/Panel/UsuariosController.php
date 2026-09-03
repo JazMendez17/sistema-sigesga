@@ -173,6 +173,7 @@ class UsuariosController extends Controller
 
         Auditoria::registrar($usuario);
 
+        $usuario->clientes()->each(fn($c) => $c->eliminar());
         $usuario->eliminar();
 
         return redirect()->route('panel.usuarios.index')
