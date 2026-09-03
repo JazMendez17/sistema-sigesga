@@ -23,4 +23,10 @@ trait Ocultable
     {
         return $query->withoutGlobalScope('no-eliminados');
     }
+
+    public function eliminar(): void
+    {
+        $this->eliminado = true;
+        $this->save();
+    }
 }

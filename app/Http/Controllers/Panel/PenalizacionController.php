@@ -70,7 +70,7 @@ class PenalizacionController extends Controller
 
         Auditoria::registrar($sla);
 
-        $sla->update(['eliminado' => true]);
+        $sla->eliminar();
         return redirect()->route('panel.penalizaciones.index')->with('success', 'SLA eliminado correctamente.');
     }
 

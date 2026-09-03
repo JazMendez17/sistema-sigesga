@@ -54,7 +54,7 @@ class ProfileController extends Controller
 
         Auditoria::registrar($user, $user->id);
 
-        $user->update(['eliminado' => true]);
+        $user->eliminar();
 
         Auth::logout();
 

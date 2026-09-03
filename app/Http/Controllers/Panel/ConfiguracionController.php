@@ -102,7 +102,7 @@ class ConfiguracionController extends Controller
             foreach ($empresa->empresaValores()->get() as $valor) {
                 Auditoria::registrar($valor);
             }
-            $empresa->empresaValores()->update(['eliminado' => true]);
+            $empresa->empresaValores()->each(fn($v) => $v->eliminar());
             foreach ($valoresData as $i => $v) {
                 $empresa->empresaValores()->create([
                     'valor' => $v['valor'] ?? '',
@@ -118,7 +118,7 @@ class ConfiguracionController extends Controller
             foreach ($empresa->empresaServicios()->get() as $servicioLanding) {
                 Auditoria::registrar($servicioLanding);
             }
-            $empresa->empresaServicios()->update(['eliminado' => true]);
+            $empresa->empresaServicios()->each(fn($s) => $s->eliminar());
             foreach ($serviciosData as $i => $s) {
                 $empresa->empresaServicios()->create([
                     'tipo' => $s['tipo'] ?? '',

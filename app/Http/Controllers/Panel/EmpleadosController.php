@@ -169,7 +169,8 @@ class EmpleadosController extends Controller
 
         Auditoria::registrar($empleado);
 
-        $empleado->update(['eliminado' => true]);
+        $empleado->eliminado = true;
+        $empleado->save();
 
         return redirect()->route('panel.empleados.index')
             ->with('success', 'Empleado eliminado correctamente');

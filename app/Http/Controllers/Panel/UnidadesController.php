@@ -138,7 +138,7 @@ class UnidadesController extends Controller
 
         Auditoria::registrar($unidad);
 
-        $unidad->update(['eliminado' => true]);
+        $unidad->eliminar();
 
         return redirect()->route('panel.unidades.index')
             ->with('success', 'Unidad eliminada correctamente');

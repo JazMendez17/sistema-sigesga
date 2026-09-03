@@ -150,7 +150,7 @@ class OperadoresController extends Controller
 
         Auditoria::registrar($operadore);
 
-        $operadore->update(['eliminado' => true]);
+        $operadore->eliminar();
 
         return redirect()->route('panel.operadores.index')
             ->with('success', 'Operador eliminado correctamente');

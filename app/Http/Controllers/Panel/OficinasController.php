@@ -143,7 +143,7 @@ class OficinasController extends Controller
 
         Auditoria::registrar($oficina);
 
-        $oficina->update(['eliminado' => true]);
+        $oficina->eliminar();
 
         return redirect()->route('panel.oficinas.index')
             ->with('success', 'Oficina eliminada correctamente');

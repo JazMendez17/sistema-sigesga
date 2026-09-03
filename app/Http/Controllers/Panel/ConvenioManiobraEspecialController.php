@@ -67,7 +67,7 @@ class ConvenioManiobraEspecialController extends Controller
 
         Auditoria::registrar($maniobra);
 
-        $maniobra->update(['eliminado' => true]);
+        $maniobra->eliminar();
         return redirect()->route('panel.servicios-especiales.index')->with('success', 'Maniobra especial eliminada.');
     }
 }
