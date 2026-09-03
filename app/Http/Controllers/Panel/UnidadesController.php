@@ -132,9 +132,8 @@ class UnidadesController extends Controller
     {
         $unidad = Unidade::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
 
-        if ($unidad->unidadMantenimientos()->count() > 0 || $unidad->servicios()->whereIn('estado', ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino'])->count() > 0) {
-            return redirect()->back()->with('error', 'No se puede eliminar la unidad porque tiene mantenimientos o servicios activos.');
-        }
+        $unidad->unidadMantenimientos()->get()->each(fn($x) => $x->eliminar());
+        $unidad->servicios()->whereIn('estado', ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino'])->get()->each(fn($x) => $x->eliminar());
 
         Auditoria::registrar($unidad);
 

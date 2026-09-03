@@ -144,9 +144,7 @@ class OperadoresController extends Controller
     {
         $operadore = Operadore::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
 
-        if ($operadore->servicios()->whereIn('estado', ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino'])->count() > 0) {
-            return redirect()->back()->with('error', 'No se puede eliminar el operador porque tiene servicios activos asignados.');
-        }
+        $operadore->servicios()->whereIn('estado', ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino'])->get()->each(fn($x) => $x->eliminar());
 
         Auditoria::registrar($operadore);
 

@@ -230,10 +230,7 @@ class ClientesController extends Controller
     {
         $cliente = Cliente::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
 
-        $cotizacionesCount = $cliente->cotizaciones()->count();
-        if ($cotizacionesCount > 0) {
-            return redirect()->back()->with('error', 'No se puede eliminar el cliente porque tiene cotizaciones asociadas.');
-        }
+        $cliente->cotizaciones()->get()->each(fn($x) => $x->eliminar());
 
         Auditoria::registrar($cliente);
 

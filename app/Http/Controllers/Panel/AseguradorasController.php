@@ -168,9 +168,7 @@ class AseguradorasController extends Controller
     {
         $aseguradora = Aseguradora::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
 
-        if ($aseguradora->convenios()->count() > 0) {
-            return redirect()->back()->with('error', 'No se puede eliminar la aseguradora porque tiene convenios asociados.');
-        }
+        $aseguradora->convenios()->get()->each(fn($x) => $x->eliminar());
 
         Auditoria::registrar($aseguradora);
 

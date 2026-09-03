@@ -163,14 +163,18 @@ class EmpleadosController extends Controller
     {
         $empleado = Empleado::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
 
-        if ($empleado->operador || $empleado->usuario) {
-            return redirect()->back()->with('error', 'No se puede eliminar el empleado porque está vinculado a un operador o usuario.');
-        }
-
         Auditoria::registrar($empleado);
 
-        $empleado->eliminado = true;
-        $empleado->save();
+        if ($empleado->operador) {
+            $empleado->operador->eliminar();
+        }
+
+        if ($empleado->usuario) {
+            $empleado->usuario->clientes()->each(fn($c) => $c->eliminar());
+            $empleado->usuario->eliminar();
+        }
+
+        $empleado->eliminar();
 
         return redirect()->route('panel.empleados.index')
             ->with('success', 'Empleado eliminado correctamente');

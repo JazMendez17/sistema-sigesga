@@ -162,9 +162,7 @@ class ConveniosController extends Controller
     {
         $convenio = Convenio::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
 
-        if ($convenio->cotizaciones()->count() > 0) {
-            return redirect()->back()->with('error', 'No se puede eliminar el convenio porque tiene cotizaciones asociadas.');
-        }
+        $convenio->cotizaciones()->get()->each(fn($x) => $x->eliminar());
 
         Auditoria::registrar($convenio);
 
