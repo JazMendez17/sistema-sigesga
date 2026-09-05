@@ -47,7 +47,17 @@ use HasFactory;
         'monto_iva',
         'costo_total',
         'estatus',
+        'cliente_aprobada_at',
+        'aprobada_internamente_at',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'cliente_aprobada_at' => 'datetime',
+            'aprobada_internamente_at' => 'datetime',
+        ];
+    }
 
     // RelaciÃ³n con empresa
     public function empresa(): BelongsTo

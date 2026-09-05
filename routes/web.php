@@ -50,6 +50,8 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
     // === Módulos accesibles para admin y cotizador ===
     Route::middleware('role:admin,cotizador')->group(function () {
         Route::get('/cotizaciones', [CotizacionesController::class, 'index'])->name('cotizaciones.index');
+        Route::get('/api/codigo-postal/{cp}', [\App\Http\Controllers\Panel\CodigoPostalController::class, 'buscar'])
+            ->name('api.codigo-postal.buscar');
         Route::post('/cotizaciones/rutas', [CotizacionesController::class, 'rutas'])->name('cotizaciones.rutas');
         Route::get('/cotizaciones/create', [CotizacionesController::class, 'create'])->name('cotizaciones.create');
         Route::post('/cotizaciones', [CotizacionesController::class, 'store'])->name('cotizaciones.store');
@@ -240,6 +242,7 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
     // Vistas de solo lectura para clientes
     Route::get('/cliente/servicios/{id}', [ServiciosController::class, 'show'])->name('servicios.show.cliente');
     Route::get('/cliente/cotizaciones/{id}', [CotizacionesController::class, 'show'])->name('cotizaciones.show.cliente');
+    Route::post('/cliente/cotizaciones/{id}/aprobar', [CotizacionesController::class, 'aprobarCliente'])->name('cotizaciones.aprobar.cliente');
     Route::get('/cliente/facturacion/{id}', [FacturacionController::class, 'show'])->name('facturacion.show.cliente');
 
     Route::get('/mis-cotizaciones', [CotizacionesController::class, 'misCotizaciones'])->name('cliente.cotizaciones');

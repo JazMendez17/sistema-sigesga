@@ -48,7 +48,14 @@ return [
         // Región y lenguaje para rutas, autocomplete y cantidades de peaje.
         'country' => env('GOOGLE_MAPS_COUNTRY', 'MX'),
         'language' => env('GOOGLE_MAPS_LANGUAGE', 'es'),
+        'vehicle_type' => env('GOOGLE_MAPS_VEHICLE_TYPE', 'TRUCK'),
+        'emission_type' => env('GOOGLE_MAPS_EMISSION_TYPE', 'GASOLINE'),
 
+    ],
+
+    'postalia' => [
+        'api_key' => env('POSTALIA_API_KEY'),
+        'base_url' => env('POSTALIA_BASE_URL', 'https://postali.app/api/v1'),
     ],
 
 ];

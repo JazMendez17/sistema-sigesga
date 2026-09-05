@@ -20,9 +20,14 @@ use App\Models\Oficina;
 use App\Http\Requests\Panel\StoreCotizacionRequest;
 use App\Http\Requests\Panel\BuscarRutasCotizacionRequest;
 use App\Services\GoogleMapsService;
+use App\Mail\CotizacionMail;
+use App\Models\Notificacione;
+use App\Models\Usuario;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 
 class CotizacionesController extends Controller
@@ -100,9 +105,36 @@ class CotizacionesController extends Controller
             $data['folio'] = 'COT-' . str_pad((Cotizacione::query()->lockForUpdate()->max('id') ?? 0) + 1, 5, '0', STR_PAD_LEFT);
         }
 
-        DB::transaction(function () use ($data) {
-            Cotizacione::create($data);
+        $cotizacion = DB::transaction(function () use ($data) {
+            $cotizacion = Cotizacione::create($data);
+            $cliente = Cliente::with('usuario')->find($cotizacion->cliente_id);
+            $usuarioCliente = $cliente?->usuario;
+
+            if ($usuarioCliente) {
+                $this->crearNotificacion($cotizacion->empresa_id, $usuarioCliente->id,
+                    "Nueva cotización {$cotizacion->folio} disponible para revisión y aprobación en tu portal.");
+            }
+
+            $this->notificarRolesCotizacion($cotizacion,
+                "Nueva cotización {$cotizacion->folio} creada para {$cliente?->nombre}. Pendiente de aprobación del cliente.");
+
+            return $cotizacion;
         });
+
+        $cliente = Cliente::with('usuario')->find($cotizacion->cliente_id);
+        $usuarioCliente = $cliente?->usuario;
+
+        $correo = $cliente?->email ?: $usuarioCliente?->email;
+        if ($correo) {
+            try {
+                Mail::to($correo)->send(new CotizacionMail($cotizacion->load('cliente', 'tipoServicio')));
+            } catch (\Throwable $e) {
+                Log::error('Error al enviar cotización por email', [
+                    'cotizacion_id' => $cotizacion->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
         return redirect()->route('panel.cotizaciones.index')
             ->with('success', 'Cotización creada correctamente');
@@ -136,14 +168,30 @@ class CotizacionesController extends Controller
                 'origen' => $cotizacion->origen_direccion ?? '—',
                 'destino' => $cotizacion->destino_direccion ?? '—',
                 'distancia' => (float) ($cotizacion->distancia_km ?? 0),
+                    'banderazo' => (float) ($cotizacion->costo_banderazo ?? 0),
+                    'km_incluidos' => (float) ($cotizacion->km_incluidos ?? 0),
+                    'km_excedente' => (float) ($cotizacion->km_excedente ?? 0),
+                    'costo_km' => (float) ($cotizacion->costo_km ?? 0),
+                    'subtotal' => (float) ($cotizacion->subtotal ?? 0),
+                    'descuento_pct' => (float) ($cotizacion->descuento_pct ?? 0),
+                    'monto_descuento' => (float) ($cotizacion->monto_descuento ?? 0),
+                    'iva' => (float) ($cotizacion->monto_iva ?? 0),
+                    'casetas' => (float) ($cotizacion->costo_aprox_casetas ?? 0),
+                    'incluye_peajes' => (bool) ($cotizacion->incluye_peajes ?? false),
                 'total_estimado' => (float) ($cotizacion->costo_total ?? 0),
                 'usuario_creador' => $cotizacion->usuarioCreador?->name ?? '—',
                 'servicio_id' => $cotizacion->servicio?->id,
+                'cliente_aprobada_at' => $cotizacion->cliente_aprobada_at,
+                'aprobada_internamente_at' => $cotizacion->aprobada_internamente_at,
+                'puede_aprobar_cliente' => $user->rol === 'cliente'
+                    && !$cotizacion->cliente_aprobada_at
+                    && $cotizacion->estatus === 'pendiente',
+                'es_cliente' => $user->rol === 'cliente',
             ],
-            'operadores' => Operadore::with('empleado')->where('empresa_id', $user->empresa_id)->where('disponible', true)->get()->map(fn($o) => [
+            'operadores' => $user->rol === 'cliente' ? [] : Operadore::with('empleado')->where('empresa_id', $user->empresa_id)->where('disponible', true)->get()->map(fn($o) => [
                 'id' => $o->id, 'nombre' => $o->empleado?->nombre ? trim($o->empleado->nombre.' '.($o->empleado->apellido_paterno??'')) : ('Operador #'.$o->id),
             ]),
-            'unidades' => Unidade::where('empresa_id', $user->empresa_id)->where('activo', true)->get(['id', 'placas', 'numero_economico']),
+            'unidades' => $user->rol === 'cliente' ? [] : Unidade::where('empresa_id', $user->empresa_id)->where('activo', true)->get(['id', 'placas', 'numero_economico']),
         ]);
     }
 
@@ -157,13 +205,20 @@ class CotizacionesController extends Controller
             return back()->with('error', 'Esta cotización ya fue aprobada y tiene un servicio asociado.');
         }
 
+        if (!$cotizacion->cliente_aprobada_at) {
+            return back()->with('error', 'La cotización debe ser aprobada por el cliente o aseguradora antes de crear el servicio.');
+        }
+
         $request->validate([
             'operador_id' => 'required|exists:operadores,id,empresa_id,' . $empresaId,
             'unidad_id' => 'required|exists:unidades,id,empresa_id,' . $empresaId,
         ]);
 
         DB::transaction(function () use ($cotizacion, $request) {
-            $cotizacion->update(['estatus' => 'aprobado']);
+            $cotizacion->update([
+                'estatus' => 'aprobado',
+                'aprobada_internamente_at' => now(),
+            ]);
 
             Servicio::create([
                 'empresa_id' => $cotizacion->empresa_id,
@@ -189,6 +244,50 @@ class CotizacionesController extends Controller
         return back()->with('success', 'Cotización rechazada.');
     }
 
+    public function aprobarCliente($id)
+    {
+        $usuario = auth()->user();
+        $cliente = Cliente::where('usuario_id', $usuario->id)->firstOrFail();
+        $cotizacion = Cotizacione::where('cliente_id', $cliente->id)->findOrFail($id);
+
+        if ($cotizacion->estatus !== 'pendiente' || $cotizacion->cliente_aprobada_at) {
+            return back()->with('error', 'Esta cotización ya no está disponible para aprobación.');
+        }
+
+        $cotizacion->update(['cliente_aprobada_at' => now()]);
+
+        $ids = Usuario::where('empresa_id', $cotizacion->empresa_id)
+            ->whereIn('rol', ['admin', 'cotizador'])
+            ->pluck('id')
+            ->push($cotizacion->usuario_creador_id)
+            ->unique();
+        foreach ($ids as $usuarioId) {
+            $this->crearNotificacion($cotizacion->empresa_id, $usuarioId,
+                "El cliente aprobó la cotización {$cotizacion->folio}. Requiere aprobación interna.");
+        }
+
+        return back()->with('success', 'Cotización aprobada. El equipo interno continuará con la autorización.');
+    }
+
+    protected function crearNotificacion(int $empresaId, int $usuarioId, string $mensaje): void
+    {
+        Notificacione::create([
+            'empresa_id' => $empresaId,
+            'usuario_id' => $usuarioId,
+            'mensaje' => $mensaje,
+            'canal' => 'sistema_push',
+            'estado' => 'pendiente',
+        ]);
+    }
+
+    protected function notificarRolesCotizacion(Cotizacione $cotizacion, string $mensaje): void
+    {
+        Usuario::where('empresa_id', $cotizacion->empresa_id)
+            ->whereIn('rol', ['admin', 'cotizador'])
+            ->pluck('id')
+            ->each(fn ($usuarioId) => $this->crearNotificacion($cotizacion->empresa_id, $usuarioId, $mensaje));
+    }
+
     // Formulario para editar cotización
     public function edit($id)
     {
@@ -200,6 +299,7 @@ class CotizacionesController extends Controller
             'cotizacion' => $cotizacion,
             'clientes' => Cliente::where('empresa_id', $empresaId)->get(['id', 'nombre']),
             'tiposServicio' => CatalogoServicio::where('empresa_id', $empresaId)->get(['id', 'nombre']),
+            'googleMapsKey' => config('services.google.frontend_key'),
         ]);
     }
 
@@ -282,6 +382,7 @@ class CotizacionesController extends Controller
                     'km_incluidos' => (int) ($tarifa->km_incluidos ?? 0),
                     'costo_km_extra' => (float) ($tarifa->costo_km_extra ?? 0),
                     'cubre_casetas' => $conceptos?->cubre_casetas ?? false,
+                    'incluye_casetas' => (bool) ($conceptos?->cubre_casetas ?? false),
                     'tarifa_nocturna_recargo_pct' => (float) ($tarifa->tarifa_nocturna_recargo_pct ?? 0),
                     'tarifa_domingo_festivo_recargo_pct' => (float) ($tarifa->tarifa_domingo_festivo_recargo_pct ?? 0),
                     'minutos_espera_incluidos' => (int) ($tarifa->minutos_espera_incluidos ?? 0),
@@ -303,6 +404,7 @@ class CotizacionesController extends Controller
                 'km_incluidos' => (float) $tarifaPropia->km_incluidos,
                 'costo_km_extra' => (float) ($tarifaPropia->costo_km ?? 0),
                 'cubre_casetas' => (bool) $tarifaPropia->cubre_casetas_peaje,
+                'incluye_casetas' => (bool) $tarifaPropia->cubre_casetas_peaje,
                 'descuento_pct' => 0,
             ]);
         }

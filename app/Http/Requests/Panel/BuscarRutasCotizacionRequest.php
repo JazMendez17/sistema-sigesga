@@ -20,10 +20,8 @@ class BuscarRutasCotizacionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'origen_lat' => 'required|numeric|between:-90,90',
-            'origen_lng' => 'required|numeric|between:-180,180',
-            'destino_lat' => 'required|numeric|between:-90,90',
-            'destino_lng' => 'required|numeric|between:-180,180',
+            'origen' => 'required|string|max:500',
+            'destino' => 'required|string|max:500',
         ];
     }
 
@@ -31,18 +29,10 @@ class BuscarRutasCotizacionRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'origen_lat.required' => 'La latitud de origen es obligatoria (selecciona una dirección con autocompletado).',
-            'origen_lat.numeric' => 'La latitud de origen debe ser numérica.',
-            'origen_lat.between' => 'La latitud de origen debe estar entre -90 y 90.',
-            'origen_lng.required' => 'La longitud de origen es obligatoria (selecciona una dirección con autocompletado).',
-            'origen_lng.numeric' => 'La longitud de origen debe ser numérica.',
-            'origen_lng.between' => 'La longitud de origen debe estar entre -180 y 180.',
-            'destino_lat.required' => 'La latitud de destino es obligatoria (selecciona una dirección con autocompletado).',
-            'destino_lat.numeric' => 'La latitud de destino debe ser numérica.',
-            'destino_lat.between' => 'La latitud de destino debe estar entre -90 y 90.',
-            'destino_lng.required' => 'La longitud de destino es obligatoria (selecciona una dirección con autocompletado).',
-            'destino_lng.numeric' => 'La longitud de destino debe ser numérica.',
-            'destino_lng.between' => 'La longitud de destino debe estar entre -180 y 180.',
+            'origen.required' => 'La dirección de origen es obligatoria.',
+            'origen.max' => 'La dirección de origen no debe exceder 500 caracteres.',
+            'destino.required' => 'La dirección de destino es obligatoria.',
+            'destino.max' => 'La dirección de destino no debe exceder 500 caracteres.',
         ];
     }
 

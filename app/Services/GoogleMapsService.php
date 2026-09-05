@@ -22,23 +22,29 @@ class GoogleMapsService
         . 'routes.polyline.encodedPolyline,'
         . 'routes.localizedValues.distance.text,'
         . 'routes.localizedValues.duration.text,'
-        . 'routes.travelAdvisory.tollInfo';
+        . 'routes.travelAdvisory.tollInfo,'
+        . 'routes.legs.startLocation,'
+        . 'routes.legs.endLocation';
 
     private string $apiKey;
     private string $country;
     private string $language;
+    private string $vehicleType;
+    private string $emissionType;
 
     public function __construct()
     {
         $this->apiKey = (string) config('services.google.api_key');
         $this->country = (string) config('services.google.country', 'MX');
         $this->language = (string) config('services.google.language', 'es');
+        $this->vehicleType = (string) config('services.google.vehicle_type', 'TRUCK');
+        $this->emissionType = (string) config('services.google.emission_type', 'GASOLINE');
     }
 
     /**
      * Calcula las rutas disponibles (con alternativas) y sus peajes.
      *
-     * @param  array{destino_lat: float, destino_lng: float, origen_lat: float, origen_lng: float}  $datos
+    * @param  array{destino: string, origen: string}  $datos
      * @return array{
      *   origen: array|null,
      *   destino: array|null,
@@ -64,22 +70,8 @@ class GoogleMapsService
         }
 
         $payload = [
-            'origin' => [
-                'location' => [
-                    'latLng' => [
-                        'latitude' => (float) $datos['origen_lat'],
-                        'longitude' => (float) $datos['origen_lng'],
-                    ],
-                ],
-            ],
-            'destination' => [
-                'location' => [
-                    'latLng' => [
-                        'latitude' => (float) $datos['destino_lat'],
-                        'longitude' => (float) $datos['destino_lng'],
-                    ],
-                ],
-            ],
+            'origin' => ['address' => $datos['origen']],
+            'destination' => ['address' => $datos['destino']],
             // Tránsito por carretera, consciente del tráfico actual/estimado.
             'travelMode' => 'DRIVE',
             'routingPreference' => 'TRAFFIC_AWARE',
@@ -90,18 +82,35 @@ class GoogleMapsService
             'regionCode' => $this->country,
             // Habilita el cálculo de casetas/peajes.
             'extraComputations' => ['TOLLS'],
-            // No se envía vehicleInfo.type: ese campo no existe en Routes API v2.
-            // El modo TRUCK requiere Large Vehicle Routing, dimensiones del vehículo,
-            // acceso habilitado y actualmente está limitado a los 48 estados contiguos
-            // de EE. UU.; para México se calcula la ruta estándar DRIVE.
+            'routeModifiers' => [
+                'vehicleInfo' => ['emissionType' => $this->emissionType],
+            ],
         ];
 
+        $rutasConPeaje = $this->consultarGoogle($payload);
+        $rutasLibres = $this->consultarGoogle(array_replace_recursive($payload, [
+            'routeModifiers' => [
+                'avoidTolls' => true,
+                'vehicleInfo' => ['emissionType' => $this->emissionType],
+            ],
+        ]));
+
+        $rutas = $this->normalizarRutas([$rutasConPeaje, $rutasLibres]);
+
+        if ($rutas === []) {
+            throw new RuntimeException('Google no devolvió rutas viables entre las direcciones indicadas.');
+        }
+
+        return ['rutas' => $rutas];
+    }
+
+    private function consultarGoogle(array $payload): array
+    {
         $respuesta = Http::timeout(15)
             ->withHeaders([
                 'X-Goog-Api-Key' => $this->apiKey,
                 'X-Goog-FieldMask' => self::FIELD_MASK,
-            ])
-            ->post(self::ENDPOINT, $payload);
+            ])->post(self::ENDPOINT, $payload);
 
         if ($respuesta->failed()) {
             $mensaje = $respuesta->json('error.message') ?? 'Error al comunicarse con Google Routes API.';
@@ -112,15 +121,29 @@ class GoogleMapsService
             );
         }
 
-        $json = $respuesta->json();
+        return $respuesta->json();
+    }
+
+    private function normalizarRutas(array $respuestas): array
+    {
         $rutas = [];
 
-        foreach (($json['routes'] ?? []) as $indice => $ruta) {
-            $peajes = $this->resumirPeajes($ruta['travelAdvisory']['tollInfo']['estimatedPrice'] ?? []);
-            $polyline = $ruta['polyline']['encodedPolyline'] ?? null;
-            $duracionSegundos = $this->duracionASegundos($ruta['duration'] ?? '0s');
+        foreach ($respuestas as $respuesta) {
+            foreach (($respuesta['routes'] ?? []) as $ruta) {
+            $rutas[] = $this->normalizarRuta($ruta, count($rutas));
+            }
+        }
 
-            $rutas[] = [
+        return collect($rutas)->unique(fn ($ruta) => $ruta['polyline'] ?: $ruta['distancia_km'] . '|' . $ruta['costo_peaje'])->values()->all();
+    }
+
+    private function normalizarRuta(array $ruta, int $indice): array
+    {
+        $peajes = $this->resumirPeajes($ruta['travelAdvisory']['tollInfo']['estimatedPrice'] ?? []);
+        $polyline = $ruta['polyline']['encodedPolyline'] ?? null;
+        $duracionSegundos = $this->duracionASegundos($ruta['duration'] ?? '0s');
+
+        return [
                 'indice' => $indice,
                 'distancia_km' => round(($ruta['distanceMeters'] ?? 0) / 1000, 2),
                 'duracion_texto' => $this->formatearDuracion($duracionSegundos),
@@ -130,17 +153,6 @@ class GoogleMapsService
                 'costo_peaje' => $peajes['total'],
                 'moneda_peaje' => $peajes['moneda'],
             ];
-        }
-
-        if ($rutas === []) {
-            throw new RuntimeException('Google no devolvió rutas viables entre los puntos seleccionados.');
-        }
-
-        return [
-            'origen' => $json['geocodingResults']['origin'] ?? null,
-            'destino' => $json['geocodingResults']['destination'] ?? null,
-            'rutas' => $rutas,
-        ];
     }
 
     /**

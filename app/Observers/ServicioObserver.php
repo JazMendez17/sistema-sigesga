@@ -58,21 +58,20 @@ class ServicioObserver
 
         match ($estado) {
             'asignado' => $this->notificarAsignacion($servicio, $folio, $operadorNombre, $unidad, $clienteUsuarioId, $operadorId),
-            'inicio_servicio' => $this->notificarFase($servicio, $folio, $operadorNombre, $clienteUsuarioId,
+            'inicio_servicio' => $this->notificarFase($servicio, $folio, $operadorNombre, $clienteUsuarioId, $operadorId,
                 'El operador va en camino a la ubicación de origen.',
                 "{$actor} - El operador {$operadorNombre} inició el servicio {$folio} (En camino al origen)."),
-            'en_sitio_origen' => $this->notificarFase($servicio, $folio, $operadorNombre, $clienteUsuarioId,
+            'en_sitio_origen' => $this->notificarFase($servicio, $folio, $operadorNombre, $clienteUsuarioId, $operadorId,
                 'El operador ha llegado a la ubicación de origen.',
                 "{$actor} - El operador {$operadorNombre} reportó llegada al origen en el servicio {$folio}."),
-            'salida_destino' => $this->notificarFase($servicio, $folio, $operadorNombre, $clienteUsuarioId,
+            'salida_destino' => $this->notificarFase($servicio, $folio, $operadorNombre, $clienteUsuarioId, $operadorId,
                 'La grúa va en tránsito con tu vehículo hacia la dirección de destino.',
                 "{$actor} - El operador {$operadorNombre} inició traslado hacia el destino en el servicio {$folio}."),
-            'en_destino' => $this->notificarFase($servicio, $folio, $operadorNombre, $clienteUsuarioId,
+            'en_destino' => $this->notificarFase($servicio, $folio, $operadorNombre, $clienteUsuarioId, $operadorId,
                 'Tu vehículo ha llegado a la dirección de destino.',
                 "{$actor} - El operador {$operadorNombre} reportó llegada al destino en el servicio {$folio}."),
             'finalizado' => $this->notificarFinalizado($servicio, $folio, $operadorNombre, $kms, $clienteUsuarioId, $operadorId),
-            'cancelado' => $this->notificarRoles($servicio, ['admin', 'cotizador'],
-                "{$this->actor()} canceló el servicio {$folio}."),
+            'cancelado' => $this->notificarCancelacion($servicio, $folio, $clienteUsuarioId, $operadorId),
             default => null
         };
     }
@@ -87,13 +86,21 @@ class ServicioObserver
         $this->notificarRoles($s, ['admin', 'cotizador'], "{$actor} asignó al operador {$opNombre} (Unidad: {$unidad}) al servicio {$folio}.");
     }
 
-    protected function notificarFase($s, $folio, $opNombre, $clienteId, string $msgCliente, string $msgAdmin): void
+    protected function notificarFase($s, $folio, $opNombre, $clienteId, $operadorId, string $msgCliente, string $msgAdmin): void
     {
         // Cliente recibe actualización
         $this->notificar($s, $clienteId, $msgCliente);
+        $this->notificar($s, $operadorId, "Actualización del servicio {$folio}: {$msgCliente}");
         // Admin y Cotizador reciben bitácora
         $this->notificarRoles($s, ['admin', 'cotizador'], $msgAdmin);
-        // El operador NO recibe notificación de sus propias acciones en ruta
+    }
+
+    protected function notificarCancelacion($s, $folio, $clienteId, $operadorId): void
+    {
+        $mensaje = "El servicio {$folio} fue cancelado.";
+        $this->notificar($s, $clienteId, $mensaje);
+        $this->notificar($s, $operadorId, $mensaje);
+        $this->notificarRoles($s, ['admin', 'cotizador'], "{$this->actor()} canceló el servicio {$folio}.");
     }
 
     protected function notificarFinalizado($s, $folio, $opNombre, $kms, $clienteId, $operadorId): void

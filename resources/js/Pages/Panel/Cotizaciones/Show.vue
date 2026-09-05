@@ -36,7 +36,14 @@ function rechazar() {
   }
 }
 
+function aprobarCliente() {
+  if (confirm('¿Deseas aprobar esta cotización?')) {
+    router.post(route('panel.cotizaciones.aprobar.cliente', { id: props.cotizacion.id }))
+  }
+}
+
 function formato(val) { return val || '—' }
+function moneda(val) { return Number(val || 0).toFixed(2) }
 </script>
 
 <template>
@@ -60,14 +67,30 @@ function formato(val) { return val || '—' }
             <div class="col-span-2"><p class="text-xs text-gray-500 uppercase">Origen</p><p class="text-gray-800 font-medium">{{ formato(cotizacion?.origen) }}</p></div>
             <div class="col-span-2"><p class="text-xs text-gray-500 uppercase">Destino</p><p class="text-gray-800 font-medium">{{ formato(cotizacion?.destino) }}</p></div>
             <div><p class="text-xs text-gray-500 uppercase">Distancia</p><p class="text-gray-800 font-medium">{{ cotizacion?.distancia ? cotizacion.distancia + ' km' : '—' }}</p></div>
+              <div><p class="text-xs text-gray-500 uppercase">Banderazo</p><p class="text-gray-800 font-medium">${{ moneda(cotizacion?.banderazo) }}</p></div>
+              <div><p class="text-xs text-gray-500 uppercase">Kilómetros excedentes</p><p class="text-gray-800 font-medium">{{ cotizacion?.km_excedente || 0 }} km × ${{ moneda(cotizacion?.costo_km) }}</p></div>
+              <div><p class="text-xs text-gray-500 uppercase">Subtotal</p><p class="text-gray-800 font-medium">${{ moneda(cotizacion?.subtotal) }}</p></div>
+              <div><p class="text-xs text-gray-500 uppercase">Descuento</p><p class="text-gray-800 font-medium">{{ cotizacion?.descuento_pct || 0 }}% (${{ moneda(cotizacion?.monto_descuento) }})</p></div>
+              <div><p class="text-xs text-gray-500 uppercase">IVA</p><p class="text-gray-800 font-medium">${{ moneda(cotizacion?.iva) }}</p></div>
+              <div><p class="text-xs text-gray-500 uppercase">Casetas</p><p class="text-gray-800 font-medium">${{ moneda(cotizacion?.casetas) }} <span class="text-xs">{{ cotizacion?.incluye_peajes ? '(incluidas)' : '(cargo adicional)' }}</span></p></div>
             <div><p class="text-xs text-gray-500 uppercase">Total Estimado</p><p class="text-xl font-bold text-[var(--color-primary)]">${{ cotizacion?.total_estimado?.toFixed(2) || '0.00' }}</p></div>
           </div>
 
           <!-- Botones de aprobación -->
-          <div v-if="cotizacion?.estatus === 'pendiente'" class="flex gap-3 pt-3 border-t border-gray-200">
-            <NeumorphicButton @click="aprobar()" class="!bg-green-600 !text-white">Aprobar Cotización</NeumorphicButton>
-            <NeumorphicButton variant="danger" @click="rechazar()">Rechazar</NeumorphicButton>
+          <div v-if="cotizacion?.estatus === 'pendiente' && cotizacion?.puede_aprobar_cliente" class="flex gap-3 pt-3 border-t border-gray-200">
+            <template v-if="cotizacion?.puede_aprobar_cliente">
+              <NeumorphicButton @click="aprobarCliente" class="!bg-green-600 !text-white">Aprobar Cotización</NeumorphicButton>
+            </template>
           </div>
+          <p v-if="cotizacion?.estatus === 'pendiente' && !cotizacion?.puede_aprobar_cliente && !cotizacion?.cliente_aprobada_at" class="text-sm text-amber-700 border-t border-gray-200 pt-3">Pendiente de aprobación por el cliente.</p>
+          <p v-if="cotizacion?.cliente_aprobada_at && cotizacion?.estatus === 'pendiente' && cotizacion?.es_cliente" class="text-sm text-amber-700 border-t border-gray-200 pt-3">Tu cotización está en espera de la aprobación final.</p>
+          <template v-if="cotizacion?.estatus === 'pendiente' && cotizacion?.cliente_aprobada_at && !cotizacion?.es_cliente">
+            <p class="text-sm text-amber-700 border-t border-gray-200 pt-3">Cliente aprobado. Valida la aseguradora y realiza la aprobación interna para crear el servicio.</p>
+            <div class="flex gap-3 pt-3">
+              <NeumorphicButton @click="aprobar" class="!bg-green-600 !text-white">Aprobar</NeumorphicButton>
+              <NeumorphicButton variant="danger" @click="rechazar">Rechazar</NeumorphicButton>
+            </div>
+          </template>
           <div v-if="cotizacion?.servicio_id" class="pt-3 border-t border-gray-200">
             <p class="text-sm text-green-700">Servicio #{{ cotizacion.servicio_id }} creado</p>
           </div>

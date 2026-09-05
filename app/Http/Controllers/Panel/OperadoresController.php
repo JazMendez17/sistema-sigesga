@@ -8,6 +8,8 @@ use App\Http\Controllers\Controller;
 use App\Support\Auditoria;
 use App\Models\Operadore;
 use App\Models\Empleado;
+use App\Models\Notificacione;
+use App\Models\Usuario;
 use App\Http\Requests\Panel\StoreOperadorRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -133,6 +135,27 @@ class OperadoresController extends Controller
         }
 
         $operador->update(['disponible' => $request->boolean('disponible')]);
+
+        $estado = $request->boolean('disponible') ? 'disponible' : 'no disponible';
+        Notificacione::create([
+            'empresa_id' => $operador->empresa_id,
+            'usuario_id' => auth()->id(),
+            'mensaje' => "Tu disponibilidad fue actualizada: {$estado}.",
+            'canal' => 'sistema_push',
+            'estado' => 'pendiente',
+        ]);
+
+        Usuario::where('empresa_id', $operador->empresa_id)
+            ->whereIn('rol', ['admin', 'cotizador'])
+            ->each(function ($usuario) use ($operador, $estado) {
+                Notificacione::create([
+                    'empresa_id' => $operador->empresa_id,
+                    'usuario_id' => $usuario->id,
+                    'mensaje' => "El operador {$operador->empleado?->nombre} ahora está {$estado}.",
+                    'canal' => 'sistema_push',
+                    'estado' => 'pendiente',
+                ]);
+            });
 
         return back()->with('success', $request->boolean('disponible')
             ? 'Ahora estás disponible para nuevos servicios.'

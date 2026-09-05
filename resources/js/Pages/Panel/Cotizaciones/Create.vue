@@ -7,7 +7,6 @@ import NeumorphicInput from '@/Components/NeumorphicInput.vue'
 import NeumorphicButton from '@/Components/NeumorphicButton.vue'
 import CotizacionRutas from '@/Components/CotizacionRutas.vue'
 import { useFormValidation } from '@/Composables/useFormValidation'
-import { ESTADOS, municipiosPorEstado } from '@/Data/estadosMunicipios'
 import { showValidationErrors } from '@/stores/notification'
 
 const page = usePage()
@@ -16,20 +15,38 @@ const tiposServicio = computed(() => page.props.tiposServicio ?? [])
 const submitted = ref(false)
 const cargandoTarifa = ref(false)
 const tarifaAplicada = ref(null)
-const municipiosOrigen = ref([])
-const municipiosDestino = ref([])
+// Estado para autocompletado de código postal
+const coloniasOrigen = ref([])
+const coloniasDestino = ref([])
+const cargandoColoniasOrigen = ref(false)
+const cargandoColoniasDestino = ref(false)
+const errorColoniasOrigen = ref('')
+const errorColoniasDestino = ref('')
+const consultasCP = { origen: 0, destino: 0 }
 
 const casetasPeaje = ref(0)
 const monedaCasetas = ref('MXN')
+
+function direccionParaRuta(direccion) {
+  return [
+    direccion.calle,
+    direccion.numero_exterior,
+    direccion.colonia,
+    direccion.municipio_alcaldia,
+    direccion.estado,
+    direccion.codigo_postal ? `CP ${direccion.codigo_postal}` : '',
+    'México',
+  ].filter(Boolean).join(', ')
+}
+
+function direccionEsValida(direccion) {
+  return Boolean(direccion.calle?.trim() && direccion.municipio_alcaldia?.trim() && direccion.estado?.trim() && /^\d{5}$/.test(direccion.codigo_postal || ''))
+}
 
 // Aplica la ruta seleccionada en el mapa al formulario de cotización:
 // distancia (alimenta el cálculo por km) y coordenadas (se guardan en la cotización).
 function aplicarRuta(r) {
   form.distancia_km = r.distancia_km
-  form.origen_lat = r.origen_lat
-  form.origen_lng = r.origen_lng
-  form.destino_lat = r.destino_lat
-  form.destino_lng = r.destino_lng
   casetasPeaje.value = r.costo_peaje || 0
   monedaCasetas.value = r.moneda_peaje || 'MXN'
   calcularTotal()
@@ -39,20 +56,68 @@ function formatearCasetas() {
   return new Intl.NumberFormat('es-MX', { style: 'currency', currency: monedaCasetas.value }).format(casetasPeaje.value)
 }
 
-function actualizarMunicipiosOrigen() {
-  municipiosOrigen.value = municipiosPorEstado(form.origen.estado)
-  if (!municipiosOrigen.value.includes(form.origen.municipio_alcaldia)) form.origen.municipio_alcaldia = ''
+// Autocompletado de código postal usando Postalia API (proxy interno)
+async function buscarColoniasPorCP(cp, tipo) {
+  const cpLimpio = cp.trim()
+  const direccion = form[tipo]
+  const colonias = tipo === 'origen' ? coloniasOrigen : coloniasDestino
+  const cargando = tipo === 'origen' ? cargandoColoniasOrigen : cargandoColoniasDestino
+  const error = tipo === 'origen' ? errorColoniasOrigen : errorColoniasDestino
+  const consulta = ++consultasCP[tipo]
+
+  if (!cpLimpio || cpLimpio.length !== 5 || !/^\d{5}$/.test(cpLimpio)) {
+    direccion.estado = ''
+    direccion.municipio_alcaldia = ''
+    direccion.colonia = ''
+    colonias.value = []
+    error.value = ''
+    return
+  }
+
+  cargando.value = true
+  error.value = ''
+  colonias.value = []
+  direccion.colonia = ''
+
+  try {
+    const { data } = await axios.get(route('panel.api.codigo-postal.buscar', { cp: cpLimpio }))
+    if (consulta !== consultasCP[tipo]) return
+    direccion.estado = data.estado || ''
+    direccion.municipio_alcaldia = data.municipio || ''
+    colonias.value = Array.isArray(data.colonias) ? data.colonias : []
+    if (!direccion.estado || !direccion.municipio_alcaldia || !colonias.value.length) {
+      error.value = 'El código postal no tiene colonias disponibles.'
+    }
+  } catch (e) {
+    console.error('Error al buscar colonias:', e)
+    if (consulta !== consultasCP[tipo]) return
+    direccion.estado = ''
+    direccion.municipio_alcaldia = ''
+    direccion.colonia = ''
+    colonias.value = []
+    error.value = e?.response?.data?.message || 'No se pudo consultar el código postal.'
+  } finally {
+    if (consulta === consultasCP[tipo]) cargando.value = false
+  }
 }
-function actualizarMunicipiosDestino() {
-  municipiosDestino.value = municipiosPorEstado(form.destino.estado)
-  if (!municipiosDestino.value.includes(form.destino.municipio_alcaldia)) form.destino.municipio_alcaldia = ''
+
+// Llamar al autocompletado cuando se completa el CP (5 dígitos) o al perder foco
+function handleCodigoPostalInput(cp, tipo) {
+  buscarColoniasPorCP(cp.trim(), tipo)
+}
+
+function handleCodigoPostalBlur(cp, tipo) {
+  const cpLimpio = cp.trim()
+  if (cpLimpio.length === 5 && /^\d{5}$/.test(cpLimpio)) {
+    buscarColoniasPorCP(cpLimpio, tipo)
+  }
 }
 
 const form = useForm({
   cliente_id: '',
   tipo_servicio_id: '',
-  origen: { calle:'',numero_exterior:'',numero_interior:'',colonia:'',codigo_postal:'',municipio_alcaldia:'',ciudad:'',estado:'',pais:'México',referencias:'' },
-  destino: { calle:'',numero_exterior:'',numero_interior:'',colonia:'',codigo_postal:'',municipio_alcaldia:'',ciudad:'',estado:'',pais:'México',referencias:'' },
+  origen: { calle:'',numero_exterior:'',numero_interior:'',colonia:'',codigo_postal:'',municipio_alcaldia:'',estado:'',pais:'México',referencias:'' },
+  destino: { calle:'',numero_exterior:'',numero_interior:'',colonia:'',codigo_postal:'',municipio_alcaldia:'',estado:'',pais:'México',referencias:'' },
   distancia_km: '',
   costo_total: '',
   costo_banderazo: '',
@@ -77,6 +142,7 @@ watch([() => form.cliente_id, () => form.tipo_servicio_id], async ([clienteId, s
       form.km_incluidos = data.km_incluidos || ''
       form.costo_km_extra = data.costo_km_extra || ''
       form.cubre_casetas = data.cubre_casetas || false
+      form.cubre_casetas = Boolean(data.incluye_casetas ?? data.cubre_casetas)
       form.descuento_pct = data.descuento_pct || ''
       form.convenio_id = data.convenio_id || ''
       calcularTotal()
@@ -144,7 +210,7 @@ function vistaPrevia() {
 
 function doSubmit() {
   if (!mostrandoPreview.value) { vistaPrevia(); return }
-  const build = d => [d.calle,d.numero_exterior,d.numero_interior,d.colonia,d.codigo_postal,d.municipio_alcaldia,d.ciudad,d.estado,d.pais].filter(Boolean).join(', ') + (d.referencias?' ('+d.referencias+')':'')
+  const build = d => [d.calle,d.numero_exterior,d.numero_interior,d.colonia,d.codigo_postal,d.municipio_alcaldia,d.estado,d.pais].filter(Boolean).join(', ') + (d.referencias?' ('+d.referencias+')':'')
   form.transform(data => {
     const calc = calculosDetalle()
     return {
@@ -208,65 +274,106 @@ function aseguradoraNombre() {
 
           <!-- Origen -->
           <div class="border-t border-gray-200 pt-4"><p class="text-sm font-medium text-gray-600 mb-3">Dirección de Origen</p>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <NeumorphicInput v-model="form.origen.calle" label="Calle" placeholder="Av. Reforma" />
-              <NeumorphicInput v-model="form.origen.numero_exterior" label="Núm. Exterior" placeholder="123" />
-              <NeumorphicInput v-model="form.origen.numero_interior" label="Núm. Interior" placeholder="Opcional" />
-              <NeumorphicInput v-model="form.origen.codigo_postal" label="Código Postal" placeholder="06600" />
-              <NeumorphicInput v-model="form.origen.colonia" label="Colonia" placeholder="Colonia" />
-              <div>
-                <label class="block text-sm font-medium text-gray-600 mb-2">Estado</label>
-                <select v-model="form.origen.estado" @change="actualizarMunicipiosOrigen()" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
-                  <option value="">Seleccionar estado...</option>
-                  <option v-for="e in ESTADOS" :key="e" :value="e">{{ e }}</option>
-                </select>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+               <NeumorphicInput v-model="form.origen.calle" label="Calle" placeholder="Av. Reforma" />
+               <NeumorphicInput v-model="form.origen.numero_exterior" label="Núm. Exterior" placeholder="123" />
+               <NeumorphicInput v-model="form.origen.numero_interior" label="Núm. Interior" placeholder="Opcional" />
+               <div class="relative">
+                 <label class="block text-sm font-medium text-gray-600 mb-2">Código Postal</label>
+                 <div class="relative">
+                   <input
+                     v-model="form.origen.codigo_postal"
+                     @input="handleCodigoPostalInput(form.origen.codigo_postal, 'origen')"
+                     @blur="handleCodigoPostalBlur(form.origen.codigo_postal, 'origen')"
+                     maxlength="5"
+                     placeholder="06600"
+                     class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 pr-12 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                   />
+                   <div v-if="cargandoColoniasOrigen" class="absolute right-3 top-9 text-indigo-500 text-sm">Buscando...</div>
+                 </div>
+               </div>
+               <div>
+                 <label class="block text-sm font-medium text-gray-600 mb-2">Colonia</label>
+                 <select
+                   v-model="form.origen.colonia"
+                   :disabled="!coloniasOrigen.length || cargandoColoniasOrigen"
+                   class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                 >
+                   <option value="">Seleccionar colonia...</option>
+                   <option v-for="c in coloniasOrigen" :key="c" :value="c">{{ c }}</option>
+                 </select>
+                 <p v-if="cargandoColoniasOrigen" class="text-xs text-gray-400 mt-1">Buscando colonias...</p>
+                 <p v-if="errorColoniasOrigen" class="text-xs text-orange-500 mt-1">{{ errorColoniasOrigen }}</p>
+               </div>
+               <div>
+                 <label class="block text-sm font-medium text-gray-600 mb-2">Estado</label>
+                 <input v-model="form.origen.estado" readonly placeholder="Se llenará con el CP" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none" />
+               </div>
+               <div>
+                 <label class="block text-sm font-medium text-gray-600 mb-2">Municipio / Alcaldía</label>
+                 <input v-model="form.origen.municipio_alcaldia" readonly placeholder="Se llenará con el CP" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none" />
               </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-600 mb-2">Municipio / Alcaldía</label>
-                <select v-model="form.origen.municipio_alcaldia" :disabled="!form.origen.estado" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:opacity-50">
-                  <option value="">Seleccionar municipio...</option>
-                  <option v-for="m in municipiosOrigen" :key="m" :value="m">{{ m }}</option>
-                </select>
-              </div>
-              <NeumorphicInput v-model="form.origen.ciudad" label="Localidad" placeholder="CDMX" />
               <NeumorphicInput v-model="form.origen.pais" label="País" placeholder="México" />
               <div class="md:col-span-3"><NeumorphicInput v-model="form.origen.referencias" label="Referencias" placeholder="Entre calles X y Y" /></div>
             </div>
           </div>
 
-          <!-- Destino -->
-          <div class="border-t border-gray-200 pt-4"><p class="text-sm font-medium text-gray-600 mb-3">Dirección de Destino</p>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <NeumorphicInput v-model="form.destino.calle" label="Calle" placeholder="Av. Reforma" />
-              <NeumorphicInput v-model="form.destino.numero_exterior" label="Núm. Exterior" placeholder="123" />
-              <NeumorphicInput v-model="form.destino.numero_interior" label="Núm. Interior" placeholder="Opcional" />
-              <NeumorphicInput v-model="form.destino.codigo_postal" label="Código Postal" placeholder="06600" />
-              <NeumorphicInput v-model="form.destino.colonia" label="Colonia" placeholder="Colonia" />
-              <div>
-                <label class="block text-sm font-medium text-gray-600 mb-2">Estado</label>
-                <select v-model="form.destino.estado" @change="actualizarMunicipiosDestino()" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
-                  <option value="">Seleccionar estado...</option>
-                  <option v-for="e in ESTADOS" :key="e" :value="e">{{ e }}</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-600 mb-2">Municipio / Alcaldía</label>
-                <select v-model="form.destino.municipio_alcaldia" :disabled="!form.destino.estado" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:opacity-50">
-                  <option value="">Seleccionar municipio...</option>
-                  <option v-for="m in municipiosDestino" :key="m" :value="m">{{ m }}</option>
-                </select>
-              </div>
-              <NeumorphicInput v-model="form.destino.ciudad" label="Localidad" placeholder="CDMX" />
-              <NeumorphicInput v-model="form.destino.pais" label="País" placeholder="México" />
-              <div class="md:col-span-3"><NeumorphicInput v-model="form.destino.referencias" label="Referencias" placeholder="Entre calles X y Y" /></div>
-            </div>
-          </div>
+<!-- Destino -->
+           <div class="border-t border-gray-200 pt-4"><p class="text-sm font-medium text-gray-600 mb-3">Dirección de Destino</p>
+             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+               <NeumorphicInput v-model="form.destino.calle" label="Calle" placeholder="Av. Reforma" />
+               <NeumorphicInput v-model="form.destino.numero_exterior" label="Núm. Exterior" placeholder="123" />
+               <NeumorphicInput v-model="form.destino.numero_interior" label="Núm. Interior" placeholder="Opcional" />
+               <div class="relative">
+                 <label class="block text-sm font-medium text-gray-600 mb-2">Código Postal</label>
+                 <div class="relative">
+                   <input
+                     v-model="form.destino.codigo_postal"
+                     @input="handleCodigoPostalInput(form.destino.codigo_postal, 'destino')"
+                     @blur="handleCodigoPostalBlur(form.destino.codigo_postal, 'destino')"
+                     maxlength="5"
+                     placeholder="06600"
+                     class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 pr-12 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                   />
+                   <div v-if="cargandoColoniasDestino" class="absolute right-3 top-9 text-indigo-500 text-sm">Buscando...</div>
+                 </div>
+               </div>
+               <div>
+                 <label class="block text-sm font-medium text-gray-600 mb-2">Colonia</label>
+                 <select
+                   v-model="form.destino.colonia"
+                   :disabled="!coloniasDestino.length || cargandoColoniasDestino"
+                   class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                 >
+                   <option value="">Seleccionar colonia...</option>
+                   <option v-for="c in coloniasDestino" :key="c" :value="c">{{ c }}</option>
+                 </select>
+                 <p v-if="cargandoColoniasDestino" class="text-xs text-gray-400 mt-1">Buscando colonias...</p>
+                 <p v-if="errorColoniasDestino" class="text-xs text-orange-500 mt-1">{{ errorColoniasDestino }}</p>
+               </div>
+               <div>
+                 <label class="block text-sm font-medium text-gray-600 mb-2">Estado</label>
+                 <input v-model="form.destino.estado" readonly placeholder="Se llenará con el CP" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none" />
+               </div>
+               <div>
+                 <label class="block text-sm font-medium text-gray-600 mb-2">Municipio / Alcaldía</label>
+                 <input v-model="form.destino.municipio_alcaldia" readonly placeholder="Se llenará con el CP" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none" />
+               </div>
+               <NeumorphicInput v-model="form.destino.pais" label="País" placeholder="México" />
+               <div class="md:col-span-3"><NeumorphicInput v-model="form.destino.referencias" label="Referencias" placeholder="Entre calles X y Y" /></div>
+             </div>
+           </div>
 
           <!-- Cálculo de rutas y peajes (Google Maps) -->
           <div class="border-t border-gray-200 pt-4">
             <p class="text-sm font-medium text-gray-600 mb-3">Ruta y Peajes (Google Maps)</p>
             <p class="text-xs text-gray-400 mb-3">Selecciona origen y destino con el autocompletado, calcula las rutas y elige una opción. La distancia se aplica automáticamente a la cotización.</p>
-            <CotizacionRutas @seleccionada="aplicarRuta" />
+            <CotizacionRutas
+              :origen="direccionParaRuta(form.origen)"
+              :destino="direccionParaRuta(form.destino)"
+              :direcciones-validas="direccionEsValida(form.origen) && direccionEsValida(form.destino)"
+              @seleccionada="aplicarRuta"
+            />
             <p v-if="casetasPeaje > 0" class="mt-3 text-xs font-medium" :class="form.cubre_casetas ? 'text-gray-400' : 'text-orange-600'">
               Casetas estimadas de la ruta seleccionada: {{ formatearCasetas() }}
               <template v-if="form.cubre_casetas">(incluidas por la empresa — no se cargan al cliente)</template>
@@ -308,8 +415,8 @@ function aseguradoraNombre() {
               <div class="flex justify-between"><span class="text-gray-500">Cliente:</span><span class="font-medium">{{ clienteNombre() }}</span></div>
               <div class="flex justify-between"><span class="text-gray-500">Servicio:</span><span class="font-medium">{{ servicioNombre() }}</span></div>
               <div v-if="tarifaAplicada" class="flex justify-between"><span class="text-gray-500">{{ tarifaAplicada.origen === 'convenio' ? 'Convenio:' : 'Tarifa:' }}</span><span class="font-medium">{{ aseguradoraNombre() }}</span></div>
-              <div><p class="text-xs text-gray-400 uppercase mb-1">Origen</p><p class="text-sm">{{ form.origen.calle }} {{ form.origen.numero_exterior }}, {{ form.origen.colonia }}, {{ form.origen.municipio_alcaldia }}, {{ form.origen.ciudad }}, {{ form.origen.estado }}</p></div>
-              <div><p class="text-xs text-gray-400 uppercase mb-1">Destino</p><p class="text-sm">{{ form.destino.calle }} {{ form.destino.numero_exterior }}, {{ form.destino.colonia }}, {{ form.destino.municipio_alcaldia }}, {{ form.destino.ciudad }}, {{ form.destino.estado }}</p></div>
+              <div><p class="text-xs text-gray-400 uppercase mb-1">Origen</p><p class="text-sm">{{ form.origen.calle }} {{ form.origen.numero_exterior }}, {{ form.origen.colonia }}, {{ form.origen.municipio_alcaldia }}, {{ form.origen.estado }}</p></div>
+              <div><p class="text-xs text-gray-400 uppercase mb-1">Destino</p><p class="text-sm">{{ form.destino.calle }} {{ form.destino.numero_exterior }}, {{ form.destino.colonia }}, {{ form.destino.municipio_alcaldia }}, {{ form.destino.estado }}</p></div>
               <div class="border-t my-2"></div>
               <div class="flex justify-between"><span class="text-gray-500">Banderazo Base:</span><span class="font-medium">${{ calculosDetalle().banderazo.toFixed(2) }}</span></div>
               <div v-if="calculosDetalle().kmExcedentes > 0" class="flex justify-between"><span class="text-gray-500">Kilometraje Excedente ({{ calculosDetalle().kmExcedentes }} km × ${{ calculosDetalle().costoKm.toFixed(2) }}/km):</span><span class="font-medium text-orange-600">+${{ calculosDetalle().costoKmTotal.toFixed(2) }}</span></div>
