@@ -41,7 +41,7 @@ function eliminarUsuario(id) {
         <h1 class="text-2xl font-bold text-gray-800">Usuarios y Accesos</h1>
         <NeumorphicButton @click="router.visit(route('panel.usuarios.create'))">+ Nuevo Usuario</NeumorphicButton>
       </div>
-
+          <option v-for="r in rolesDisponibles" :key="r" :value="r">{{ $etiqueta(r) }}</option>
       <div class="rounded-3xl bg-[#EEF2F7] p-6 shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
         <DataTable :columns="columns" :data="usuarios">
           <template #cell-rol="{ row }">

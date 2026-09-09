@@ -25,8 +25,14 @@ class ServiciosController extends Controller
         $user = Auth::user();
         $empresaId = $user->empresa_id;
 
-        $servicios = Servicio::with(['cotizacion.cliente', 'operador.empleado', 'unidad'])
-            ->where('empresa_id', $empresaId)
+        $query = Servicio::with(['cotizacion.cliente', 'operador.empleado', 'unidad'])
+            ->where('empresa_id', $empresaId);
+
+        if ($user->rol === 'operador') {
+            $query->whereHas('operador', fn ($q) => $q->where('empleado_id', $user->empleado_id));
+        }
+
+        $servicios = $query
             ->latest()
             ->get()
             ->map(fn ($s) => [
@@ -53,7 +59,7 @@ class ServiciosController extends Controller
         $empresaId = $user->empresa_id;
 
         return Inertia::render('Panel/Servicios/Create', [
-            'cotizaciones' => Cotizacione::where('empresa_id', $empresaId)->where('estatus', 'aprobada')->get(['id', 'folio']),
+            'cotizaciones' => Cotizacione::where('empresa_id', $empresaId)->where('estatus', 'aprobado')->get(['id', 'folio']),
             'operadores' => Operadore::with('empleado')->where('empresa_id', $empresaId)->get(),
             'unidades' => Unidade::where('empresa_id', $empresaId)->get(['id', 'placas', 'numero_economico']),
             'oficinas' => Oficina::where('empresa_id', $empresaId)->get(['id', 'nombre']),
@@ -196,6 +202,9 @@ class ServiciosController extends Controller
     public function avanzarEstado(Request $request, $id)
     {
         $servicio = Servicio::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+        if (auth()->user()->rol === 'operador' && $servicio->operador?->empleado_id !== auth()->user()->empleado_id) {
+            abort(403, 'Solo puedes actualizar servicios asignados a tu operador.');
+        }
         $nuevoEstado = $request->input('estado');
 
         $flujo = ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino', 'finalizado'];
@@ -260,6 +269,10 @@ class ServiciosController extends Controller
         ]);
 
         $servicio = Servicio::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+
+        if (auth()->user()->rol === 'operador' && $servicio->operador?->empleado_id !== auth()->user()->empleado_id) {
+            abort(403, 'Solo puedes solicitar la cancelación de servicios asignados a tu operador.');
+        }
 
         if (!in_array($servicio->estado, ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino'])) {
             return back()->with('error', 'Este servicio no se puede solicitar en cancelación en su estado actual.');

@@ -16,14 +16,12 @@ class NotificacionesController extends Controller
     public function index()
     {
         $user = Auth::user();
+        $enPapelera = request()->boolean('papelera');
 
-        $query = Notificacione::where('empresa_id', $user->empresa_id);
-
-        // Admins y cotizadores ven todas las notificaciones de la empresa
-        // Operadores y clientes solo ven las suyas
-        if (!in_array($user->rol, ['admin', 'cotizador'])) {
-            $query->where('usuario_id', $user->id);
-        }
+        $query = Notificacione::conEliminados()
+            ->where('empresa_id', $user->empresa_id)
+            ->where('usuario_id', $user->id)
+            ->where('eliminado', $enPapelera);
 
         $notificaciones = $query->latest()
             ->paginate(15)
@@ -37,7 +35,7 @@ class NotificacionesController extends Controller
             ]);
 
         $noLeidas = Notificacione::where('empresa_id', $user->empresa_id)
-            ->when(!in_array($user->rol, ['admin', 'cotizador']), fn($q) => $q->where('usuario_id', $user->id))
+            ->where('usuario_id', $user->id)
             ->where('estado', '!=', 'leido')
             ->count();
 
@@ -52,10 +50,7 @@ class NotificacionesController extends Controller
     {
         $user = Auth::user();
 
-        $query = Notificacione::where('empresa_id', $user->empresa_id);
-        if (!in_array($user->rol, ['admin', 'cotizador'])) {
-            $query->where('usuario_id', $user->id);
-        }
+        $query = Notificacione::where('empresa_id', $user->empresa_id)->where('usuario_id', $user->id);
 
         $notificacion = $query->findOrFail($id);
         $notificacion->update(['estado' => 'leido']);
@@ -68,10 +63,7 @@ class NotificacionesController extends Controller
     {
         $user = Auth::user();
 
-        $query = Notificacione::where('empresa_id', $user->empresa_id);
-        if (!in_array($user->rol, ['admin', 'cotizador'])) {
-            $query->where('usuario_id', $user->id);
-        }
+        $query = Notificacione::where('empresa_id', $user->empresa_id)->where('usuario_id', $user->id);
 
         $query->where('estado', '!=', 'leido')->update(['estado' => 'leido']);
 
@@ -85,9 +77,32 @@ class NotificacionesController extends Controller
 
         return response()->json([
             'count' => Notificacione::where('empresa_id', $user->empresa_id)
-                ->when(!in_array($user->rol, ['admin', 'cotizador']), fn($q) => $q->where('usuario_id', $user->id))
+                ->where('usuario_id', $user->id)
                 ->where('estado', '!=', 'leido')
                 ->count(),
         ]);
+    }
+
+    public function eliminar($id)
+    {
+        $notificacion = Notificacione::where('empresa_id', auth()->user()->empresa_id)
+            ->where('usuario_id', auth()->id())
+            ->findOrFail($id);
+        $notificacion->eliminar();
+
+        return back()->with('success', 'Notificación movida a la papelera.');
+    }
+
+    public function restaurar($id)
+    {
+        $notificacion = Notificacione::conEliminados()
+            ->where('empresa_id', auth()->user()->empresa_id)
+            ->where('usuario_id', auth()->id())
+            ->where('eliminado', true)
+            ->findOrFail($id);
+        $notificacion->eliminado = false;
+        $notificacion->save();
+
+        return back()->with('success', 'Notificación restaurada.');
     }
 }

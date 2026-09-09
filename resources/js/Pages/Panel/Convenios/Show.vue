@@ -40,7 +40,7 @@ function siNo(val) {
           <div><p class="text-xs text-gray-500 uppercase">Aseguradora</p><p class="text-sm font-medium text-gray-800">{{ formato(convenio.aseguradora) }}</p></div>
           <div><p class="text-xs text-gray-500 uppercase">Fecha Inicio</p><p class="text-sm font-medium text-gray-800">{{ formato(convenio.fecha_inicio) }}</p></div>
           <div><p class="text-xs text-gray-500 uppercase">Fecha Fin</p><p class="text-sm font-medium text-gray-800">{{ formato(convenio.fecha_fin) }}</p></div>
-          <div><p class="text-xs text-gray-500 uppercase">Estatus</p><Badge :variant="convenio.estatus === 'vigente' ? 'success' : 'warning'">{{ formato(convenio.estatus) }}</Badge></div>
+          <div><p class="text-xs text-gray-500 uppercase">Estatus</p><Badge :variant="convenio.estatus === 'vigente' ? 'success' : 'warning'">{{ $etiqueta(convenio.estatus) }}</Badge></div>
           <div><p class="text-xs text-gray-500 uppercase">Renovación Automática</p><p class="text-sm font-medium text-gray-800">{{ siNo(convenio.renovacion_automatica) }}</p></div>
           <div><p class="text-xs text-gray-500 uppercase">Exclusivo</p><p class="text-sm font-medium text-gray-800">{{ siNo(convenio.exclusivo) }}</p></div>
         </div>

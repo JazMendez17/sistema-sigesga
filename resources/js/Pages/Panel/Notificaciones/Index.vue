@@ -7,6 +7,7 @@ import NeumorphicButton from '@/Components/NeumorphicButton.vue'
 
 const filtroActivo = ref('todos')
 const filtros = ['todos', 'pendiente', 'leido']
+const enPapelera = ref(false)
 
 const page = usePage()
 const notificaciones = computed(() => page.props.notificaciones?.data || page.props.notificaciones || [])
@@ -25,6 +26,19 @@ function marcarTodas() {
   router.post(route('panel.notificaciones.marcar-todas'))
 }
 
+function cambiarVista(papelera) {
+  enPapelera.value = papelera
+  router.visit(route('panel.notificaciones.index', papelera ? { papelera: 1 } : {}), { preserveScroll: true })
+}
+
+function eliminar(id) {
+  router.delete(route('panel.notificaciones.eliminar', { id }))
+}
+
+function restaurar(id) {
+  router.put(route('panel.notificaciones.restaurar', { id }))
+}
+
 function getBadgeVariant(estado) {
   if (estado === 'leido') return 'neutral'
   if (estado === 'fallido') return 'danger'
@@ -40,12 +54,25 @@ function getBadgeVariant(estado) {
           <h1 class="text-2xl font-bold text-gray-800">Notificaciones</h1>
           <p class="text-sm text-gray-500 mt-1">Eventos operativos de servicios y cotizaciones</p>
         </div>
-        <NeumorphicButton type="button" @click="marcarTodas" :disabled="!(page.props.noLeidas > 0)">
+        <NeumorphicButton v-if="!enPapelera" type="button" @click="marcarTodas" :disabled="!(page.props.noLeidas > 0)">
           Marcar todas como leídas
         </NeumorphicButton>
       </div>
 
       <div class="flex flex-wrap gap-2">
+        <button @click="cambiarVista(false)"
+          class="rounded-xl px-5 py-2 text-sm font-medium transition-all duration-200"
+          :class="!enPapelera ? 'bg-[#EEF2F7] text-[#4F46E5] shadow-[4px_4px_8px_#d0d5da,-4px_-4px_8px_#ffffff]' : 'text-gray-500'">
+          Notificaciones
+        </button>
+        <button @click="cambiarVista(true)"
+          class="rounded-xl px-5 py-2 text-sm font-medium transition-all duration-200"
+          :class="enPapelera ? 'bg-[#EEF2F7] text-[#4F46E5] shadow-[4px_4px_8px_#d0d5da,-4px_-4px_8px_#ffffff]' : 'text-gray-500'">
+          Papelera
+        </button>
+      </div>
+
+      <div v-if="!enPapelera" class="flex flex-wrap gap-2">
         <button v-for="f in filtros" :key="f" @click="filtroActivo = f"
           class="rounded-xl px-5 py-2 text-sm font-medium capitalize transition-all duration-200"
           :class="filtroActivo === f ? 'bg-[#EEF2F7] text-[#4F46E5] shadow-[4px_4px_8px_#d0d5da,-4px_-4px_8px_#ffffff]' : 'bg-transparent text-gray-500 hover:text-gray-700'">
@@ -76,9 +103,17 @@ function getBadgeVariant(estado) {
               </div>
               <div class="flex items-center gap-3 mt-1.5">
                 <span class="text-xs text-gray-400">{{ n.fecha }}</span>
-                <button v-if="n.estado !== 'leido'" @click="marcarLeida(n.id)"
+                <button v-if="!enPapelera && n.estado !== 'leido'" @click="marcarLeida(n.id)"
                   class="ml-auto text-xs text-[var(--color-primary)] hover:underline font-medium">
                   Marcar como leída
+                </button>
+                <button v-if="!enPapelera" @click="eliminar(n.id)"
+                  class="text-xs text-red-500 hover:underline font-medium">
+                  Eliminar
+                </button>
+                <button v-else @click="restaurar(n.id)"
+                  class="ml-auto text-xs text-[var(--color-primary)] hover:underline font-medium">
+                  Restaurar
                 </button>
               </div>
             </div>

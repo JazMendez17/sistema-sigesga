@@ -16,7 +16,7 @@ defineProps({ cotizaciones: Array })
           <tbody class="divide-y divide-[#d0d5da]/20">
             <tr v-for="c in cotizaciones" :key="c.id" class="hover:bg-white/30 text-sm">
               <td class="px-4 py-3">{{ c.folio }}</td><td class="px-4 py-3">{{ c.tipo }}</td><td class="px-4 py-3 max-w-[150px] truncate">{{ c.origen }}</td><td class="px-4 py-3 max-w-[150px] truncate">{{ c.destino }}</td><td class="px-4 py-3">{{ c.total }}</td>
-              <td class="px-4 py-3"><Badge :variant="c.estatus === 'aprobado' ? 'success' : c.estatus === 'rechazado' ? 'danger' : 'warning'">{{ c.estatus }}</Badge></td>
+              <td class="px-4 py-3"><Badge :variant="c.estatus === 'aprobado' ? 'success' : c.estatus === 'rechazado' ? 'danger' : 'warning'">{{ $etiqueta(c.estatus) }}</Badge></td>
               <td class="px-4 py-3">{{ c.fecha }}</td>
               <td class="px-4 py-3 text-right">
                 <button @click="router.visit(route('panel.cotizaciones.show.cliente', { id: c.id }))" class="rounded-lg bg-[#EEF2F7] p-2 text-gray-500 shadow-[3px_3px_6px_#d0d5da,-3px_-3px_6px_#ffffff] transition-all hover:text-[#4F46E5]">

@@ -1,12 +1,15 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { router, useForm } from '@inertiajs/vue3'
+import { router, useForm, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Pages/Panel/AppLayout.vue'
 import Badge from '@/Components/Badge.vue'
 import NeumorphicButton from '@/Components/NeumorphicButton.vue'
 import NeumorphicInput from '@/Components/NeumorphicInput.vue'
 
 const props = defineProps({ servicio: Object })
+const page = usePage()
+const puedeOperar = computed(() => ['admin', 'cotizador', 'operador'].includes(page.props.auth?.user?.rol))
+const rutaRegreso = computed(() => page.props.auth?.user?.rol === 'cliente' ? 'panel.cliente.cotizaciones' : 'panel.servicios.index')
 
 const mostrarModal = ref(false)
 const mostrarModalCancelacion = ref(false)
@@ -37,6 +40,10 @@ function avanzar(estado) {
   router.post(route('panel.servicios.avanzar', { id: props.servicio.id }), { estado })
 }
 
+function formatKm(valor) {
+  return valor === null || valor === undefined || valor === '' ? '' : Number(valor).toLocaleString('es-MX') + ' km'
+}
+
 const pasos = [
   { key: 'asignado', label: 'Asignado', icon: '📋' },
   { key: 'inicio_servicio', label: 'En Camino', icon: '🚀' },
@@ -64,9 +71,9 @@ const botonFlujo = {
     <div class="space-y-6">
       <div class="flex items-center justify-between">
         <div><h1 class="text-2xl font-bold text-gray-800">{{ servicio?.folio || '—' }}</h1><p class="text-sm text-gray-500 mt-1">Detalle del servicio</p></div>
-        <NeumorphicButton @click="router.visit(route('panel.servicios.index'))">Volver</NeumorphicButton>
+        <NeumorphicButton @click="router.visit(route(rutaRegreso))">Volver</NeumorphicButton>
       </div>
-
+        <Badge :variant="finalizado && servicio?.estatus!=='cancelado' ? 'success' : servicio?.estatus==='cancelado' ? 'danger' : 'warning'">{{ $etiqueta(servicio?.estatus) }}</Badge>
       <!-- Stepped Progress Bar -->
       <div class="rounded-3xl bg-[#EEF2F7] p-6 shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
         <div class="flex items-center justify-between">
@@ -92,14 +99,14 @@ const botonFlujo = {
             <div><p class="text-xs text-gray-500 uppercase">Operador</p><p class="text-gray-800 font-medium">{{ servicio?.operador || '—' }}</p></div>
             <div><p class="text-xs text-gray-500 uppercase">Unidad</p><p class="text-gray-800 font-medium">{{ servicio?.unidad || '—' }}</p></div>
             <div><p class="text-xs text-gray-500 uppercase">Tipo</p><p class="text-gray-800 font-medium">{{ servicio?.tipo || '—' }}</p></div>
-            <div><p class="text-xs text-gray-500 uppercase">Estatus</p><Badge :variant="finalizado && servicio?.estatus!=='cancelado' ? 'success' : servicio?.estatus==='cancelado' ? 'danger' : 'warning'">{{ pasoActual?.label || servicio?.estatus || '—' }}</Badge></div>
+            <div><p class="text-xs text-gray-500 uppercase">Estatus</p><Badge :variant="finalizado && servicio?.estatus!=='cancelado' ? 'success' : servicio?.estatus==='cancelado' ? 'danger' : 'warning'">{{ $etiqueta(servicio?.estatus) }}</Badge></div>
             <div class="col-span-2"><p class="text-xs text-gray-500 uppercase">Origen</p><p class="text-gray-800 font-medium">{{ servicio?.origen || '—' }}</p></div>
             <div class="col-span-2"><p class="text-xs text-gray-500 uppercase">Destino</p><p class="text-gray-800 font-medium">{{ servicio?.destino || '—' }}</p></div>
             <div class="col-span-2"><p class="text-xs text-gray-500 uppercase">Observaciones</p><p class="text-gray-600">{{ servicio?.observaciones || '—' }}</p></div>
           </div>
 
           <!-- Botón de acción -->
-          <div v-if="!finalizado" class="border-t border-gray-200 pt-4 space-y-3">
+          <div v-if="!finalizado && puedeOperar" class="border-t border-gray-200 pt-4 space-y-3">
             <button @click="avanzar(botonFlujo[servicio?.estatus]?.next)"
               v-if="esActivo"
               class="w-full py-4 px-6 text-white font-bold text-lg rounded-2xl transition-all duration-200 shadow-lg hover:scale-[1.02]"
@@ -115,7 +122,7 @@ const botonFlujo = {
               Cancelación pendiente de autorización
             </p>
           </div>
-          <div v-else class="border-t border-gray-200 pt-4 text-center text-sm text-gray-500">
+          <div v-else-if="finalizado" class="border-t border-gray-200 pt-4 text-center text-sm text-gray-500">
             Servicio completado
           </div>
         </div>

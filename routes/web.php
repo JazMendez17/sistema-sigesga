@@ -234,6 +234,8 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
     Route::post('/notificaciones/{id}/marcar-leida', [NotificacionesController::class, 'marcarLeida'])->name('notificaciones.marcar-leida');
     Route::post('/notificaciones/marcar-todas', [NotificacionesController::class, 'marcarTodas'])->name('notificaciones.marcar-todas');
     Route::get('/notificaciones/no-leidas', [NotificacionesController::class, 'unreadCount'])->name('notificaciones.no-leidas');
+    Route::delete('/notificaciones/{id}', [NotificacionesController::class, 'eliminar'])->name('notificaciones.eliminar');
+    Route::put('/notificaciones/{id}/restaurar', [NotificacionesController::class, 'restaurar'])->name('notificaciones.restaurar');
 
     Route::get('/evaluar-servicio/{id}', [ServiciosController::class, 'evaluar'])->name('servicios.evaluar');
     Route::post('/evaluar-servicio/{id}', [ServiciosController::class, 'guardarEvaluacion'])->name('servicios.evaluar.store');

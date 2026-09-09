@@ -114,7 +114,7 @@ function eliminarContacto(contactoId) {
               <tr v-for="conv in aseguradora.convenios" :key="conv.id" class="hover:bg-white/30 transition-colors">
                 <td class="px-4 py-3 text-sm text-[#4B5563]">{{ conv.nombre }}</td>
                 <td class="px-4 py-3 text-sm text-[#4B5563]">{{ conv.tipo_servicio }}</td>
-                <td class="px-4 py-3 text-sm"><Badge :variant="conv.estatus === 'vigente' ? 'success' : 'warning'">{{ conv.estatus }}</Badge></td>
+                <td class="px-4 py-3 text-sm"><Badge :variant="conv.estatus === 'vigente' ? 'success' : 'warning'">{{ $etiqueta(conv.estatus) }}</Badge></td>
               </tr>
             </tbody>
           </table>

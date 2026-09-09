@@ -177,7 +177,7 @@ const perfilData = empleado || cliente || null
           <div class="space-y-3 rounded-2xl p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]" style="background-color: var(--color-bg)">
             <div class="flex justify-between">
               <span class="text-sm opacity-60" style="color: var(--color-text)">Rol</span>
-              <span class="text-sm font-semibold px-3 py-0.5 rounded-xl" :style="{ backgroundColor: 'var(--color-primary)', color: '#ffffff' }">{{ rolLabel[usuario.rol] || usuario.rol }}</span>
+              <span class="text-sm font-semibold px-3 py-0.5 rounded-xl" :style="{ backgroundColor: 'var(--color-primary)', color: '#ffffff' }">{{ $etiqueta(usuario.rol) }}</span>
             </div>
 
             <div v-if="empleado?.puesto" class="flex justify-between">

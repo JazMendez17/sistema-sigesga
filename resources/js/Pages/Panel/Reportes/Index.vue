@@ -54,7 +54,7 @@ function generarCalificaciones() {
       <div class="flex items-center justify-between">
         <h1 class="text-2xl font-bold text-gray-800">Reportes</h1>
       </div>
-
+        <Badge :variant="badgeEstatus[s.estatus] || 'neutral'">{{ $etiqueta(s.estatus) }}</Badge>
       <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
         <div class="rounded-3xl bg-[#EEF2F7] p-6 shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff] space-y-4">
           <div>
@@ -131,7 +131,7 @@ function generarCalificaciones() {
                 <td class="py-2 pr-4">{{ s.tipo }}</td>
                 <td class="py-2 pr-4">{{ s.fecha }}</td>
                 <td class="py-2 pr-4">{{ formatMoney(s.costo) }}</td>
-                <td class="py-2"><Badge :variant="badgeEstatus[s.estatus] || 'neutral'">{{ s.estatus }}</Badge></td>
+                <td class="py-2"><Badge :variant="badgeEstatus[s.estatus] || 'neutral'">{{ $etiqueta(s.estatus) }}</Badge></td>
               </tr>
               <tr v-if="!reporte.data?.length"><td colspan="6" class="py-4 text-center text-gray-400">Sin servicios en el periodo.</td></tr>
             </tbody>

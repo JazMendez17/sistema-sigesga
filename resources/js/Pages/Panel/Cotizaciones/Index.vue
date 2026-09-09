@@ -83,7 +83,7 @@ const filteredCotizaciones = computed(() => {
             <Badge
               :variant="row.estatus === 'aprobado' ? 'success' : row.estatus === 'rechazado' ? 'danger' : row.estatus === 'pendiente' ? 'warning' : 'neutral'"
             >
-              {{ row.estatus }}
+              {{ $etiqueta(row.estatus) }}
             </Badge>
           </template>
           <template #cell-total="{ row }">

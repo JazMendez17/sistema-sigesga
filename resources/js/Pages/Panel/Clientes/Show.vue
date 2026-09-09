@@ -130,7 +130,7 @@ function formato(val) {
                 <td class="px-4 py-3 text-sm">{{ formato(c.tipo) }}</td>
                 <td class="px-4 py-3 text-sm">${{ c.monto?.toFixed(2) }}</td>
                 <td class="px-4 py-3 text-sm">{{ formato(c.fecha) }}</td>
-                <td class="px-4 py-3 text-sm"><Badge :variant="c.estatus">{{ c.estatus }}</Badge></td>
+                <td class="px-4 py-3 text-sm"><Badge :variant="c.estatus">{{ $etiqueta(c.estatus) }}</Badge></td>
               </tr>
               <tr v-if="!cliente.cotizaciones.length">
                 <td colspan="5" class="px-4 py-8 text-center text-sm text-gray-400">Sin cotizaciones registradas</td>

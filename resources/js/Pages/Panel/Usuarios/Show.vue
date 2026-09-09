@@ -41,7 +41,7 @@ const rolLabel = {
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div><p class="text-xs text-gray-500 uppercase tracking-wider">Nombre</p><p class="text-sm font-medium text-gray-800">{{ formato(usuario.name) }}</p></div>
           <div><p class="text-xs text-gray-500 uppercase tracking-wider">Email</p><p class="text-sm font-medium text-gray-800">{{ formato(usuario.email) }}</p></div>
-          <div><p class="text-xs text-gray-500 uppercase tracking-wider">Rol</p><p class="text-sm font-medium text-gray-800">{{ rolLabel[usuario.rol] || usuario.rol }}</p></div>
+          <div><p class="text-xs text-gray-500 uppercase tracking-wider">Rol</p><p class="text-sm font-medium text-gray-800">{{ $etiqueta(usuario.rol) }}</p></div>
           <div><p class="text-xs text-gray-500 uppercase tracking-wider">Teléfono</p><p class="text-sm font-medium text-gray-800">{{ formato(usuario.telefono) }}</p></div>
           <div><p class="text-xs text-gray-500 uppercase tracking-wider">Intentos Fallidos</p><p class="text-sm font-medium text-gray-800">{{ usuario.intentos_fallidos ?? 0 }}</p></div>
           <div><p class="text-xs text-gray-500 uppercase tracking-wider">Cuenta Bloqueada</p><Badge :variant="usuario.cuenta_bloqueada ? 'danger' : 'success'">{{ usuario.cuenta_bloqueada ? 'Sí' : 'No' }}</Badge></div>

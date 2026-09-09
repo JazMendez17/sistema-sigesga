@@ -16,7 +16,7 @@ defineProps({ facturas: Array })
           <tbody class="divide-y divide-[#d0d5da]/20">
             <tr v-for="f in facturas" :key="f.id" class="hover:bg-white/30 text-sm">
               <td class="px-4 py-3">{{ f.folio }}</td><td class="px-4 py-3">{{ f.total }}</td>
-              <td class="px-4 py-3"><Badge :variant="f.estatus === 'vigente' ? 'success' : 'danger'">{{ f.estatus }}</Badge></td>
+              <td class="px-4 py-3"><Badge :variant="f.estatus === 'vigente' ? 'success' : 'danger'">{{ $etiqueta(f.estatus) }}</Badge></td>
               <td class="px-4 py-3">{{ f.fecha }}</td>
               <td class="px-4 py-3 text-right">
                 <button @click="router.visit(route('panel.facturacion.show.cliente', { id: f.id }))" class="rounded-lg bg-[#EEF2F7] p-2 text-gray-500 shadow-[3px_3px_6px_#d0d5da,-3px_-3px_6px_#ffffff] transition-all hover:text-[#4F46E5]">

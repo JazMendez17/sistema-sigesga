@@ -90,7 +90,6 @@ class ServicioObserver
     {
         // Cliente recibe actualización
         $this->notificar($s, $clienteId, $msgCliente);
-        $this->notificar($s, $operadorId, "Actualización del servicio {$folio}: {$msgCliente}");
         // Admin y Cotizador reciben bitácora
         $this->notificarRoles($s, ['admin', 'cotizador'], $msgAdmin);
     }

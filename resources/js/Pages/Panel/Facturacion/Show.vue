@@ -17,7 +17,7 @@ function formato(val) { return val || '—' }
           <h1 class="text-2xl font-bold text-gray-800">{{ formato(factura?.folio_factura) }}</h1>
           <p class="text-sm text-gray-500 mt-1">Detalle de factura</p>
         </div>
-        <div class="flex gap-3">
+          <Badge :variant="factura?.estatus === 'vigente' ? 'success' : 'danger'">{{ $etiqueta(factura?.estatus) }}</Badge>
           <NeumorphicButton variant="secondary" @click="router.visit(route('panel.facturacion.index'))">Volver</NeumorphicButton>
           <NeumorphicButton v-if="factura?.correo_envio_factura" @click="router.post(route('panel.facturacion.enviar', { id: factura.id }))">Reenviar PDF</NeumorphicButton>
         </div>
@@ -30,7 +30,7 @@ function formato(val) { return val || '—' }
           <div class="space-y-3">
             <div><p class="text-xs text-gray-500 uppercase">Folio</p><p class="text-sm font-medium">{{ formato(factura?.folio_factura) }}</p></div>
             <div><p class="text-xs text-gray-500 uppercase">Fecha</p><p class="text-sm font-medium">{{ formato(factura?.fecha) }}</p></div>
-            <div><p class="text-xs text-gray-500 uppercase">Estatus</p><Badge :variant="factura?.estatus === 'vigente' ? 'success' : 'danger'">{{ formato(factura?.estatus) }}</Badge></div>
+            <div><p class="text-xs text-gray-500 uppercase">Estatus</p><Badge :variant="factura?.estatus === 'vigente' ? 'success' : 'danger'">{{ $etiqueta(factura?.estatus) }}</Badge></div>
             <div><p class="text-xs text-gray-500 uppercase">Email envío</p><p class="text-sm font-medium">{{ formato(factura?.correo_envio_factura) }}</p></div>
           </div>
         </div>

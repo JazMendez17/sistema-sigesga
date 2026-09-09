@@ -89,7 +89,7 @@ const badgeVariant = {
       <div class="rounded-3xl bg-[#EEF2F7] p-6 shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
         <DataTable :columns="columns" :data="filtradas">
           <template #cell-estatus="{ row }">
-            <Badge :variant="badgeVariant[row.estatus] || 'neutral'">{{ row.estatus }}</Badge>
+            <Badge :variant="badgeVariant[row.estatus] || 'neutral'">{{ $etiqueta(row.estatus) }}</Badge>
           </template>
           <template #actions="{ row }">
             <div class="flex items-center gap-2">

@@ -6,6 +6,7 @@ import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import { createPinia } from 'pinia';
+import { etiqueta } from './Utils/labels';
 
 const appName = import.meta.env.VITE_APP_NAME || 'SIGESGA';
 
@@ -25,6 +26,8 @@ createInertiaApp({
             .use(plugin)
             .use(pinia)
             .use(ZiggyVue);
+
+        app.config.globalProperties.$etiqueta = etiqueta;
 
         app.mount(el);
     },

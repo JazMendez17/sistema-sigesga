@@ -69,7 +69,7 @@ function eliminarServicio(id) {
             + Nuevo Servicio
           </NeumorphicButton>
         </div>
-      </div>
+            {{ $etiqueta(row.estatus) }}
 
       <!-- Filtros de estatus y búsqueda -->
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -101,7 +101,7 @@ function eliminarServicio(id) {
           </template>
           <template #cell-estatus="{ row }">
             <Badge :variant="row.estatus === 'finalizado' ? 'success' : row.estatus === 'cancelado' ? 'danger' : estadosActivos.includes(row.estatus) ? 'warning' : 'neutral'">
-              {{ row.estatus === 'asignado' ? 'Asignado' : row.estatus === 'inicio_servicio' ? 'Inicio Servicio' : row.estatus === 'en_sitio_origen' ? 'En Sitio Origen' : row.estatus === 'salida_destino' ? 'Salida a Destino' : row.estatus === 'en_destino' ? 'En Destino' : row.estatus === 'finalizado' ? 'Finalizado' : row.estatus === 'solicitud_cancelacion' ? 'Solicitud Cancelación' : row.estatus === 'cancelado' ? 'Cancelado' : row.estatus }}
+              {{ $etiqueta(row.estatus) }}
             </Badge>
           </template>
           <template #actions="{ row }">

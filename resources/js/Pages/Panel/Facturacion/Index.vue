@@ -119,7 +119,7 @@ const filteredFacturas = computed(() => {
           + Generar Factura
         </NeumorphicButton>
       </div>
-
+        <Badge :variant="row.estatus === 'vigente' ? 'success' : 'danger'">{{ $etiqueta(row.estatus) }}</Badge>
       <!-- Modal para generar factura -->
       <div v-if="mostrarModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="mostrarModal = false">
         <div class="bg-white rounded-3xl w-full max-w-lg mx-4 shadow-2xl flex flex-col max-h-[92vh]">
@@ -188,7 +188,7 @@ const filteredFacturas = computed(() => {
       <div class="rounded-3xl bg-[#EEF2F7] p-6 shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
         <DataTable :columns="columns" :data="filteredFacturas">
           <template #cell-estatus="{ row }">
-            <Badge :variant="row.estatus === 'vigente' ? 'success' : 'danger'">{{ row.estatus }}</Badge>
+            <Badge :variant="row.estatus === 'vigente' ? 'success' : 'danger'">{{ $etiqueta(row.estatus) }}</Badge>
           </template>
           <template #cell-subtotal="{ row }">
             ${{ row.subtotal?.toFixed(2) }}

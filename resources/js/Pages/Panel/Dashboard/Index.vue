@@ -132,7 +132,7 @@ const badgeVariant = (status) => ({
         </NeumorphicButton>
       </div>
 
-      <template v-if="role === 'admin' || role === 'cotizador'">
+          <template v-if="role === 'admin' || role === 'cotizador'">
         <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
           <KPICard
             v-for="(kpi, index) in kpis"
@@ -144,9 +144,9 @@ const badgeVariant = (status) => ({
           />
         </div>
 
+        </div>
         <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <div class="rounded-[30px] border border-white/40 bg-[var(--color-surface)] p-5 shadow-[10px_10px_20px_var(--neumorphic-dark),-10px_-10px_20px_var(--neumorphic-light)] sm:p-6">
-            <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-text-muted)]">Tráfico</p>
                 <h3 class="mt-1 text-xl font-semibold text-[var(--color-text)]">Cotizaciones Registradas</h3>
@@ -284,7 +284,7 @@ const badgeVariant = (status) => ({
                   </div>
                 </div>
                 <div class="flex items-center gap-3">
-                  <Badge :variant="badgeVariant(item.status)">{{ item.status }}</Badge>
+                  <Badge :variant="badgeVariant(item.status)">{{ $etiqueta(item.status) }}</Badge>
                   <span class="text-xs text-[var(--color-text-muted)]">{{ item.time }}</span>
                 </div>
               </div>
@@ -340,7 +340,7 @@ const badgeVariant = (status) => ({
                 </div>
                 <div class="flex items-center gap-3">
                   <span class="text-xs text-[var(--color-text-muted)]">{{ sv.horario }}</span>
-                  <Badge :variant="badgeVariant(sv.status)">{{ sv.status }}</Badge>
+                  <Badge :variant="badgeVariant(sv.status)">{{ $etiqueta(sv.status) }}</Badge>
                 </div>
               </div>
             </div>
@@ -395,7 +395,7 @@ const badgeVariant = (status) => ({
             <div class="rounded-[30px] border border-white/40 bg-[var(--color-surface)] p-5 shadow-[10px_10px_20px_var(--neumorphic-dark),-10px_-10px_20px_var(--neumorphic-light)] sm:p-6">
               <div class="mb-5"><p class="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-text-muted)]">Servicio</p><h3 class="mt-1 text-xl font-semibold text-[var(--color-text)]">Mi Solicitud Activa</h3></div>
               <div v-if="historialCliente?.[0] && historialCliente[0].status !== 'finalizado' && historialCliente[0].status !== 'cancelado'" class="rounded-[24px] bg-gradient-to-br from-[#D97706] to-[#F59E0B] p-5 text-white">
-                <div class="flex items-center justify-between gap-3"><span class="text-sm font-medium opacity-80">SVC-{{ String(historialCliente[0].id).padStart(5, '0') }}</span><Badge :variant="'warning'">{{ historialCliente[0].status }}</Badge></div>
+                <div class="flex items-center justify-between gap-3"><span class="text-sm font-medium opacity-80">SVC-{{ String(historialCliente[0].id).padStart(5, '0') }}</span><Badge :variant="'warning'">{{ $etiqueta(historialCliente[0].status) }}</Badge></div>
                 <p class="mt-3 text-xl font-bold">{{ historialCliente[0].servicio }}</p>
                 <p class="mt-2 text-sm opacity-80">Fecha: {{ historialCliente[0].fecha }}</p>
                 <p class="mt-2 text-sm opacity-80">Monto: {{ historialCliente[0].monto }}</p>
@@ -429,7 +429,7 @@ const badgeVariant = (status) => ({
                     <td class="py-3 px-3 font-medium">{{ c.folio }}</td>
                     <td class="py-3 px-3">{{ c.tipo }}</td>
                     <td class="py-3 px-3">{{ c.total }}</td>
-                    <td class="py-3 px-3"><Badge :variant="c.estatus === 'aprobado' ? 'success' : c.estatus === 'rechazado' ? 'danger' : 'warning'">{{ c.estatus }}</Badge></td>
+                    <td class="py-3 px-3"><Badge :variant="c.estatus === 'aprobado' ? 'success' : c.estatus === 'rechazado' ? 'danger' : 'warning'">{{ $etiqueta(c.estatus) }}</Badge></td>
                     <td class="py-3 px-3 text-gray-500">{{ c.fecha }}</td>
                     <td class="py-3 px-3 text-right">
                       <button @click="router.visit(route('panel.cotizaciones.show.cliente', { id: c.id }))" class="rounded-lg bg-[#EEF2F7] p-2 text-gray-500 shadow-[3px_3px_6px_#d0d5da,-3px_-3px_6px_#ffffff] transition-all hover:text-[#4F46E5]">
@@ -453,7 +453,7 @@ const badgeVariant = (status) => ({
                   <tr v-for="f in facturasCliente" :key="f.id" class="border-b border-gray-100 hover:bg-white/50">
                     <td class="py-3 px-3 font-medium">{{ f.folio }}</td>
                     <td class="py-3 px-3">{{ f.total }}</td>
-                    <td class="py-3 px-3"><Badge :variant="f.estatus === 'vigente' ? 'success' : 'danger'">{{ f.estatus }}</Badge></td>
+                    <td class="py-3 px-3"><Badge :variant="f.estatus === 'vigente' ? 'success' : 'danger'">{{ $etiqueta(f.estatus) }}</Badge></td>
                     <td class="py-3 px-3 text-gray-500">{{ f.fecha }}</td>
                     <td class="py-3 px-3 text-right">
                       <button @click="router.visit(route('panel.facturacion.show.cliente', { id: f.id }))" class="rounded-lg bg-[#EEF2F7] p-2 text-gray-500 shadow-[3px_3px_6px_#d0d5da,-3px_-3px_6px_#ffffff] transition-all hover:text-[#4F46E5]">
