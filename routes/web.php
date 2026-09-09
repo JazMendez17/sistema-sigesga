@@ -29,6 +29,8 @@ use App\Http\Controllers\Panel\UploadController;
 use App\Http\Controllers\Panel\ReportesController;
 use App\Http\Controllers\Panel\NotificacionesController;
 use App\Http\Controllers\Panel\PerfilController;
+use App\Http\Controllers\Panel\RedesSocialesController;
+use App\Http\Controllers\Panel\ServiciosLandingController;
 use App\Http\Controllers\ContactoController;
 use Illuminate\Support\Facades\Route;
 
@@ -218,6 +220,13 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
         Route::get('/configuracion', [ConfiguracionController::class, 'index'])->name('configuracion.index');
         Route::post('/configuracion', [ConfiguracionController::class, 'update'])->name('configuracion.update');
         Route::post('/upload', [UploadController::class, 'store'])->name('upload.store');
+
+        Route::resource('/accesos-rapidos', RedesSocialesController::class)
+            ->parameters(['accesos-rapidos' => 'accesoRapido'])
+            ->except(['show']);
+        Route::resource('/servicios-landing', ServiciosLandingController::class)
+            ->parameters(['servicios-landing' => 'servicioLanding'])
+            ->except(['show']);
 
         Route::get('/integraciones', [IntegracionesController::class, 'index'])->name('integraciones.index');
         Route::put('/integraciones/{id}', [IntegracionesController::class, 'update'])->name('integraciones.update');

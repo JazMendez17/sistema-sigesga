@@ -21,7 +21,6 @@ function formato(val) { return val || '—' }
           <NeumorphicButton variant="secondary" @click="router.visit(route('panel.facturacion.index'))">Volver</NeumorphicButton>
           <NeumorphicButton v-if="factura?.correo_envio_factura" @click="router.post(route('panel.facturacion.enviar', { id: factura.id }))">Reenviar PDF</NeumorphicButton>
         </div>
-      </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Datos generales -->

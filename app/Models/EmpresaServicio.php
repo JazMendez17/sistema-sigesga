@@ -23,7 +23,16 @@ use HasFactory;
         'descripcion',
         'foto',
         'orden',
+        'activo',
+        'color',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'activo' => 'boolean',
+        ];
+    }
 
     // Relación con empresa
     public function empresa()

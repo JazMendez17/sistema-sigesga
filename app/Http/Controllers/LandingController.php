@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Empresa;
+use App\Models\EmpresaServicio;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -9,7 +11,38 @@ class LandingController extends Controller
 {
     public function index()
     {
-        return Inertia::render('Landing/Index');
+        $empresa = Empresa::first();
+        $redesSociales = $empresa
+            ? $empresa->empresaAccesosRapidos()
+                ->where('activo', true)
+                ->orderBy('orden')
+                ->get()
+                ->map(fn ($red) => [
+                    'titulo' => $red->titulo,
+                    'descripcion' => $red->descripcion,
+                    'link' => $red->link,
+                    'imagen' => $red->imagen,
+                    'icono' => $red->icono,
+                ])
+            : [];
+        $servicios = $empresa
+            ? $empresa->empresaServicios()
+                ->where('activo', true)
+                ->orderBy('orden')
+                ->get()
+                ->map(fn ($servicio) => [
+                    'id' => $servicio->id,
+                    'tipo' => $servicio->tipo,
+                    'descripcion' => $servicio->descripcion,
+                    'foto' => $servicio->foto,
+                    'color' => $servicio->color ?: ($empresa->color_primario ?: '#4F46E5'),
+                ])
+            : [];
+
+        return Inertia::render('Landing/Index', [
+            'redesSociales' => $redesSociales,
+            'servicios' => $servicios,
+        ]);
     }
 
     public function solicitar()

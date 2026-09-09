@@ -102,7 +102,16 @@ class CotizacionesController extends Controller
         $data['estatus'] = 'pendiente';
 
         if (empty($data['folio'])) {
-            $data['folio'] = 'COT-' . str_pad((Cotizacione::query()->lockForUpdate()->max('id') ?? 0) + 1, 5, '0', STR_PAD_LEFT);
+            // El índice único es global e incluye registros ocultos/eliminados,
+            // por eso se debe consultar también con `conEliminados()`.
+            $ultimoFolio = Cotizacione::query()
+                ->conEliminados()
+                ->where('folio', 'like', 'COT-%')
+                ->lockForUpdate()
+                ->orderByDesc('folio')
+                ->value('folio');
+            $siguienteNumero = $ultimoFolio ? ((int) substr($ultimoFolio, 4)) + 1 : 1;
+            $data['folio'] = 'COT-' . str_pad($siguienteNumero, 5, '0', STR_PAD_LEFT);
         }
 
         $cotizacion = DB::transaction(function () use ($data) {

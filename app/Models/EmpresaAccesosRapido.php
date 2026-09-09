@@ -17,10 +17,20 @@ class EmpresaAccesosRapido extends Model
     protected $fillable = [
         'empresa_id',
         'titulo',
+        'descripcion',
         'link',
         'icono',
+        'imagen',
         'orden',
+        'activo',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'activo' => 'boolean',
+        ];
+    }
 
     // Relación con empresa
     public function empresa()

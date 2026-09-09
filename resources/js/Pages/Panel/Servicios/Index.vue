@@ -69,7 +69,7 @@ function eliminarServicio(id) {
             + Nuevo Servicio
           </NeumorphicButton>
         </div>
-            {{ $etiqueta(row.estatus) }}
+      </div>
 
       <!-- Filtros de estatus y búsqueda -->
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

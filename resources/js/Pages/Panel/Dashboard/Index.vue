@@ -144,7 +144,6 @@ const badgeVariant = (status) => ({
           />
         </div>
 
-        </div>
         <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <div class="rounded-[30px] border border-white/40 bg-[var(--color-surface)] p-5 shadow-[10px_10px_20px_var(--neumorphic-dark),-10px_-10px_20px_var(--neumorphic-light)] sm:p-6">
               <div>
@@ -162,7 +161,6 @@ const badgeVariant = (status) => ({
                   {{ opts.label }}
                 </button>
               </div>
-            </div>
             <Transition name="chart-fade" mode="out-in">
               <div :key="periodo" class="flex h-56 items-end justify-between gap-3 rounded-[24px] bg-[var(--color-bg)] p-4 shadow-[inset_6px_6px_12px_var(--neumorphic-dark),inset_-6px_-6px_12px_var(--neumorphic-light)]">
                 <div v-for="(bar, i) in chartData" :key="i" class="flex h-full flex-1 flex-col items-center justify-end gap-2">
@@ -467,9 +465,9 @@ const badgeVariant = (status) => ({
             <p v-else class="text-sm text-gray-400 text-center py-4">Sin facturas</p>
           </div>
         </div>
-      </template>
-    </div>
-  </AppLayout>
+        </template>
+      </div>
+    </AppLayout>
 </template>
 
 <style>

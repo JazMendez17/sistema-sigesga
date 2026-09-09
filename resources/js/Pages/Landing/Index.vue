@@ -11,7 +11,10 @@ const props = defineProps({
 })
 
 const empresa = computed(() => usePage().props.empresa || {})
+const redesSociales = computed(() => usePage().props.redesSociales || [])
+const serviciosConfigurados = computed(() => usePage().props.servicios || [])
 const mobileMenuOpen = ref(false)
+const activeSection = ref('inicio')
 
 const cssVars = computed(() => ({
     '--color-primary': empresa.value.color_primario || '#4F46E5',
@@ -30,10 +33,9 @@ onMounted(() => {
     }
 })
 
-const scrollTo = (id) => {
+const switchSection = (id) => {
     mobileMenuOpen.value = false
-    const el = document.getElementById(id)
-    if (el) el.scrollIntoView({ behavior: 'smooth' })
+    activeSection.value = id
 }
 
 const navLinks = [
@@ -50,22 +52,6 @@ const valores = [
     { titulo: 'Calidad', descripcion: 'Ofrecemos servicios con los más altos estándares de calidad.', icono: 'star' },
     { titulo: 'Innovación', descripcion: 'Nos mantenemos a la vanguardia con tecnología y procesos modernos.', icono: 'bulb' },
     { titulo: 'Seguridad', descripcion: 'Priorizamos la integridad de nuestros clientes y sus bienes.', icono: 'users' },
-]
-
-const servicios = [
-    { tipo: 'Grúa Ligera', descripcion: 'Servicio de grúa para vehículos compactos y medianos. Rápido y seguro.', color: '#2563eb' },
-    { tipo: 'Grúa Pesada', descripcion: 'Grúa de gran capacidad para camiones, autobuses y maquinaria pesada.', color: '#7c3aed' },
-    { tipo: 'Asistencia Vial', descripcion: 'Asistencia en carretera las 24 horas del día, los 365 días del año.', color: '#059669' },
-    { tipo: 'Cambio de Llantas', descripcion: 'Cambio de neumáticos en el lugar donde te encuentres, sin demoras.', color: '#d97706' },
-    { tipo: 'Carga de Batería', descripcion: 'Servicio de carga o sustitución de batería para cualquier vehículo.', color: '#dc2626' },
-    { tipo: 'Cerrajería Automotriz', descripcion: 'Apertura de vehículos sin dañar la cerradura. Profesional y rápido.', color: '#0891b2' },
-]
-
-const accesos = [
-    { titulo: 'Solicitar Servicio', descripcion: 'Solicita una grúa o asistencia de forma rápida y sencilla.', enlace: '/solicitar', icono: 'clipboard' },
-    { titulo: 'Rastrear Servicio', descripcion: 'Da seguimiento en tiempo real a tu solicitud de servicio.', enlace: '/rastrear', icono: 'search' },
-    { titulo: 'Facturación', descripcion: 'Consulta y paga tus facturas en línea de manera segura.', enlace: '/login', icono: 'document' },
-    { titulo: 'Soporte', descripcion: 'Comunícate con nuestro equipo de soporte técnico.', enlace: '/soporte', icono: 'chat' },
 ]
 
 const form = reactive({
@@ -118,7 +104,7 @@ const getIcon = (name) => icons[name] || ''
     <!-- Landing page principal con secciones: inicio, nosotros, servicio, contacto -->
     <Head :title="empresa.nombre || 'SIGESGA'" />
 
-    <div :style="cssVars" class="bg-[var(--color-bg)] min-h-screen" style="color: var(--color-text)">
+    <div :style="cssVars" class="bg-[var(--color-bg)] h-screen overflow-hidden flex flex-col" style="color: var(--color-text)">
         <div v-if="flash.success" class="fixed top-4 right-4 z-[100] max-w-sm p-4 rounded-2xl bg-emerald-50 text-emerald-800 shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff] flex items-center gap-3 animate-[slideIn_0.3s_ease-out]">
             <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             <p class="text-sm font-medium">{{ flash.success }}</p>
@@ -129,9 +115,9 @@ const getIcon = (name) => icons[name] || ''
             <p class="text-sm font-medium">{{ flash.error }}</p>
             <button @click="flash.error = null" class="ml-auto text-red-600 hover:text-red-800">&times;</button>
         </div>
-        <nav class="fixed top-0 left-0 right-0 z-50 bg-[var(--color-bg)] shadow-[8px_8px_16px_var(--neumorphic-dark),-8px_-8px_16px_var(--neumorphic-light)] transition-all duration-300 py-3 px-4 md:px-8">
+        <nav class="shrink-0 z-50 bg-[var(--color-bg)] shadow-[8px_8px_16px_var(--neumorphic-dark),-8px_-8px_16px_var(--neumorphic-light)] transition-all duration-300 py-3 px-4 md:px-8">
             <div class="max-w-7xl mx-auto flex items-center justify-between">
-                <a href="#inicio" @click.prevent="scrollTo('inicio')" class="flex items-center gap-3 group">
+                <button type="button" @click="switchSection('inicio')" class="flex items-center gap-3 group">
                     <div v-if="empresa.logo" class="w-10 h-10 rounded-2xl overflow-hidden shadow-[4px_4px_8px_#d0d5da,-4px_-4px_8px_#ffffff]">
                         <img :src="'/storage/' + empresa.logo" :alt="empresa.nombre" class="w-full h-full object-contain" />
                     </div>
@@ -142,15 +128,14 @@ const getIcon = (name) => icons[name] || ''
                     <span class="font-semibold text-lg hidden sm:block" :style="{ color: 'var(--color-primary)' }">
                         {{ empresa.siglas || empresa.nombre || 'SIGESGA' }}
                     </span>
-                </a>
+                </button>
 
                 <div class="hidden md:flex items-center gap-1">
-                    <a v-for="link in navLinks" :key="link.id"
-                       :href="`#${link.id}`"
-                       @click.prevent="scrollTo(link.id)"
+                          <button v-for="link in navLinks" :key="link.id" type="button"
+                              @click="switchSection(link.id)"
                        class="px-4 py-2 rounded-2xl text-sm font-medium transition-all duration-200 hover:shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] text-[var(--color-text)]">
                         {{ link.label }}
-                    </a>
+                    </button>
                 </div>
 
 <div class="hidden md:flex items-center gap-3">
@@ -174,12 +159,11 @@ const getIcon = (name) => icons[name] || ''
 
             <div v-if="mobileMenuOpen"
                  class="md:hidden mt-3 rounded-3xl bg-[var(--color-bg)] shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff] p-4 space-y-2">
-                <a v-for="link in navLinks" :key="link.id"
-                   :href="`#${link.id}`"
-                   @click.prevent="scrollTo(link.id)"
+                     <button v-for="link in navLinks" :key="link.id" type="button"
+                         @click="switchSection(link.id)"
                    class="block px-4 py-3 rounded-2xl text-sm font-medium text-[var(--color-text)] hover:shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] transition-all duration-200">
                     {{ link.label }}
-                </a>
+                </button>
                 <hr class="border-gray-300 my-2" />
                 <a href="/login"
                    class="block w-full px-4 py-3 rounded-2xl text-sm font-medium text-center transition-all duration-200 shadow-[4px_4px_8px_#d0d5da,-4px_-4px_8px_#ffffff]"
@@ -194,7 +178,8 @@ const getIcon = (name) => icons[name] || ''
             </div>
         </nav>
 
-        <section id="inicio" class="relative min-h-screen flex items-center overflow-hidden">
+        <main class="min-h-0 flex-1 overflow-hidden">
+        <section v-if="activeSection === 'inicio'" id="inicio" class="relative h-full flex items-center overflow-hidden">
             <div v-if="empresa.imagen_fondo" class="absolute inset-0">
                 <img :src="'/storage/' + empresa.imagen_fondo" alt="" class="w-full h-full object-cover" />
             </div>
@@ -220,15 +205,15 @@ const getIcon = (name) => icons[name] || ''
             </div>
 
             <div class="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 animate-bounce">
-                <a href="#nosotros" @click.prevent="scrollTo('nosotros')" class="text-white/60 hover:text-white transition-colors">
+                <button type="button" @click="switchSection('nosotros')" class="text-white/60 hover:text-white transition-colors">
                     <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                     </svg>
-                </a>
+                </button>
             </div>
         </section>
 
-        <section id="nosotros" class="py-20 md:py-28 px-4 md:px-8">
+        <section v-else-if="activeSection === 'nosotros'" id="nosotros" class="h-full overflow-y-auto py-12 md:py-20 px-4 md:px-8">
             <div class="max-w-7xl mx-auto">
                 <div class="text-center mb-16">
                     <h2 class="text-3xl md:text-4xl font-bold mb-4" :style="{ color: 'var(--color-primary)' }">Nosotros</h2>
@@ -274,29 +259,30 @@ const getIcon = (name) => icons[name] || ''
 
                 <div>
                     <h3 class="text-2xl font-bold text-center mb-4" :style="{ color: 'var(--color-primary)' }">Accesos Rápidos</h3>
-                    <p class="text-gray-500 text-center mb-10 max-w-2xl mx-auto">Herramientas y servicios disponibles para ti.</p>
-                    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <div v-for="acceso in accesos" :key="acceso.titulo"
+                    <p class="text-gray-500 text-center mb-10 max-w-2xl mx-auto">Conéctate con nosotros en nuestras redes sociales.</p>
+                    <div v-if="redesSociales.length" class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div v-for="red in redesSociales" :key="red.id || red.titulo"
                              class="p-6 rounded-3xl bg-[var(--color-bg)] shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff] transition-all duration-300 hover:shadow-[12px_12px_24px_#c9ced3,-12px_-12px_24px_#ffffff] group text-center">
-                            <div class="w-14 h-14 rounded-2xl mx-auto mb-4 bg-[var(--color-bg)] shadow-[6px_6px_12px_#d0d5da,-6px_-6px_12px_#ffffff] flex items-center justify-center transition-all duration-300 group-hover:shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff]"
-                                 :style="{ color: 'var(--color-primary)' }">
-                                <span class="w-7 h-7" v-html="getIcon(acceso.icono)"></span>
+                            <div class="w-20 h-20 rounded-2xl mx-auto mb-4 bg-[var(--color-bg)] shadow-[6px_6px_12px_#d0d5da,-6px_-6px_12px_#ffffff] flex items-center justify-center overflow-hidden transition-all duration-300 group-hover:scale-105">
+                                <img v-if="red.imagen" :src="red.imagen" :alt="red.titulo" class="h-full w-full object-contain p-2" />
+                                <span v-else class="text-2xl font-bold" :style="{ color: 'var(--color-primary)' }">{{ red.titulo.charAt(0) }}</span>
                             </div>
-                            <h4 class="text-base font-bold mb-2 text-gray-800">{{ acceso.titulo }}</h4>
-                            <p class="text-sm text-gray-500 mb-4">{{ acceso.descripcion }}</p>
-                            <a :href="acceso.enlace"
+                            <h4 class="text-base font-bold mb-2 text-gray-800">{{ red.titulo }}</h4>
+                            <p class="text-sm text-gray-500 mb-6 min-h-[42px]">{{ red.descripcion }}</p>
+                            <a :href="red.link" target="_blank" rel="noopener noreferrer"
                                class="inline-flex items-center gap-1 text-sm font-semibold transition-all duration-200 hover:gap-2"
                                :style="{ color: 'var(--color-primary)' }">
-                                Acceder
+                                Ir a {{ red.titulo }}
                                 <span class="w-4 h-4" v-html="getIcon('arrowRight')"></span>
                             </a>
                         </div>
                     </div>
+                    <p v-else class="text-center text-gray-500">No hay redes sociales configuradas.</p>
                 </div>
             </div>
         </section>
 
-        <section id="servicio" class="py-20 md:py-28 px-4 md:px-8">
+        <section v-else-if="activeSection === 'servicio'" id="servicio" class="h-full overflow-y-auto py-12 md:py-20 px-4 md:px-8">
             <div class="max-w-7xl mx-auto">
                 <div class="text-center mb-16">
                     <h2 class="text-3xl md:text-4xl font-bold mb-4" :style="{ color: 'var(--color-primary)' }">Servicio</h2>
@@ -304,14 +290,18 @@ const getIcon = (name) => icons[name] || ''
                     <p class="text-gray-500 mt-4 max-w-2xl mx-auto">Ofrecemos una amplia gama de servicios de grúas y asistencia vial para cubrir todas tus necesidades.</p>
                 </div>
 
-                <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                    <div v-for="(svc, idx) in servicios" :key="svc.tipo"
+                <p v-if="!serviciosConfigurados.length" class="py-10 text-center text-gray-500">No hay servicios configurados.</p>
+                <div v-else class="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div v-for="svc in serviciosConfigurados" :key="svc.id"
                          class="rounded-3xl bg-[var(--color-bg)] shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff] overflow-hidden transition-all duration-300 hover:shadow-[12px_12px_24px_#c9ced3,-12px_-12px_24px_#ffffff] group">
-                        <div class="h-48 flex items-center justify-center relative overflow-hidden"
-                             :style="{ background: `linear-gradient(135deg, ${svc.color}22, ${svc.color}44)` }">
+                            <div class="h-48 flex items-center justify-center relative overflow-hidden"
+                                :style="{ backgroundColor: svc.color }">
+                               <img v-if="svc.foto" :src="'/storage/' + svc.foto" :alt="svc.tipo" class="absolute inset-0 h-full w-full object-cover opacity-80" />
+                               <div class="absolute inset-0 bg-black/10"></div>
                             <div class="w-24 h-24 rounded-3xl bg-[var(--color-bg)] shadow-[8px_8px_16px_#0000001a,-8px_-8px_16px_#ffffff66] flex items-center justify-center transition-all duration-300 group-hover:scale-110"
                                  :style="{ color: svc.color }">
-                                <span class="w-12 h-12" v-html="getIcon(idx === 0 || idx === 1 ? 'truck' : idx === 2 ? 'wrench' : idx === 3 ? 'key' : idx === 4 ? 'battery' : 'key')"></span>
+                                  <img v-if="svc.foto" :src="'/storage/' + svc.foto" :alt="svc.tipo" class="h-full w-full rounded-3xl object-cover" />
+                                  <span v-else class="w-12 h-12" v-html="getIcon('truck')"></span>
                             </div>
                         </div>
                         <div class="p-6">
@@ -329,7 +319,7 @@ const getIcon = (name) => icons[name] || ''
             </div>
         </section>
 
-        <section id="contacto" class="py-20 md:py-28 px-4 md:px-8">
+        <section v-else id="contacto" class="h-full overflow-y-auto py-12 md:py-20 px-4 md:px-8">
             <div class="max-w-7xl mx-auto">
                 <div class="text-center mb-16">
                     <h2 class="text-3xl md:text-4xl font-bold mb-4" :style="{ color: 'var(--color-primary)' }">Contacto</h2>
@@ -426,29 +416,14 @@ const getIcon = (name) => icons[name] || ''
             </div>
         </section>
 
-        <footer class="py-8 px-4 md:px-8">
+        </main>
+
+        <footer class="shrink-0 py-3 px-4 md:px-8">
             <div class="max-w-7xl mx-auto">
                 <div class="p-8 rounded-3xl bg-[var(--color-bg)] shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
-                    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-xl bg-[var(--color-bg)] shadow-[3px_3px_6px_#d0d5da,-3px_-3px_6px_#ffffff] flex items-center justify-center text-xs font-bold"
-                                 :style="{ color: 'var(--color-primary)' }">
-                                {{ (empresa.siglas || empresa.nombre || 'SG').charAt(0) }}
-                            </div>
-                            <span class="text-sm font-semibold" :style="{ color: 'var(--color-primary)' }">
-                                {{ empresa.siglas || empresa.nombre || 'SIGESGA' }}
-                            </span>
-                        </div>
-                        <p class="text-sm text-gray-500 text-center">
-                            {{ empresa.texto_derechos || `© ${new Date().getFullYear()} SIGESGA. Todos los derechos reservados.` }}
-                        </p>
-                        <div class="flex items-center gap-4 text-xs text-gray-400">
-                            <a href="#inicio" @click.prevent="scrollTo('inicio')" class="hover:text-gray-600 transition-colors">Inicio</a>
-                            <a href="#nosotros" @click.prevent="scrollTo('nosotros')" class="hover:text-gray-600 transition-colors">Nosotros</a>
-                            <a href="#servicio" @click.prevent="scrollTo('servicio')" class="hover:text-gray-600 transition-colors">Servicio</a>
-                            <a href="#contacto" @click.prevent="scrollTo('contacto')" class="hover:text-gray-600 transition-colors">Contacto</a>
-                        </div>
-                    </div>
+                    <p class="text-center text-sm text-gray-500">
+                        {{ empresa.texto_derechos || `© ${new Date().getFullYear()} ${empresa.nombre || 'SIGESGA'}. Todos los derechos reservados.` }}
+                    </p>
                 </div>
             </div>
         </footer>
@@ -456,8 +431,9 @@ const getIcon = (name) => icons[name] || ''
 </template>
 
 <style>
-html {
-    scroll-behavior: smooth;
+html,
+body {
+    overflow: hidden;
 }
 body {
     background-color: var(--color-bg);
