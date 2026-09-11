@@ -293,6 +293,7 @@ class CotizacionesController extends Controller
     {
         Usuario::where('empresa_id', $cotizacion->empresa_id)
             ->whereIn('rol', ['admin', 'cotizador'])
+            ->where('id', '!=', auth()->id())
             ->pluck('id')
             ->each(fn ($usuarioId) => $this->crearNotificacion($cotizacion->empresa_id, $usuarioId, $mensaje));
     }

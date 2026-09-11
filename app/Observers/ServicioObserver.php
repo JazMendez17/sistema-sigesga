@@ -128,7 +128,10 @@ class ServicioObserver
 
     protected function notificarRoles(Servicio $s, array $roles, string $mensaje): void
     {
-        $ids = Usuario::where('empresa_id', $s->empresa_id)->whereIn('rol', $roles)->pluck('id');
+        $ids = Usuario::where('empresa_id', $s->empresa_id)
+            ->whereIn('rol', $roles)
+            ->where('id', '!=', auth()->id())
+            ->pluck('id');
         foreach ($ids as $uid) {
             $this->notificar($s, $uid, $mensaje);
         }
