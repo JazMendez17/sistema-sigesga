@@ -164,6 +164,7 @@ class FacturacionController extends Controller
         return Inertia::render('Panel/Facturacion/Show', [
             'factura' => [
                 'id' => $factura->id,
+                'es_cliente' => $user->rol === 'cliente',
                 'folio_factura' => $factura->folio_factura,
                 'estatus' => $factura->estatus,
                 'correo_envio_factura' => $factura->correo_envio_factura,

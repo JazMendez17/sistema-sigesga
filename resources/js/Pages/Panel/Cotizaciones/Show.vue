@@ -54,7 +54,7 @@ function moneda(val) { return Number(val || 0).toFixed(2) }
           <h1 class="text-2xl font-bold text-gray-800">{{ formato(cotizacion?.folio) }}</h1>
           <p class="text-sm text-gray-500 mt-1">Detalle de cotización</p>
         </div>
-        <NeumorphicButton @click="router.visit(route('panel.cotizaciones.index'))">Volver</NeumorphicButton>
+        <NeumorphicButton @click="router.visit(cotizacion?.es_cliente ? route('panel.cliente.cotizaciones') : route('panel.cotizaciones.index'))">Volver</NeumorphicButton>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
