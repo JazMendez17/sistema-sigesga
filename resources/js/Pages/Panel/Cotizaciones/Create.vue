@@ -103,12 +103,19 @@ async function buscarColoniasPorCP(cp, tipo) {
 
 // Llamar al autocompletado cuando se completa el CP (5 dígitos) o al perder foco
 function handleCodigoPostalInput(cp, tipo) {
-  buscarColoniasPorCP(cp.trim(), tipo)
+  const colonias = tipo === 'origen' ? coloniasOrigen : coloniasDestino
+  const cpLimpio = cp.trim()
+  if (cpLimpio.length === 5 && /^\d{5}$/.test(cpLimpio)) {
+    buscarColoniasPorCP(cpLimpio, tipo)
+  } else {
+    colonias.value = []
+  }
 }
 
 function handleCodigoPostalBlur(cp, tipo) {
+  const colonias = tipo === 'origen' ? coloniasOrigen : coloniasDestino
   const cpLimpio = cp.trim()
-  if (cpLimpio.length === 5 && /^\d{5}$/.test(cpLimpio)) {
+  if (cpLimpio.length === 5 && /^\d{5}$/.test(cpLimpio) && !colonias.value.length) {
     buscarColoniasPorCP(cpLimpio, tipo)
   }
 }

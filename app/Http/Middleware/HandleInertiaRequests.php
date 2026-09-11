@@ -67,6 +67,7 @@ class HandleInertiaRequests extends Middleware
                 'modo_oscuro' => $empresa->modo_oscuro ?? false,
                 'telefono_contacto' => $empresa->telefono_contacto,
                 'email_contacto' => $empresa->email_contacto,
+                'direccion' => $empresa->direccion,
                 'modulo_colores' => $moduloColores,
             ] : null,
             'flash' => [

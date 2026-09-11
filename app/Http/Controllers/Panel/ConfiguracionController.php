@@ -59,6 +59,7 @@ class ConfiguracionController extends Controller
             'texto_derechos' => 'nullable|string|max:500',
             'telefono_contacto' => 'nullable|string|max:50',
             'email_contacto' => 'nullable|email|max:255',
+            'direccion' => 'nullable|string|max:500',
             'color_primario' => 'nullable|string|max:20',
             'color_secundario' => 'nullable|string|max:20',
             'color_fondo' => 'nullable|string|max:20',

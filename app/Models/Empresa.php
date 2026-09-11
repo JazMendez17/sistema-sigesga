@@ -30,6 +30,7 @@ use HasFactory;
         'modo_oscuro',
         'telefono_contacto',
         'email_contacto',
+        'direccion',
     ];
 
     protected function casts(): array

@@ -3,7 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Contacto;
+use App\Models\Empresa;
+use App\Mail\ContactoMail;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 
 class ContactoController extends Controller
 {
@@ -15,8 +19,17 @@ class ContactoController extends Controller
             'mensaje' => 'required|string',
         ]);
 
-        Contacto::create($validated);
+        $contacto = Contacto::create($validated);
 
-        return redirect()->back()->with('success', 'Mensaje enviado correctamente. Nos pondremos en contacto contigo pronto.');
+        $empresa = Empresa::first();
+        if ($empresa && $empresa->email_contacto) {
+            try {
+                Mail::to($empresa->email_contacto)->send(new ContactoMail($contacto));
+            } catch (\Throwable $e) {
+                Log::error('Error al enviar correo de contacto: ' . $e->getMessage());
+            }
+        }
+
+        return response()->json(['success' => true]);
     }
 }

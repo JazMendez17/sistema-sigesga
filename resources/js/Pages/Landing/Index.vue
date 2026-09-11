@@ -8,13 +8,20 @@ useTheme()
 const props = defineProps({
     canLogin: Boolean,
     canRegister: Boolean,
+    servicios: { type: Array, default: () => [] },
+    redesSociales: { type: Array, default: () => [] },
+    nosotros: { type: Object, default: () => ({}) },
+    valores: { type: Array, default: () => [] },
 })
 
 const empresa = computed(() => usePage().props.empresa || {})
 const redesSociales = computed(() => usePage().props.redesSociales || [])
-const serviciosConfigurados = computed(() => usePage().props.servicios || [])
+const serviciosConfigurados = computed(() => props.servicios || [])
 const mobileMenuOpen = ref(false)
 const activeSection = ref('inicio')
+
+const nosotrosData = computed(() => props.nosotros || {})
+const valoresData = computed(() => props.valores || [])
 
 const cssVars = computed(() => ({
     '--color-primary': empresa.value.color_primario || '#4F46E5',
@@ -45,31 +52,33 @@ const navLinks = [
     { label: 'Contacto', id: 'contacto' },
 ]
 
-const valores = [
-    { titulo: 'Honestidad', descripcion: 'Actuamos con transparencia y ética en cada servicio que brindamos.', icono: 'shield' },
-    { titulo: 'Responsabilidad', descripcion: 'Cumplimos nuestros compromisos con puntualidad y seriedad.', icono: 'check' },
-    { titulo: 'Compromiso', descripcion: 'Damos lo mejor de nosotros para satisfacer a cada cliente.', icono: 'heart' },
-    { titulo: 'Calidad', descripcion: 'Ofrecemos servicios con los más altos estándares de calidad.', icono: 'star' },
-    { titulo: 'Innovación', descripcion: 'Nos mantenemos a la vanguardia con tecnología y procesos modernos.', icono: 'bulb' },
-    { titulo: 'Seguridad', descripcion: 'Priorizamos la integridad de nuestros clientes y sus bienes.', icono: 'users' },
-]
+const valoresIconos = ['shield', 'heart', 'check', 'star', 'bulb', 'users']
 
 const form = reactive({
     nombre: '',
     email: '',
     mensaje: '',
 })
+const contactoEnviado = ref(false)
 
-const submitContacto = () => {
+const submitContacto = async () => {
     if (!form.nombre || !form.email || !form.mensaje) return
-    fetch('/contacto', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content },
-        body: JSON.stringify({ ...form }),
-    })
-    form.nombre = ''
-    form.email = ''
-    form.mensaje = ''
+    try {
+        const res = await fetch('/contacto', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content },
+            body: JSON.stringify({ ...form }),
+        })
+        if (res.ok) {
+            contactoEnviado.value = true
+            form.nombre = ''
+            form.email = ''
+            form.mensaje = ''
+            setTimeout(() => { contactoEnviado.value = false }, 6000)
+        }
+    } catch (e) {
+        console.error('Error al enviar contacto:', e)
+    }
 }
 
 const flash = computed(() => usePage().props.flash || {})
@@ -224,19 +233,19 @@ const getIcon = (name) => icons[name] || ''
                     <div class="p-8 rounded-3xl bg-[var(--color-bg)] shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff] transition-all duration-300 hover:shadow-[12px_12px_24px_#c9ced3,-12px_-12px_24px_#ffffff]">
                         <h3 class="text-xl font-bold mb-4" :style="{ color: 'var(--color-primary)' }">Quiénes Somos</h3>
                         <p class="text-gray-600 leading-relaxed">
-                            Somos una empresa dedicada a la prestación de servicios de grúas y asistencia vial, comprometidos con la calidad y la satisfacción de nuestros clientes. Contamos con un equipo profesional y una flota moderna para atender cualquier emergencia en la vía.
+                            {{ nosotrosData.quienes_somos || 'Somos una empresa dedicada a la prestación de servicios de grúas y asistencia vial, comprometidos con la calidad y la satisfacción de nuestros clientes.' }}
                         </p>
                     </div>
                     <div class="p-8 rounded-3xl bg-[var(--color-bg)] shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff] transition-all duration-300 hover:shadow-[12px_12px_24px_#c9ced3,-12px_-12px_24px_#ffffff]">
                         <h3 class="text-xl font-bold mb-4" :style="{ color: 'var(--color-primary)' }">Misión</h3>
                         <p class="text-gray-600 leading-relaxed">
-                            Brindar servicios de grúas y asistencia vial con rapidez, seguridad y calidad, superando las expectativas de nuestros clientes y contribuyendo al bienestar de la comunidad.
+                            {{ nosotrosData.mision || 'Brindar servicios de grúas y asistencia vial con rapidez, seguridad y calidad, superando las expectativas de nuestros clientes.' }}
                         </p>
                     </div>
                     <div class="p-8 rounded-3xl bg-[var(--color-bg)] shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff] transition-all duration-300 hover:shadow-[12px_12px_24px_#c9ced3,-12px_-12px_24px_#ffffff]">
                         <h3 class="text-xl font-bold mb-4" :style="{ color: 'var(--color-primary)' }">Visión</h3>
                         <p class="text-gray-600 leading-relaxed">
-                            Ser la empresa líder en servicios de grúas y asistencia vial a nivel nacional, reconocida por nuestra excelencia operativa, innovación tecnológica y compromiso con el cliente.
+                            {{ nosotrosData.vision || 'Ser la empresa líder en servicios de grúas y asistencia vial a nivel nacional, reconocida por nuestra excelencia operativa.' }}
                         </p>
                     </div>
                 </div>
@@ -244,17 +253,18 @@ const getIcon = (name) => icons[name] || ''
                 <div class="mb-20">
                     <h3 class="text-2xl font-bold text-center mb-4" :style="{ color: 'var(--color-primary)' }">Nuestros Valores</h3>
                     <p class="text-gray-500 text-center mb-10 max-w-2xl mx-auto">Los principios que guían cada uno de nuestros servicios y decisiones.</p>
-                    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div v-for="val in valores" :key="val.titulo"
+                    <div v-if="valoresData.length" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div v-for="(val, i) in valoresData" :key="val.valor || i"
                              class="p-6 rounded-3xl bg-[var(--color-bg)] shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff] transition-all duration-300 hover:shadow-[12px_12px_24px_#c9ced3,-12px_-12px_24px_#ffffff] group">
                             <div class="w-12 h-12 rounded-2xl bg-[var(--color-bg)] shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] flex items-center justify-center mb-4 group-hover:shadow-[inset_6px_6px_12px_#c9ced3,inset_-6px_-6px_12px_#ffffff] transition-all duration-300"
                                  :style="{ color: 'var(--color-primary)' }">
-                                <span class="w-6 h-6" v-html="getIcon(val.icono)"></span>
+                                <span class="w-6 h-6" v-html="getIcon(valoresIconos[i % valoresIconos.length])"></span>
                             </div>
-                            <h4 class="text-lg font-bold mb-2 text-gray-800">{{ val.titulo }}</h4>
+                            <h4 class="text-lg font-bold mb-2 text-gray-800">{{ val.valor }}</h4>
                             <p class="text-sm text-gray-500 leading-relaxed">{{ val.descripcion }}</p>
                         </div>
                     </div>
+                    <p v-else class="text-center text-gray-500">No hay valores configurados.</p>
                 </div>
 
                 <div>
@@ -333,7 +343,7 @@ const getIcon = (name) => icons[name] || ''
                                     </div>
                                     <div>
                                         <p class="text-xs text-gray-400 uppercase tracking-wider font-medium">Teléfono</p>
-                                        <p class="text-[var(--color-text)] font-medium">{{ empresa.telefono || '(555) 123-4567' }}</p>
+                                        <p class="text-[var(--color-text)] font-medium">{{ empresa.telefono_contacto || '(555) 123-4567' }}</p>
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-4">
@@ -343,7 +353,7 @@ const getIcon = (name) => icons[name] || ''
                                     </div>
                                     <div>
                                         <p class="text-xs text-gray-400 uppercase tracking-wider font-medium">Email</p>
-                                        <p class="text-[var(--color-text)] font-medium">{{ empresa.email || 'contacto@sigesga.com' }}</p>
+                                        <p class="text-[var(--color-text)] font-medium">{{ empresa.email_contacto || 'contacto@sigesga.com' }}</p>
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-4">
@@ -380,7 +390,7 @@ const getIcon = (name) => icons[name] || ''
 
                     <div class="p-8 rounded-3xl bg-[var(--color-bg)] shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
                         <h3 class="text-xl font-bold mb-6" :style="{ color: 'var(--color-primary)' }">Envíanos un Mensaje</h3>
-                        <form @submit.prevent="submitContacto" class="space-y-6">
+                        <form v-if="!contactoEnviado" @submit.prevent="submitContacto" class="space-y-6">
                             <div>
                                 <label class="block text-sm font-medium text-gray-600 mb-2">Nombre</label>
                                 <input v-model="form.nombre" type="text" required
@@ -405,6 +415,13 @@ const getIcon = (name) => icons[name] || ''
                                 Enviar Mensaje
                             </button>
                         </form>
+                        <div v-else class="text-center py-10">
+                            <div class="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" :style="{ backgroundColor: 'var(--color-primary)' }">
+                                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                            </div>
+                            <h4 class="text-lg font-bold mb-2" :style="{ color: 'var(--color-primary)' }">¡Mensaje enviado con éxito!</h4>
+                            <p class="text-gray-500 text-sm">Nos comunicaremos contigo en las próximas 24 horas.</p>
+                        </div>
                     </div>
                 </div>
             </div>

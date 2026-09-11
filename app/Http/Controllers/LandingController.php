@@ -38,10 +38,28 @@ class LandingController extends Controller
                     'color' => $servicio->color ?: ($empresa->color_primario ?: '#4F46E5'),
                 ])
             : [];
+        $nosotros = $empresa?->empresaNosotros
+            ? [
+                'quienes_somos' => $empresa->empresaNosotros->quienes_somos,
+                'mision' => $empresa->empresaNosotros->mision,
+                'vision' => $empresa->empresaNosotros->vision,
+            ]
+            : null;
+        $valores = $empresa
+            ? $empresa->empresaValores()
+                ->orderBy('orden')
+                ->get()
+                ->map(fn ($v) => [
+                    'valor' => $v->valor,
+                    'descripcion' => $v->descripcion,
+                ])
+            : [];
 
         return Inertia::render('Landing/Index', [
             'redesSociales' => $redesSociales,
             'servicios' => $servicios,
+            'nosotros' => $nosotros,
+            'valores' => $valores,
         ]);
     }
 
