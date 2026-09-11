@@ -291,16 +291,13 @@ const getIcon = (name) => icons[name] || ''
                 </div>
 
                 <p v-if="!serviciosConfigurados.length" class="py-10 text-center text-gray-500">No hay servicios configurados.</p>
-                <div v-else class="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
                     <div v-for="svc in serviciosConfigurados" :key="svc.id"
-                         class="rounded-3xl bg-[var(--color-bg)] shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff] overflow-hidden transition-all duration-300 hover:shadow-[12px_12px_24px_#c9ced3,-12px_-12px_24px_#ffffff] group">
-                            <div class="h-48 flex items-center justify-center relative overflow-hidden"
-                                :style="{ backgroundColor: svc.color }">
-                               <img v-if="svc.foto" :src="'/storage/' + svc.foto" :alt="svc.tipo" class="absolute inset-0 h-full w-full object-cover opacity-80" />
-                               <div class="absolute inset-0 bg-black/10"></div>
+                         class="rounded-3xl bg-[var(--color-bg)] shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff] transition-all duration-300 hover:shadow-[12px_12px_24px_#c9ced3,-12px_-12px_24px_#ffffff] group">
+                        <div class="h-48 p-3 flex items-center justify-center" :style="{ backgroundColor: svc.color }">
                             <div class="w-24 h-24 rounded-3xl bg-[var(--color-bg)] shadow-[8px_8px_16px_#0000001a,-8px_-8px_16px_#ffffff66] flex items-center justify-center transition-all duration-300 group-hover:scale-110"
                                  :style="{ color: svc.color }">
-                                  <img v-if="svc.foto" :src="'/storage/' + svc.foto" :alt="svc.tipo" class="h-full w-full rounded-3xl object-cover" />
+                                  <img v-if="svc.foto" :src="'/storage/' + svc.foto" :alt="svc.tipo" class="h-full w-full rounded-3xl object-contain p-2" />
                                   <span v-else class="w-12 h-12" v-html="getIcon('truck')"></span>
                             </div>
                         </div>

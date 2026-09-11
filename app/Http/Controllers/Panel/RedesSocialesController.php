@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\EmpresaAccesosRapido;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class RedesSocialesController extends Controller
@@ -26,8 +27,15 @@ class RedesSocialesController extends Controller
 
     public function store(Request $request)
     {
-        EmpresaAccesosRapido::create($this->validated($request) + [
+        $data = $this->validated($request);
+
+        if ($request->hasFile('imagen')) {
+            $data['imagen'] = $this->guardarImagen($request);
+        }
+
+        EmpresaAccesosRapido::create($data + [
             'empresa_id' => Auth::user()->empresa_id,
+            'orden' => $this->siguienteOrden(Auth::user()->empresa_id),
         ]);
 
         return redirect()->route('panel.accesos-rapidos.index')->with('success', 'Red social agregada correctamente.');
@@ -45,7 +53,15 @@ class RedesSocialesController extends Controller
     public function update(Request $request, EmpresaAccesosRapido $accesoRapido)
     {
         $this->authorizeAccess($accesoRapido);
-        $accesoRapido->update($this->validated($request));
+
+        $data = $this->validated($request);
+
+        if ($request->hasFile('imagen')) {
+            $data['imagen'] = $this->guardarImagen($request);
+            $this->borrarImagenLocal($accesoRapido->imagen);
+        }
+
+        $accesoRapido->update($data);
 
         return redirect()->route('panel.accesos-rapidos.index')->with('success', 'Red social actualizada correctamente.');
     }
@@ -53,6 +69,7 @@ class RedesSocialesController extends Controller
     public function destroy(EmpresaAccesosRapido $accesoRapido)
     {
         $this->authorizeAccess($accesoRapido);
+        $this->borrarImagenLocal($accesoRapido->imagen);
         $accesoRapido->delete();
 
         return back()->with('success', 'Red social eliminada correctamente.');
@@ -60,18 +77,43 @@ class RedesSocialesController extends Controller
 
     private function validated(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'titulo' => ['required', 'string', 'max:100'],
             'descripcion' => ['nullable', 'string', 'max:500'],
             'link' => ['required', 'url', 'max:255'],
-            'imagen' => ['nullable', 'string', 'max:255'],
+            'imagen' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:2048'],
             'icono' => ['nullable', 'string', 'max:100'],
-            'orden' => ['nullable', 'integer', 'min:0'],
             'activo' => ['boolean'],
-        ]) + [
-            'orden' => (int) $request->input('orden', 0),
+        ]);
+
+        if (!$request->hasFile('imagen') && array_key_exists('imagen', $data)) {
+            unset($data['imagen']);
+        }
+
+        return $data + [
             'activo' => $request->boolean('activo'),
         ];
+    }
+
+    private function guardarImagen(Request $request): string
+    {
+        $path = $request->file('imagen')->store('accesos-rapidos', 'public');
+
+        return '/storage/' . $path;
+    }
+
+    private function siguienteOrden(int $empresaId): int
+    {
+        return (int) EmpresaAccesosRapido::where('empresa_id', $empresaId)->max('orden') + 1;
+    }
+
+    private function borrarImagenLocal(?string $ruta): void
+    {
+        if (!$ruta || !str_starts_with($ruta, '/storage/')) {
+            return;
+        }
+
+        Storage::disk('public')->delete(substr($ruta, strlen('/storage/')));
     }
 
     private function authorizeAccess(EmpresaAccesosRapido $accesoRapido): void

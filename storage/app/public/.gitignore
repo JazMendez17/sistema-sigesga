@@ -1,2 +1,6 @@
 *
 !.gitignore
+!empresa/
+!empresa/**
+!fotos/
+!fotos/**
