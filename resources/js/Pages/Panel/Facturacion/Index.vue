@@ -119,7 +119,6 @@ const filteredFacturas = computed(() => {
           + Generar Factura
         </NeumorphicButton>
       </div>
-        <Badge :variant="row.estatus === 'vigente' ? 'success' : 'danger'">{{ $etiqueta(row.estatus) }}</Badge>
       <!-- Modal para generar factura -->
       <div v-if="mostrarModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="mostrarModal = false">
         <div class="bg-white rounded-3xl w-full max-w-lg mx-4 shadow-2xl flex flex-col max-h-[92vh]">

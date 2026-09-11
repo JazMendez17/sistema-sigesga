@@ -260,9 +260,9 @@ const getIcon = (name) => icons[name] || ''
                 <div>
                     <h3 class="text-2xl font-bold text-center mb-4" :style="{ color: 'var(--color-primary)' }">Accesos Rápidos</h3>
                     <p class="text-gray-500 text-center mb-10 max-w-2xl mx-auto">Conéctate con nosotros en nuestras redes sociales.</p>
-                    <div v-if="redesSociales.length" class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div v-if="redesSociales.length" class="flex flex-wrap justify-center gap-6">
                         <div v-for="red in redesSociales" :key="red.id || red.titulo"
-                             class="p-6 rounded-3xl bg-[var(--color-bg)] shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff] transition-all duration-300 hover:shadow-[12px_12px_24px_#c9ced3,-12px_-12px_24px_#ffffff] group text-center">
+                             class="w-full sm:w-[calc(50%-12px)] lg:w-[calc(25%-18px)] max-w-xs p-6 rounded-3xl bg-[var(--color-bg)] shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff] transition-all duration-300 hover:shadow-[12px_12px_24px_#c9ced3,-12px_-12px_24px_#ffffff] group text-center">
                             <div class="w-20 h-20 rounded-2xl mx-auto mb-4 bg-[var(--color-bg)] shadow-[6px_6px_12px_#d0d5da,-6px_-6px_12px_#ffffff] flex items-center justify-center overflow-hidden transition-all duration-300 group-hover:scale-105">
                                 <img v-if="red.imagen" :src="red.imagen" :alt="red.titulo" class="h-full w-full object-contain p-2" />
                                 <span v-else class="text-2xl font-bold" :style="{ color: 'var(--color-primary)' }">{{ red.titulo.charAt(0) }}</span>
