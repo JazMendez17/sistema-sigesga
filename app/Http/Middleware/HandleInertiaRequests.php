@@ -77,7 +77,7 @@ class HandleInertiaRequests extends Middleware
                 'reporte' => $request->session()->get('reporte'),
             ],
             'unreadNotifications' => $user ? Notificacione::where('empresa_id', $user->empresa_id)
-                ->when(!in_array($user->rol, ['admin', 'cotizador']), fn($q) => $q->where('usuario_id', $user->id))
+                ->where('usuario_id', $user->id)
                 ->where('estado', '!=', 'leido')
                 ->count() : 0,
         ];
