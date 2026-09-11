@@ -294,12 +294,9 @@ const getIcon = (name) => icons[name] || ''
                 <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
                     <div v-for="svc in serviciosConfigurados" :key="svc.id"
                          class="rounded-3xl bg-[var(--color-bg)] shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff] transition-all duration-300 hover:shadow-[12px_12px_24px_#c9ced3,-12px_-12px_24px_#ffffff] group">
-                        <div class="h-48 p-3 flex items-center justify-center" :style="{ backgroundColor: svc.color }">
-                            <div class="w-24 h-24 rounded-3xl bg-[var(--color-bg)] shadow-[8px_8px_16px_#0000001a,-8px_-8px_16px_#ffffff66] flex items-center justify-center transition-all duration-300 group-hover:scale-110"
-                                 :style="{ color: svc.color }">
-                                  <img v-if="svc.foto" :src="'/storage/' + svc.foto" :alt="svc.tipo" class="h-full w-full rounded-3xl object-contain p-2" />
-                                  <span v-else class="w-12 h-12" v-html="getIcon('truck')"></span>
-                            </div>
+                        <div class="h-48 p-4 flex items-center justify-center" :style="{ backgroundColor: svc.color }">
+                            <img v-if="svc.foto" :src="'/storage/' + svc.foto" :alt="svc.tipo" class="h-full w-full object-contain mix-blend-multiply" />
+                            <span v-else class="w-12 h-12" :style="{ color: 'rgba(255,255,255,0.9)' }" v-html="getIcon('truck')"></span>
                         </div>
                         <div class="p-6">
                             <h3 class="text-xl font-bold mb-2" :style="{ color: svc.color }">{{ svc.tipo }}</h3>
