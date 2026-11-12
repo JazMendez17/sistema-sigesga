@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             AseguradoraSeeder::class,
             ConvenioSeeder::class,
             ConvenioTarifaSeeder::class,
+            DemoSigesgaSeeder::class,
         ]);
     }
 }

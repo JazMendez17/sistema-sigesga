@@ -15,25 +15,25 @@ class UsuarioSeeder extends Seeder
 
         $usuarios = [
             [
-                'empleado_puesto' => 'Administrador',
-                'name' => 'administrador admin admin',
+                'empleado_puesto' => 'admin',
+                'name' => 'Administrador Admin Admin',
                 'email' => 'admin@sigesga.com',
                 'rol' => 'admin',
             ],
             [
-                'empleado_puesto' => 'Cotizador',
+                'empleado_puesto' => 'cotizador',
                 'name' => 'Cotizador Sistema',
                 'email' => 'cotizador@sigesga.com',
                 'rol' => 'cotizador',
             ],
             [
-                'empleado_puesto' => 'Operador de Grúa',
+                'empleado_puesto' => 'operador',
                 'name' => 'Roberto Méndez',
                 'email' => 'operador@sigesga.com',
                 'rol' => 'operador',
             ],
             [
-                'empleado_puesto' => 'Cliente',
+                'empleado_puesto' => null,
                 'name' => 'Cliente Demo',
                 'email' => 'cliente@sigesga.com',
                 'rol' => 'cliente',
@@ -46,10 +46,12 @@ class UsuarioSeeder extends Seeder
                 continue;
             }
 
-            $empleado = DB::table('empleados')
-                ->where('empresa_id', $empresaId)
-                ->where('puesto', $data['empleado_puesto'])
-                ->first();
+            $empleado = $data['empleado_puesto']
+                ? DB::table('empleados')
+                    ->where('empresa_id', $empresaId)
+                    ->where('puesto', $data['empleado_puesto'])
+                    ->first()
+                : null;
 
             DB::table('usuarios')->insert([
                 'empresa_id' => $empresaId,

@@ -5,6 +5,7 @@ import AppLayout from '@/Pages/Panel/AppLayout.vue'
 import DataTable from '@/Components/DataTable.vue'
 import NeumorphicButton from '@/Components/NeumorphicButton.vue'
 import NeumorphicInput from '@/Components/NeumorphicInput.vue'
+import ImportarExcel from '@/Components/ImportarExcel.vue'
 
 const filtroActivo = ref('todos')
 const filtros = [
@@ -31,6 +32,8 @@ const convenios = computed(() => page.props.convenios || [])
 const aseguradoras = computed(() => page.props.aseguradoras || [])
 const tiposServicio = computed(() => page.props.tiposServicio || [])
 const tiposCobertura = computed(() => page.props.tiposCobertura || [])
+const machote = computed(() => page.props.machote || { hojas: { Convenios: [] } })
+const esAdmin = computed(() => page.props.auth?.user?.rol === 'admin')
 
 function resetFiltros() {
   aseguradoraFiltro.value = ''
@@ -68,6 +71,15 @@ function eliminarConvenio(id) {
         <h1 class="text-2xl font-bold text-gray-800">Convenios</h1>
         <NeumorphicButton @click="router.visit(route('panel.convenios.create'))">+ Nuevo Convenio</NeumorphicButton>
       </div>
+
+      <ImportarExcel
+        v-if="esAdmin"
+        modulo="Convenios"
+        titulo="Importar convenios desde Excel"
+        :machote-url="route('panel.convenios.machote')"
+        :importar-url="route('panel.convenios.importar')"
+        :hojas="machote.hojas"
+      />
 
       <div class="flex flex-wrap gap-2">
         <button v-for="filtro in filtros" :key="filtro.key" @click="filtroActivo = filtro.key; resetFiltros()"

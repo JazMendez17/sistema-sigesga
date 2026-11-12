@@ -6,6 +6,7 @@ namespace App\Http\Requests\Panel;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class StoreServicioRequest extends FormRequest
@@ -35,16 +36,19 @@ class StoreServicioRequest extends FormRequest
     public function rules(): array
     {
         $id = $this->route('id');
+        $empresaId = $this->user()?->empresa_id;
 
         $rules = [
-            'cotizacion_id' => 'required|exists:cotizaciones,id',
-            'operador_id' => 'required|exists:operadores,id',
-            'unidad_id' => 'required|exists:unidades,id',
-            'oficina_id' => 'nullable|exists:oficinas,id',
             'observaciones' => 'nullable|string|max:1000',
         ];
 
         if ($id) {
+            // En edición los campos de asignación ya existen; solo se validan
+            // si vienen en la petición para permitir cambios parciales de estado.
+            $rules['cotizacion_id'] = ['sometimes', 'required', Rule::exists('cotizaciones', 'id')->where('empresa_id', $empresaId)->where('eliminado', false)];
+            $rules['operador_id'] = ['sometimes', 'required', Rule::exists('operadores', 'id')->where('empresa_id', $empresaId)->where('eliminado', false)];
+            $rules['unidad_id'] = ['sometimes', 'required', Rule::exists('unidades', 'id')->where('empresa_id', $empresaId)->where('eliminado', false)];
+            $rules['oficina_id'] = ['nullable', Rule::exists('oficinas', 'id')->where('empresa_id', $empresaId)->where('eliminado', false)];
             $rules['estado'] = 'nullable|in:asignado,inicio_servicio,en_sitio_origen,salida_destino,en_destino,finalizado,solicitud_cancelacion,cancelado';
             $rules['kms_salida'] = 'nullable|integer|min:0';
             $rules['kms_llegada_cliente'] = 'nullable|integer|min:0';
@@ -53,6 +57,11 @@ class StoreServicioRequest extends FormRequest
             $rules['kms_cobrados_reales'] = 'nullable|integer|min:0';
             $rules['cargo_zona_especial'] = 'nullable|numeric|min:0';
             $rules['costo_final_real'] = 'nullable|numeric|min:0';
+        } else {
+            $rules['cotizacion_id'] = ['required', Rule::exists('cotizaciones', 'id')->where('empresa_id', $empresaId)->where('eliminado', false), Rule::unique('servicios', 'cotizacion_id')->where('empresa_id', $empresaId)->where('eliminado', false)];
+            $rules['operador_id'] = ['required', Rule::exists('operadores', 'id')->where('empresa_id', $empresaId)->where('eliminado', false)];
+            $rules['unidad_id'] = ['required', Rule::exists('unidades', 'id')->where('empresa_id', $empresaId)->where('eliminado', false)];
+            $rules['oficina_id'] = ['nullable', Rule::exists('oficinas', 'id')->where('empresa_id', $empresaId)->where('eliminado', false)];
         }
 
         return $rules;
@@ -64,6 +73,7 @@ class StoreServicioRequest extends FormRequest
         return [
             'cotizacion_id.required' => 'La cotización es obligatoria.',
             'cotizacion_id.exists' => 'La cotización seleccionada no existe.',
+            'cotizacion_id.unique' => 'Esta cotización ya tiene un servicio asignado.',
             'operador_id.required' => 'El operador es obligatorio.',
             'operador_id.exists' => 'El operador seleccionado no existe.',
             'unidad_id.required' => 'La unidad es obligatoria.',

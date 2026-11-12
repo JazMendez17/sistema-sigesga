@@ -10,6 +10,7 @@ use App\Models\Convenio;
 use App\Models\Aseguradora;
 use App\Models\CatalogoServicio;
 use App\Http\Requests\Panel\StoreConvenioRequest;
+use App\Services\ImportaConvenios;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
@@ -64,6 +65,7 @@ class ConveniosController extends Controller
             'aseguradoras' => Aseguradora::where('empresa_id', $empresaId)->get(['id', 'nombre']),
             'tiposServicio' => CatalogoServicio::where('empresa_id', $empresaId)->get(['id', 'nombre']),
             'tiposCobertura' => Convenio::where('empresa_id', $empresaId)->whereNotNull('tipo_cobertura')->where('tipo_cobertura', '!=', '')->pluck('tipo_cobertura')->unique()->values(),
+            'machote' => ['hojas' => ImportaConvenios::COLUMNAS],
         ]);
     }
 

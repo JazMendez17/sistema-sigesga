@@ -218,12 +218,24 @@ class CotizacionesController extends Controller
             return back()->with('error', 'La cotización debe ser aprobada por el cliente o aseguradora antes de crear el servicio.');
         }
 
-        $request->validate([
-            'operador_id' => 'required|exists:operadores,id,empresa_id,' . $empresaId,
-            'unidad_id' => 'required|exists:unidades,id,empresa_id,' . $empresaId,
+        $data = $request->validate([
+            'operador_id' => ['required', \Illuminate\Validation\Rule::exists('operadores', 'id')->where('empresa_id', $empresaId)],
+            'unidad_id' => ['required', \Illuminate\Validation\Rule::exists('unidades', 'id')->where('empresa_id', $empresaId)],
         ]);
 
-        DB::transaction(function () use ($cotizacion, $request) {
+        DB::transaction(function () use ($cotizacion, $data, $empresaId) {
+            $cotizacion = Cotizacione::where('empresa_id', $empresaId)->lockForUpdate()->findOrFail($cotizacion->id);
+            if ($cotizacion->servicio) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['cotizacion' => 'La cotización ya tiene un servicio asociado.']);
+            }
+            $operador = Operadore::where('empresa_id', $empresaId)->lockForUpdate()->findOrFail($data['operador_id']);
+            $unidad = \App\Models\Unidade::where('empresa_id', $empresaId)->lockForUpdate()->findOrFail($data['unidad_id']);
+            $estadosActivos = ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino'];
+            $operadorOcupado = Servicio::where('empresa_id', $empresaId)->where('operador_id', $operador->id)->whereIn('estado', $estadosActivos)->exists();
+            $unidadOcupada = Servicio::where('empresa_id', $empresaId)->where('unidad_id', $unidad->id)->whereIn('estado', $estadosActivos)->exists();
+            if (!$operador->disponible || $operadorOcupado || !$unidad->activo || $unidadOcupada) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['operador_id' => 'El operador o la unidad no están disponibles. Actualiza la página e intenta de nuevo.']);
+            }
             $cotizacion->update([
                 'estatus' => 'aprobado',
                 'aprobada_internamente_at' => now(),
@@ -232,13 +244,13 @@ class CotizacionesController extends Controller
             Servicio::create([
                 'empresa_id' => $cotizacion->empresa_id,
                 'cotizacion_id' => $cotizacion->id,
-                'operador_id' => $request->operador_id,
-                'unidad_id' => $request->unidad_id,
+                'operador_id' => $operador->id,
+                'unidad_id' => $unidad->id,
                 'estado' => 'asignado',
                 'costo_final_real' => $cotizacion->costo_total,
             ]);
 
-            Operadore::where('id', $request->operador_id)->update(['disponible' => false]);
+            $operador->update(['disponible' => false]);
         });
 
         return back()->with('success', 'Cotización aprobada y servicio creado correctamente.');
@@ -364,10 +376,11 @@ class CotizacionesController extends Controller
     // API: Obtener tarifa según cliente y tipo de servicio para auto-llenado
     public function obtenerTarifa(Request $request)
     {
-        $cliente = Cliente::with('aseguradora')->find($request->cliente_id);
+        $empresaId = auth()->user()->empresa_id;
+        $cliente = Cliente::with('aseguradora')->where('empresa_id', $empresaId)->find($request->cliente_id);
         $tipoServicioId = $request->tipo_servicio_id;
 
-        if (!$cliente || !$tipoServicioId) {
+        if (!$cliente || !$tipoServicioId || !CatalogoServicio::where('empresa_id', $empresaId)->whereKey($tipoServicioId)->exists()) {
             return response()->json(null);
         }
 
@@ -404,12 +417,14 @@ class CotizacionesController extends Controller
 
         // Si no tiene aseguradora o no se encontró convenio, buscar tarifa propia
         $tarifaPropia = TarifasEmpresa::where('tipo_servicio_id', $tipoServicioId)
+            ->where('empresa_id', $empresaId)
             ->where('activo', true)
             ->first();
 
         if ($tarifaPropia) {
             return response()->json([
                 'origen' => 'propia',
+                'tarifa_empresa_id' => $tarifaPropia->id,
                 'banderazo' => (float) $tarifaPropia->costo_banderazo,
                 'km_incluidos' => (float) $tarifaPropia->km_incluidos,
                 'costo_km_extra' => (float) ($tarifaPropia->costo_km ?? 0),

@@ -28,6 +28,8 @@ class CodigoPostalController extends Controller
 
         try {
             $response = Http::withToken($apiKey)
+                // Use the up-to-date Mozilla CA bundle instead of XAMPP's stale bundle.
+                ->withOptions(['verify' => base_path('certs/cacert.pem')])
                 ->timeout(8)
                 ->acceptJson()
                 ->get(rtrim(config('services.postalia.base_url'), '/') . "/mx/cp/{$cp}");

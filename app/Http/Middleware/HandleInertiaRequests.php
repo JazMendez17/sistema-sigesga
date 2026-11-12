@@ -75,6 +75,7 @@ class HandleInertiaRequests extends Middleware
                 'error' => $request->session()->get('error'),
                 'uploaded_path' => $request->session()->get('uploaded_path'),
                 'reporte' => $request->session()->get('reporte'),
+                'importacion' => $request->session()->get('importacion'),
             ],
             'unreadNotifications' => $user ? Notificacione::where('empresa_id', $user->empresa_id)
                 ->where('usuario_id', $user->id)

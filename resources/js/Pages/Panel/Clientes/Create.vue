@@ -108,11 +108,12 @@ function doSubmit() {
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Tipo de Cliente</label>
-              <select v-model="form.tipo_cliente" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
+              <select v-model="form.tipo_cliente" @change="val.handleInput('tipo_cliente')" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
                 <option value="">Seleccionar...</option>
                 <option value="persona_fisica">Persona Física</option>
                 <option value="persona_moral">Persona Moral</option>
               </select>
+              <p v-if="val.getError('tipo_cliente')" class="text-sm text-red-500 mt-1">{{ val.getError('tipo_cliente') }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Sexo</label>
@@ -148,11 +149,12 @@ function doSubmit() {
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Nacionalidad</label>
-              <select v-model="form.nacionalidad" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
+              <select v-model="form.nacionalidad" @change="val.handleInput('nacionalidad')" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
                 <option value="">Seleccionar...</option>
                 <option value="Mexicana">Mexicana</option>
                 <option value="Extranjera">Extranjera</option>
               </select>
+              <p v-if="val.getError('nacionalidad')" class="text-sm text-red-500 mt-1">{{ val.getError('nacionalidad') }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Contacto Enlace</label>

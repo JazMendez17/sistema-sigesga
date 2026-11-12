@@ -5,6 +5,7 @@ import AppLayout from '@/Pages/Panel/AppLayout.vue'
 import DataTable from '@/Components/DataTable.vue'
 import NeumorphicButton from '@/Components/NeumorphicButton.vue'
 import NeumorphicInput from '@/Components/NeumorphicInput.vue'
+import ImportarExcel from '@/Components/ImportarExcel.vue'
 
 const busqueda = ref('')
 
@@ -18,6 +19,8 @@ const columns = [
 
 const page = usePage()
 const clientes = computed(() => page.props.clientes || [])
+const machote = computed(() => page.props.machote || { hojas: { Clientes: [] } })
+const esAdmin = computed(() => page.props.auth?.user?.rol === 'admin')
 
 const filtrados = computed(() => {
   if (!busqueda.value) return clientes.value
@@ -50,7 +53,15 @@ function eliminarCliente(id) {
       </div>
 
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div></div>
+        <ImportarExcel
+          v-if="esAdmin"
+          modulo="Clientes"
+          titulo="Importar clientes desde Excel"
+          :machote-url="route('panel.clientes.machote')"
+          :importar-url="route('panel.clientes.importar')"
+          :hojas="machote.hojas"
+        />
+        <div v-else></div>
         <NeumorphicInput
           v-model="busqueda"
           placeholder="Buscar cliente..."

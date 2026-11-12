@@ -4,6 +4,7 @@ import AppLayout from '@/Pages/Panel/AppLayout.vue'
 import NeumorphicInput from '@/Components/NeumorphicInput.vue'
 import NeumorphicButton from '@/Components/NeumorphicButton.vue'
 import { useFormValidation } from '@/Composables/useFormValidation'
+import { showValidationErrors } from '@/stores/notification'
 
 const props = defineProps({
   servicio: Object,
@@ -35,7 +36,7 @@ const rules = {
   cotizacion_id: ['required'],
   operador_id: ['required'],
   unidad_id: ['required'],
-  oficina_id: ['required'],
+  oficina_id: [],
   estado: isEdit ? ['required'] : [],
   kms_salida: isEdit ? ['numeric', 'min:0'] : [],
   kms_llegada_cliente: isEdit ? ['numeric', 'min:0'] : [],
@@ -55,6 +56,7 @@ function submit() {
   } else {
     form.post(route('panel.servicios.store'), {
       onSuccess: () => form.reset(),
+      onError: (errors) => showValidationErrors(Object.values(errors).flat()),
     })
   }
 }
@@ -94,7 +96,7 @@ function submit() {
               <label class="block text-sm font-medium text-gray-600 mb-1">Unidad</label>
               <select v-model="form.unidad_id" @change="val.handleInput('unidad_id')" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
                 <option value="">Seleccionar unidad...</option>
-                <option v-for="u in unidades" :key="u.id" :value="u.id">{{ u.nombre }}</option>
+                <option v-for="u in unidades" :key="u.id" :value="u.id">{{ u.numero_economico }} · {{ u.placas }}</option>
               </select>
               <p v-if="val.getError('unidad_id')" class="text-sm text-red-500 mt-1">{{ val.getError('unidad_id') }}</p>
             </div>

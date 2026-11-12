@@ -133,6 +133,7 @@ const form = useForm({
   cubre_casetas: false,
   descuento_pct: '',
   convenio_id: '',
+  tarifa_empresa_aplicada_id: '',
   observaciones: '',
 })
 
@@ -152,6 +153,7 @@ watch([() => form.cliente_id, () => form.tipo_servicio_id], async ([clienteId, s
       form.cubre_casetas = Boolean(data.incluye_casetas ?? data.cubre_casetas)
       form.descuento_pct = data.descuento_pct || ''
       form.convenio_id = data.convenio_id || ''
+      form.tarifa_empresa_aplicada_id = data.tarifa_empresa_id || ''
       calcularTotal()
     }
   } catch (e) {
@@ -224,16 +226,26 @@ function doSubmit() {
       ...data,
       origen_direccion: build(data.origen),
       destino_direccion: build(data.destino),
+      convenio_aplicado_id: data.convenio_id || null,
+      tarifa_empresa_aplicada_id: data.tarifa_empresa_aplicada_id || null,
       km_excedente: calc.kmExcedentes,
       subtotal: calc.subtotalBruto,
       monto_descuento: calc.montoDescuento,
       descuento_pct: calc.descuentoPct,
       monto_iva: calc.iva,
       km_incluidos: parseFloat(data.km_incluidos) || 0,
+      costo_aprox_casetas: casetasPeaje.value || 0,
+      incluye_peajes: Boolean(data.cubre_casetas),
       costo_km: data.costo_km_extra,
       costo_total: calc.total,
     }
-  }).post(route('panel.cotizaciones.store'), { onSuccess: () => { form.reset(); mostrandoPreview.value = false } })
+  }).post(route('panel.cotizaciones.store'), {
+    onSuccess: () => { form.reset(); mostrandoPreview.value = false },
+    onError: (errors) => {
+      const mensajes = Object.values(errors).flat().filter(Boolean)
+      showValidationErrors(mensajes.length ? mensajes : ['No se pudo guardar la cotización. Revisa los datos e intenta de nuevo.'])
+    },
+  })
 }
 
 function clienteNombre() {

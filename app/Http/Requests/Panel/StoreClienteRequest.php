@@ -41,7 +41,7 @@ class StoreClienteRequest extends FormRequest
             'nombre' => 'required|string|max:150',
             'apellido_paterno' => 'nullable|string|max:100',
             'apellido_materno' => 'nullable|string|max:100',
-            'tipo_cliente' => 'nullable|in:persona_fisica,persona_moral',
+            'tipo_cliente' => 'required|in:persona_fisica,persona_moral',
             'sexo' => 'nullable|in:M,F',
             'curp' => ['nullable', 'string', 'size:18', Rule::unique('clientes', 'curp')
                 ->where('empresa_id', $this->user()?->empresa_id)
@@ -51,7 +51,7 @@ class StoreClienteRequest extends FormRequest
             'telefono_local' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:100',
             'folio_ine' => 'nullable|string|max:20',
-            'nacionalidad' => 'nullable|string|max:50',
+            'nacionalidad' => 'required|string|max:50',
             'contacto_enlace' => 'nullable|string|max:150',
             'aseguradora_id' => 'nullable|exists:aseguradoras,id',
             'numero_poliza' => 'nullable|string|max:50',
@@ -75,6 +75,7 @@ class StoreClienteRequest extends FormRequest
         return [
             'nombre.required' => 'El nombre es obligatorio.',
             'nombre.max' => 'El nombre no debe exceder los 150 caracteres.',
+            'tipo_cliente.required' => 'Selecciona el tipo de cliente.',
             'tipo_cliente.in' => 'El tipo de cliente debe ser persona_fisica o persona_moral.',
             'sexo.in' => 'El sexo debe ser M o F.',
             'curp.unique' => 'El CURP ya está registrado en esta empresa.',
@@ -83,6 +84,7 @@ class StoreClienteRequest extends FormRequest
             'email.email' => 'El formato del correo electrónico no es válido.',
             'email.max' => 'El correo electrónico no debe exceder los 100 caracteres.',
             'folio_ine.max' => 'El folio INE no debe exceder los 20 caracteres.',
+            'nacionalidad.required' => 'Selecciona la nacionalidad.',
             'nacionalidad.max' => 'La nacionalidad no debe exceder los 50 caracteres.',
             'aseguradora_id.exists' => 'La aseguradora seleccionada no existe.',
             'numero_poliza.max' => 'El número de póliza no debe exceder los 50 caracteres.',

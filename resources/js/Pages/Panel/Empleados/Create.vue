@@ -57,6 +57,8 @@ if (form.direccion.estado) {
 const rules = {
   nombre: ['required', 'min:2', 'max:255'],
   apellido_paterno: ['required', 'min:2', 'max:255'],
+  sexo: ['selectRequired'],
+  puesto: ['selectRequired'],
   curp: ['curp'],
   fecha_nacimiento: ['date'],
   telefono: ['phone'],
@@ -102,12 +104,13 @@ const onSubmit = val.handleSubmit(submit)
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div>
-              <label class="block text-sm font-medium text-[var(--color-text)] mb-2">Sexo</label>
-              <select v-model="form.sexo" class="w-full bg-[var(--color-bg)] text-[var(--color-text)] rounded-2xl p-3 shadow-[inset_6px_6px_12px_var(--neumorphic-dark),inset_-6px_-6px_12px_var(--neumorphic-light)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]">
+              <label class="block text-sm font-medium text-[var(--color-text)] mb-2">Sexo*</label>
+              <select v-model="form.sexo" @change="val.handleInput('sexo')" class="w-full bg-[var(--color-bg)] text-[var(--color-text)] rounded-2xl p-3 shadow-[inset_6px_6px_12px_var(--neumorphic-dark),inset_-6px_-6px_12px_var(--neumorphic-light)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]">
                 <option value="">Seleccionar sexo...</option>
                 <option value="M">Masculino</option>
                 <option value="F">Femenino</option>
               </select>
+              <p v-if="val.getError('sexo')" class="text-sm text-red-500 mt-1">{{ val.getError('sexo') }}</p>
             </div>
             <NeumorphicInput v-model="form.curp" label="CURP" placeholder="Ej: GARC850101MDFRRN01" maxlength="18" :error="val.getError('curp')" @input="val.handleInput('curp')" />
             <NeumorphicInput v-model="form.fecha_nacimiento" label="Fecha de nacimiento" type="date" :error="val.getError('fecha_nacimiento')" @input="val.handleInput('fecha_nacimiento')" />
@@ -129,13 +132,14 @@ const onSubmit = val.handleSubmit(submit)
               </select>
             </div>
             <div>
-              <label class="block text-sm font-medium text-[var(--color-text)] mb-2">Puesto</label>
-              <select v-model="form.puesto" class="w-full bg-[var(--color-bg)] text-[var(--color-text)] rounded-2xl p-3 shadow-[inset_6px_6px_12px_var(--neumorphic-dark),inset_-6px_-6px_12px_var(--neumorphic-light)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]">
+              <label class="block text-sm font-medium text-[var(--color-text)] mb-2">Puesto*</label>
+              <select v-model="form.puesto" @change="val.handleInput('puesto')" class="w-full bg-[var(--color-bg)] text-[var(--color-text)] rounded-2xl p-3 shadow-[inset_6px_6px_12px_var(--neumorphic-dark),inset_-6px_-6px_12px_var(--neumorphic-light)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]">
                 <option value="">Seleccionar puesto...</option>
                 <option value="admin">Administrador</option>
                 <option value="cotizador">Cotizador</option>
                 <option value="operador">Operador</option>
               </select>
+              <p v-if="val.getError('puesto')" class="text-sm text-red-500 mt-1">{{ val.getError('puesto') }}</p>
             </div>
           </div>
 

@@ -39,10 +39,8 @@ class GoogleMapsServiceTest extends TestCase
         ]);
 
         $resultado = app(GoogleMapsService::class)->rutas([
-            'origen_lat' => 19.4326,
-            'origen_lng' => -99.1332,
-            'destino_lat' => 20.5888,
-            'destino_lng' => -100.3899,
+            'origen' => 'Ciudad de México, México',
+            'destino' => 'Querétaro, Querétaro, México',
         ]);
 
         $this->assertSame(1, count($resultado['rutas']));
@@ -57,7 +55,7 @@ class GoogleMapsServiceTest extends TestCase
             return $payload['travelMode'] === 'DRIVE'
                 && $payload['extraComputations'] === ['TOLLS']
                 && $payload['computeAlternativeRoutes'] === true
-                && !isset($payload['routeModifiers'])
+                && $payload['routeModifiers']['vehicleInfo']['emissionType'] === 'GASOLINE'
                 && !str_contains($request->header('X-Goog-FieldMask')[0], 'geocodingResults.placeId');
         });
     }
@@ -69,10 +67,8 @@ class GoogleMapsServiceTest extends TestCase
         $this->expectException(RuntimeException::class);
 
         app(GoogleMapsService::class)->rutas([
-            'origen_lat' => 19.4326,
-            'origen_lng' => -99.1332,
-            'destino_lat' => 20.5888,
-            'destino_lng' => -100.3899,
+            'origen' => 'Ciudad de México, México',
+            'destino' => 'Querétaro, Querétaro, México',
         ]);
     }
 }

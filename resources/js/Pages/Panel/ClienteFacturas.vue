@@ -19,6 +19,7 @@ defineProps({ facturas: Array })
               <td class="px-4 py-3"><Badge :variant="f.estatus === 'vigente' ? 'success' : 'danger'">{{ $etiqueta(f.estatus) }}</Badge></td>
               <td class="px-4 py-3">{{ f.fecha }}</td>
               <td class="px-4 py-3 text-right">
+                <a :href="route('panel.facturas.pdf', { id: f.id })" target="_blank" rel="noopener" class="mr-2 rounded-lg bg-[#EEF2F7] px-3 py-2 text-xs font-medium text-gray-600 shadow-[3px_3px_6px_#d0d5da,-3px_-3px_6px_#ffffff] hover:text-[#4F46E5]">PDF</a>
                 <button @click="router.visit(route('panel.facturacion.show.cliente', { id: f.id }))" class="rounded-lg bg-[#EEF2F7] p-2 text-gray-500 shadow-[3px_3px_6px_#d0d5da,-3px_-3px_6px_#ffffff] transition-all hover:text-[#4F46E5]">
                   <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                 </button>

@@ -8,10 +8,13 @@ use App\Http\Controllers\Controller;
 use App\Mail\FacturaMail;
 use App\Models\Factura;
 use App\Models\Servicio;
+use App\Services\FacturaCalculator;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class FacturacionController extends Controller
@@ -44,21 +47,12 @@ class FacturacionController extends Controller
             'facturas' => $facturas,
             'servicios' => Servicio::with('cotizacion.cliente.aseguradora', 'cotizacion.tipoServicio')
                 ->where('empresa_id', $empresaId)
+                ->where('estado', 'finalizado')
                 ->whereDoesntHave('factura')
                 ->get()
                 ->map(function ($s) {
-                    // Obtener KM incluidos de la cotización o del convenio
                     $cot = $s->cotizacion;
-                    $kmIncluidos = (float) ($cot?->km_incluidos ?? 0);
-                    if ($kmIncluidos <= 0 && $cot?->convenio_aplicado_id) {
-                        $tarifaConv = \App\Models\ConvenioTarifa::where('convenio_id', $cot->convenio_aplicado_id)
-                            ->where('servicio_id', $cot->tipo_servicio_id)->first();
-                        $kmIncluidos = (float) ($tarifaConv?->km_incluidos ?? 0);
-                    }
-                    if ($kmIncluidos <= 0) {
-                        $tarifaPropia = \App\Models\TarifasEmpresa::where('tipo_servicio_id', $cot?->tipo_servicio_id)->where('activo', true)->first();
-                        $kmIncluidos = (float) ($tarifaPropia?->km_incluidos ?? 0);
-                    }
+                    $calculo = app(FacturaCalculator::class)->calcular($s);
 
                     return [
                         'id' => $s->id,
@@ -70,14 +64,17 @@ class FacturacionController extends Controller
                         'aseguradora' => $cot?->cliente?->aseguradora?->nombre_comercial ?? ($cot?->cliente?->aseguradora?->nombre ?? 'Particular'),
                         'numero_poliza' => $cot?->cliente?->numero_poliza ?? '—',
                         'tipo_cobertura' => $cot?->cliente?->tipo_cobertura_poliza ?? '—',
-                        'costo_banderazo' => (float) ($cot?->costo_banderazo ?? 0),
-                        'costo_km' => (float) ($cot?->costo_km ?? 0),
-                        'km_incluidos' => $kmIncluidos,
-                        'distancia_km' => (float) ($cot?->distancia_km ?? 0),
-                        'subtotal' => (float) ($cot?->subtotal ?? $cot?->costo_total ?? 0),
-                        'monto_iva' => (float) ($cot?->monto_iva ?? 0),
+                        'costo_banderazo' => $calculo['banderazo'],
+                        'costo_km' => $calculo['costo_km'],
+                        'km_incluidos' => $calculo['km_incluidos'],
+                        'distancia_km' => $calculo['km'],
+                        'subtotal' => $calculo['subtotal'],
+                        'monto_iva' => $calculo['iva'],
+                        'total' => $calculo['total'],
+                        'descuento' => $calculo['descuento'],
+                        'casetas' => $calculo['casetas'],
+                        'kms_cobrados_reales' => $s->kms_cobrados_reales,
                         'descuento_pct' => (float) ($cot?->descuento_pct ?? 0),
-                        'costo_final_real' => (float) ($s->costo_final_real ?? $cot?->costo_total ?? 0),
                         'kms_termino' => $s->kms_termino_servicio,
                     ];
                 }),
@@ -90,27 +87,41 @@ class FacturacionController extends Controller
         $user = Auth::user();
 
         $data = $request->validate([
-            'servicio_id' => 'required|exists:servicios,id',
-            'cliente_id' => 'required|exists:clientes,id',
-            'subtotal' => 'required|numeric',
-            'iva' => 'nullable|numeric',
-            'total' => 'required|numeric',
-            'correo_envio_factura' => 'nullable|email|max:150',
+            'servicio_id' => [
+                'required',
+                Rule::exists('servicios', 'id')
+                    ->where('empresa_id', $user->empresa_id)
+                    ->where('estado', 'finalizado')
+                    ->where('eliminado', false),
+            ],
+            'correo_envio_factura' => 'required|email|max:150',
         ]);
 
+        $servicio = Servicio::with('cotizacion')
+            ->where('empresa_id', $user->empresa_id)
+            ->where('estado', 'finalizado')
+            ->whereDoesntHave('factura')
+            ->findOrFail($data['servicio_id']);
+        $calculo = app(FacturaCalculator::class)->calcular($servicio);
         $data['empresa_id'] = $user->empresa_id;
+        $data['cliente_id'] = $servicio->cotizacion->cliente_id;
         $data['estatus'] = 'vigente';
+        $data['subtotal'] = $calculo['subtotal'];
+        $data['iva'] = $calculo['iva'];
+        $data['total'] = $calculo['total'];
 
         $factura = DB::transaction(function () use ($data) {
-            $data['folio_factura'] = 'FAC-' . str_pad((Factura::query()->lockForUpdate()->max('id') ?? 0) + 1, 5, '0', STR_PAD_LEFT);
+            $data['folio_factura'] = 'FAC-' . str_pad((Factura::conEliminados()->lockForUpdate()->max('id') ?? 0) + 1, 5, '0', STR_PAD_LEFT);
 
             return Factura::create($data);
         });
 
         // Enviar factura por email automáticamente si se proporcionó correo
-        $this->enviarFacturaPorEmail($factura);
+        $enviada = $this->enviarFacturaPorEmail($factura);
 
-        return back()->with('success', 'Factura generada correctamente');
+        return back()->with('success', $enviada
+            ? 'Factura generada y enviada por correo.'
+            : 'Factura generada. No se pudo enviar el correo; descarga el PDF desde el detalle.');
     }
 
     // Enviar factura por correo electrónico
@@ -122,23 +133,48 @@ class FacturacionController extends Controller
             return back()->with('error', 'Esta factura no tiene un correo de envío registrado.');
         }
 
-        $this->enviarFacturaPorEmail($factura);
+        if (!$this->enviarFacturaPorEmail($factura)) {
+            return back()->with('error', 'No se pudo enviar el correo. Revisa la configuración de correo y vuelve a intentarlo.');
+        }
 
         return back()->with('success', 'Factura enviada por correo a ' . $factura->correo_envio_factura);
     }
 
     // Método interno para enviar la factura por email
-    protected function enviarFacturaPorEmail(Factura $factura): void
+    protected function enviarFacturaPorEmail(Factura $factura): bool
     {
         if (empty($factura->correo_envio_factura)) {
-            return;
+            return false;
         }
 
         try {
-            Mail::to($factura->correo_envio_factura)->send(new FacturaMail($factura));
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Error al enviar factura por email: ' . $e->getMessage());
+            Mail::to($factura->correo_envio_factura)->send(new FacturaMail($factura->loadMissing('cliente', 'servicio.cotizacion.tipoServicio')));
+            return true;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Error al enviar factura por email.', [
+                'factura_id' => $factura->id,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
         }
+    }
+
+    public function pdf($id)
+    {
+        $user = auth()->user();
+        abort_unless(in_array($user->rol, ['admin', 'cotizador', 'cliente'], true), 403);
+
+        $query = Factura::with(['cliente.aseguradora', 'servicio.cotizacion.tipoServicio'])
+            ->where('empresa_id', $user->empresa_id);
+        if ($user->rol === 'cliente') {
+            $cliente = \App\Models\Cliente::where('usuario_id', $user->id)->firstOrFail();
+            $query->where('cliente_id', $cliente->id);
+        }
+
+        $factura = $query->findOrFail($id);
+
+        return Pdf::loadView('emails.factura_pdf', (new FacturaMail($factura))->pdfData())
+            ->download($factura->folio_factura . '.pdf');
     }
 
     // Ver detalle de factura
@@ -199,7 +235,8 @@ class FacturacionController extends Controller
     public function misFacturas()
     {
         $cliente = \App\Models\Cliente::where('usuario_id', auth()->id())->first();
-        $facturas = Factura::where('cliente_id', $cliente?->id)->latest()->get()
+        $facturas = Factura::where('empresa_id', auth()->user()->empresa_id)
+            ->where('cliente_id', $cliente?->id)->latest()->get()
             ->map(fn ($f) => [
                 'id' => $f->id,
                 'folio' => $f->folio_factura ?? '—',

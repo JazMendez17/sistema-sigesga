@@ -68,16 +68,18 @@ class TiposServicioController extends Controller
     {
         $tipo = CatalogoServicio::findOrFail($id);
 
+        // Actualización parcial: solo se tocan los campos enviados para que
+        // activar/desactivar no borre el otro interruptor.
         $data = $request->validated();
-        $data['requiere_maniobra'] = $request->boolean('requiere_maniobra');
-        $data['activo'] = $request->boolean('activo', !array_key_exists('activo', $request->all()) ? null : false);
 
-        if (array_key_exists('nombre', $data)) {
-            $tipo->update($data);
-        } else {
-            unset($data['nombre']);
-            $tipo->update($data);
+        if ($request->has('requiere_maniobra')) {
+            $data['requiere_maniobra'] = $request->boolean('requiere_maniobra');
         }
+        if ($request->has('activo')) {
+            $data['activo'] = $request->boolean('activo');
+        }
+
+        $tipo->update($data);
 
         return back()->with('success', 'Tipo de servicio actualizado correctamente');
     }

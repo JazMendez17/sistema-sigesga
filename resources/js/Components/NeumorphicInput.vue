@@ -29,6 +29,7 @@ defineProps({
       </div>
       <!-- Campo de entrada neumórfico -->
       <input
+        v-bind="$attrs"
         :type="type"
         :placeholder="placeholder"
         :required="required"

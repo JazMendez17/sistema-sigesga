@@ -15,6 +15,8 @@ use App\Http\Requests\Panel\StoreServicioRequest;
 use App\Models\AutorizacionesCancelacione;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class ServiciosController extends Controller
@@ -57,11 +59,19 @@ class ServiciosController extends Controller
     {
         $user = Auth::user();
         $empresaId = $user->empresa_id;
+        $estadosActivos = ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino'];
+        $operadoresOcupados = Servicio::where('empresa_id', $empresaId)->whereIn('estado', $estadosActivos)->select('operador_id');
+        $unidadesOcupadas = Servicio::where('empresa_id', $empresaId)->whereIn('estado', $estadosActivos)->select('unidad_id');
 
         return Inertia::render('Panel/Servicios/Create', [
-            'cotizaciones' => Cotizacione::where('empresa_id', $empresaId)->where('estatus', 'aprobado')->get(['id', 'folio']),
-            'operadores' => Operadore::with('empleado')->where('empresa_id', $empresaId)->get(),
-            'unidades' => Unidade::where('empresa_id', $empresaId)->get(['id', 'placas', 'numero_economico']),
+            'cotizaciones' => Cotizacione::where('empresa_id', $empresaId)
+                ->where('estatus', 'aprobado')
+                ->whereDoesntHave('servicio')
+                ->get(['id', 'folio']),
+            'operadores' => Operadore::with('empleado')->where('empresa_id', $empresaId)
+                ->where('disponible', true)->whereNotIn('id', $operadoresOcupados)->get(),
+            'unidades' => Unidade::where('empresa_id', $empresaId)->where('activo', true)
+                ->whereNotIn('id', $unidadesOcupadas)->get(['id', 'placas', 'numero_economico']),
             'oficinas' => Oficina::where('empresa_id', $empresaId)->get(['id', 'nombre']),
         ]);
     }
@@ -94,7 +104,29 @@ class ServiciosController extends Controller
         $data['empresa_id'] = $user->empresa_id;
         $data['estado'] = 'asignado';
 
-        Servicio::create($data);
+        DB::transaction(function () use ($data, $user) {
+            $cotizacion = Cotizacione::where('empresa_id', $user->empresa_id)
+                ->where('estatus', 'aprobado')->lockForUpdate()->findOrFail($data['cotizacion_id']);
+            if ($cotizacion->servicio()->exists()) {
+                throw ValidationException::withMessages(['cotizacion_id' => 'La cotización ya tiene un servicio asignado.']);
+            }
+
+            $unidad = Unidade::where('empresa_id', $user->empresa_id)->lockForUpdate()->findOrFail($data['unidad_id']);
+            $operador = Operadore::where('empresa_id', $user->empresa_id)->lockForUpdate()->findOrFail($data['operador_id']);
+            $estadosActivos = ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino'];
+            $unidadOcupada = Servicio::where('empresa_id', $user->empresa_id)->where('unidad_id', $unidad->id)->whereIn('estado', $estadosActivos)->exists();
+            $operadorOcupado = Servicio::where('empresa_id', $user->empresa_id)->where('operador_id', $operador->id)->whereIn('estado', $estadosActivos)->exists();
+
+            if (!$unidad->activo || $unidadOcupada) {
+                throw ValidationException::withMessages(['unidad_id' => 'La unidad no está activa o ya tiene un servicio en curso.']);
+            }
+            if (!$operador->disponible || $operadorOcupado) {
+                throw ValidationException::withMessages(['operador_id' => 'El operador no está disponible o ya tiene un servicio en curso.']);
+            }
+
+            Servicio::create($data);
+            $operador->update(['disponible' => false]);
+        });
 
         return redirect()->route('panel.servicios.index')
             ->with('success', 'Servicio creado correctamente');
@@ -116,6 +148,10 @@ class ServiciosController extends Controller
                 abort(404);
             }
             $query->whereHas('cotizacion', fn ($q) => $q->where('cliente_id', $cliente->id));
+        } elseif ($user->rol === 'operador') {
+            $query->whereHas('operador', fn ($q) => $q->where('empleado_id', $user->empleado_id));
+        } elseif (!in_array($user->rol, ['admin', 'cotizador'], true)) {
+            abort(403);
         }
 
         $servicio = $query->findOrFail($id);

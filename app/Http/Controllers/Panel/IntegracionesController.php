@@ -18,6 +18,20 @@ class IntegracionesController extends Controller
         $user = Auth::user();
         $empresaId = $user->empresa_id;
 
+        // Crea las integraciones base si la empresa aún no las tiene, para que
+        // el módulo siempre muestre contenido.
+        $base = [
+            'whatsapp' => 'Envío de notificaciones y comprobantes por WhatsApp.',
+            'gmail' => 'Envío de cotizaciones, facturas y correos del sistema.',
+            'google_maps' => 'Cálculo de rutas, distancias y tiempos estimados.',
+        ];
+        foreach ($base as $proveedor => $descripcion) {
+            EmpresaIntegracione::firstOrCreate(
+                ['empresa_id' => $empresaId, 'proveedor' => $proveedor],
+                ['configuracion_json' => ['descripcion' => $descripcion], 'activo' => false]
+            );
+        }
+
         $integraciones = EmpresaIntegracione::where('empresa_id', $empresaId)
             ->get()
             ->map(fn ($i) => [

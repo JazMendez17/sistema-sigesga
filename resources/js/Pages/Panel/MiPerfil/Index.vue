@@ -182,7 +182,7 @@ const perfilData = empleado || cliente || null
 
             <div v-if="empleado?.puesto" class="flex justify-between">
               <span class="text-sm opacity-60" style="color: var(--color-text)">Puesto</span>
-              <span class="text-sm font-medium" style="color: var(--color-text)">{{ empleado.puesto }}</span>
+              <span class="text-sm font-medium" style="color: var(--color-text)">{{ $etiqueta(empleado.puesto) }}</span>
             </div>
           </div>
         </div>
@@ -271,11 +271,37 @@ const perfilData = empleado || cliente || null
                 <p class="text-xs opacity-60 uppercase tracking-wider" style="color: var(--color-text)">Aseguradora</p>
                 <p class="text-sm font-medium mt-0.5" style="color: var(--color-text)">{{ cliente.aseguradora }}</p>
               </div>
+              <template v-if="cliente">
+                <div v-if="cliente.calle || cliente.colonia" class="rounded-2xl p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]" style="background-color: var(--color-bg)">
+                  <p class="text-xs opacity-60 uppercase tracking-wider" style="color: var(--color-text)">Calle y números</p>
+                  <p class="text-sm font-medium mt-0.5" style="color: var(--color-text)">{{ cliente.calle || '---' }} {{ cliente.numero_exterior || '' }}{{ cliente.numero_interior ? ' Int. ' + cliente.numero_interior : '' }}</p>
+                </div>
+                <div v-if="cliente.colonia" class="rounded-2xl p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]" style="background-color: var(--color-bg)">
+                  <p class="text-xs opacity-60 uppercase tracking-wider" style="color: var(--color-text)">Colonia</p>
+                  <p class="text-sm font-medium mt-0.5" style="color: var(--color-text)">{{ cliente.colonia }}</p>
+                </div>
+                <div v-if="cliente.codigo_postal" class="rounded-2xl p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]" style="background-color: var(--color-bg)">
+                  <p class="text-xs opacity-60 uppercase tracking-wider" style="color: var(--color-text)">Código Postal</p>
+                  <p class="text-sm font-medium mt-0.5" style="color: var(--color-text)">{{ cliente.codigo_postal }}</p>
+                </div>
+                <div v-if="cliente.localidad" class="rounded-2xl p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]" style="background-color: var(--color-bg)">
+                  <p class="text-xs opacity-60 uppercase tracking-wider" style="color: var(--color-text)">Localidad</p>
+                  <p class="text-sm font-medium mt-0.5" style="color: var(--color-text)">{{ cliente.localidad }}</p>
+                </div>
+                <div v-if="cliente.municipio_alcaldia" class="rounded-2xl p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]" style="background-color: var(--color-bg)">
+                  <p class="text-xs opacity-60 uppercase tracking-wider" style="color: var(--color-text)">Municipio / Alcaldía</p>
+                  <p class="text-sm font-medium mt-0.5" style="color: var(--color-text)">{{ cliente.municipio_alcaldia }}</p>
+                </div>
+                <div v-if="cliente.estado" class="rounded-2xl p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]" style="background-color: var(--color-bg)">
+                  <p class="text-xs opacity-60 uppercase tracking-wider" style="color: var(--color-text)">Estado</p>
+                  <p class="text-sm font-medium mt-0.5" style="color: var(--color-text)">{{ cliente.estado }}</p>
+                </div>
+              </template>
               <div v-if="perfilData.direccion" class="rounded-2xl p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)] md:col-span-2" style="background-color: var(--color-bg)">
                 <p class="text-xs opacity-60 uppercase tracking-wider" style="color: var(--color-text)">Dirección</p>
                 <p class="text-sm font-medium mt-0.5" style="color: var(--color-text)">{{ perfilData.direccion }}</p>
               </div>
-              <template v-if="empleado?.calle || empleado?.colonia">
+              <template v-if="empleado">
                 <div v-if="empleado?.calle" class="rounded-2xl p-4 shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]" style="background-color: var(--color-bg)">
                   <p class="text-xs opacity-60 uppercase tracking-wider" style="color: var(--color-text)">Calle</p>
                   <p class="text-sm font-medium mt-0.5" style="color: var(--color-text)">{{ empleado.calle || '---' }}</p>

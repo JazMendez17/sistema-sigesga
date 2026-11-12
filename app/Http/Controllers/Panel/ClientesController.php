@@ -11,6 +11,7 @@ use App\Models\Aseguradora;
 use App\Models\Direccion;
 use App\Models\Usuario;
 use App\Http\Requests\Panel\StoreClienteRequest;
+use App\Services\ImportaClientes;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
@@ -37,6 +38,7 @@ class ClientesController extends Controller
 
         return Inertia::render('Panel/Clientes/Index', [
             'clientes' => $clientes,
+            'machote' => ['hojas' => ['Clientes' => ImportaClientes::COLUMNAS]],
         ]);
     }
 

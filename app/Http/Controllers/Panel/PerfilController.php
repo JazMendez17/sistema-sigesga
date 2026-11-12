@@ -49,7 +49,7 @@ class PerfilController extends Controller
                     'folio_ine' => $empleado->folio_ine,
                     'nacionalidad' => $empleado->nacionalidad,
                     'puesto' => $empleado->puesto,
-                    'direccion' => $empleado->direccion ? trim($empleado->direccion->calle . ' ' . $empleado->direccion->colonia . ', ' . $empleado->direccion->ciudad) : null,
+                    'direccion' => $empleado->direccion ? $this->formatoDireccion($empleado->direccion) : null,
                     'calle' => $empleado->direccion?->calle,
                     'numero_exterior' => $empleado->direccion?->numero_exterior,
                     'numero_interior' => $empleado->direccion?->numero_interior,
@@ -85,12 +85,37 @@ class PerfilController extends Controller
                     'numero_poliza' => $cliente->numero_poliza,
                     'tipo_cobertura_poliza' => $cliente->tipo_cobertura_poliza,
                     'aseguradora' => $cliente->aseguradora?->nombre ?? null,
-                    'direccion' => $cliente->direccion ? trim($cliente->direccion->calle . ' ' . $cliente->direccion->colonia . ', ' . $cliente->direccion->ciudad) : null,
+                    'direccion' => $cliente->direccion ? $this->formatoDireccion($cliente->direccion) : null,
+                    'calle' => $cliente->direccion?->calle,
+                    'numero_exterior' => $cliente->direccion?->numero_exterior,
+                    'numero_interior' => $cliente->direccion?->numero_interior,
+                    'colonia' => $cliente->direccion?->colonia,
+                    'codigo_postal' => $cliente->direccion?->codigo_postal,
+                    'localidad' => $cliente->direccion?->ciudad,
+                    'municipio_alcaldia' => $cliente->direccion?->municipio_alcaldia,
+                    'estado' => $cliente->direccion?->estado,
+                    'pais' => $cliente->direccion?->pais,
+                    'referencias' => $cliente->direccion?->referencias,
                 ];
             }
         }
 
         return Inertia::render('Panel/MiPerfil/Index', $data);
+    }
+
+    // Compone la dirección completa para mostrarla en el perfil
+    private function formatoDireccion($direccion): string
+    {
+        $partes = array_filter([
+            trim(($direccion->calle ?? '') . ' ' . ($direccion->numero_exterior ?? '') . ($direccion->numero_interior ? ' Int. ' . $direccion->numero_interior : '')),
+            $direccion->colonia,
+            $direccion->ciudad,
+            $direccion->municipio_alcaldia,
+            $direccion->estado,
+            $direccion->codigo_postal,
+        ], fn ($valor) => filled($valor));
+
+        return implode(', ', $partes);
     }
 
     // Actualizar número de teléfono

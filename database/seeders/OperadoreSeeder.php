@@ -14,7 +14,7 @@ class OperadoreSeeder extends Seeder
 
         $empleadoOperador = DB::table('empleados')
             ->where('empresa_id', $empresaId)
-            ->where('puesto', 'Operador de Grúa')
+            ->where('puesto', 'operador')
             ->first();
 
         if (!$empleadoOperador) {
@@ -33,7 +33,7 @@ class OperadoreSeeder extends Seeder
         DB::table('operadores')->insert([
             'empresa_id' => $empresaId,
             'empleado_id' => $empleadoOperador->id,
-            'tipo_licencia' => 'C',
+            'tipo_licencia' => 'Tipo C - Carga Federal',
             'numero_licencia' => 'LIC-OP-001',
             'fecha_expedicion' => Carbon::create(2024, 1, 15)->toDateString(),
             'fecha_vigencia' => Carbon::create(2028, 1, 15)->toDateString(),

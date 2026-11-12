@@ -10,6 +10,8 @@ use App\Http\Controllers\Panel\AutorizacionesCancelacionController;
 use App\Http\Controllers\Panel\FacturacionController;
 use App\Http\Controllers\Panel\ClientesController;
 use App\Http\Controllers\Panel\AseguradorasController;
+use App\Http\Controllers\Panel\ImportarClientesController;
+use App\Http\Controllers\Panel\ImportarConveniosController;
 use App\Http\Controllers\Panel\TiposServicioController;
 use App\Http\Controllers\Panel\ConveniosController;
 use App\Http\Controllers\Panel\ConvenioTarifaController;
@@ -68,6 +70,15 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
         Route::post('/facturacion', [FacturacionController::class, 'store'])->name('facturacion.store');
         Route::get('/facturacion/{id}', [FacturacionController::class, 'show'])->name('facturacion.show');
         Route::post('/facturacion/{id}/enviar', [FacturacionController::class, 'enviarEmail'])->name('facturacion.enviar');
+
+        // Machotes e importación Excel: solo administradores.
+        // Declaradas antes de /clientes/{id} y /convenios/{id} para que "machote" no se tome como id.
+        Route::middleware('role:admin')->group(function () {
+            Route::get('/clientes/machote', [ImportarClientesController::class, 'machote'])->name('clientes.machote');
+            Route::post('/clientes/importar', [ImportarClientesController::class, 'store'])->name('clientes.importar');
+            Route::get('/convenios/machote', [ImportarConveniosController::class, 'machote'])->name('convenios.machote');
+            Route::post('/convenios/importar', [ImportarConveniosController::class, 'store'])->name('convenios.importar');
+        });
 
         Route::get('/clientes', [ClientesController::class, 'index'])->name('clientes.index');
         Route::get('/clientes/create', [ClientesController::class, 'create'])->name('clientes.create');
@@ -144,18 +155,23 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
         Route::put('/operadores/disponibilidad', [OperadoresController::class, 'cambiarDisponibilidad'])->name('operadores.disponibilidad');
 
         Route::get('/servicios', [ServiciosController::class, 'index'])->name('servicios.index');
-        Route::get('/servicios/create', [ServiciosController::class, 'create'])->name('servicios.create');
-        Route::post('/servicios', [ServiciosController::class, 'store'])->name('servicios.store');
-        Route::get('/servicios/{id}', [ServiciosController::class, 'show'])->name('servicios.show')->withoutMiddleware('role:admin,cotizador,operador')->middleware('auth');
-        Route::get('/servicios/{id}/edit', [ServiciosController::class, 'edit'])->name('servicios.edit');
-        Route::put('/servicios/{id}', [ServiciosController::class, 'update'])->name('servicios.update');
+        Route::get('/servicios/{id}', [ServiciosController::class, 'show'])->name('servicios.show');
         Route::post('/servicios/{id}/avanzar', [ServiciosController::class, 'avanzarEstado'])->name('servicios.avanzar');
         Route::post('/servicios/{id}/solicitar-cancelacion', [ServiciosController::class, 'solicitarCancelacion'])->name('servicios.solicitar-cancelacion');
-        Route::delete('/servicios/{id}', [ServiciosController::class, 'destroy'])->name('servicios.destroy');
+
+        Route::middleware('role:admin,cotizador')->group(function () {
+            Route::get('/servicios/create', [ServiciosController::class, 'create'])->name('servicios.create');
+            Route::post('/servicios', [ServiciosController::class, 'store'])->name('servicios.store');
+            Route::get('/servicios/{id}/edit', [ServiciosController::class, 'edit'])->name('servicios.edit');
+            Route::put('/servicios/{id}', [ServiciosController::class, 'update'])->name('servicios.update');
+            Route::delete('/servicios/{id}', [ServiciosController::class, 'destroy'])->name('servicios.destroy');
+        });
 
         Route::get('/autorizaciones-cancelacion', [AutorizacionesCancelacionController::class, 'index'])->name('autorizaciones-cancelacion.index');
-        Route::post('/autorizaciones-cancelacion/{id}/aprobar', [AutorizacionesCancelacionController::class, 'aprobar'])->name('autorizaciones-cancelacion.aprobar');
-        Route::post('/autorizaciones-cancelacion/{id}/rechazar', [AutorizacionesCancelacionController::class, 'rechazar'])->name('autorizaciones-cancelacion.rechazar');
+        Route::middleware('role:admin,cotizador')->group(function () {
+            Route::post('/autorizaciones-cancelacion/{id}/aprobar', [AutorizacionesCancelacionController::class, 'aprobar'])->name('autorizaciones-cancelacion.aprobar');
+            Route::post('/autorizaciones-cancelacion/{id}/rechazar', [AutorizacionesCancelacionController::class, 'rechazar'])->name('autorizaciones-cancelacion.rechazar');
+        });
     });
 
     // === Módulos exclusivos para administradores ===
@@ -258,6 +274,7 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
 
     Route::get('/mis-cotizaciones', [CotizacionesController::class, 'misCotizaciones'])->name('cliente.cotizaciones');
     Route::get('/mis-facturas', [FacturacionController::class, 'misFacturas'])->name('cliente.facturas');
+    Route::get('/facturas/{id}/pdf', [FacturacionController::class, 'pdf'])->name('facturas.pdf');
 });
 
 require __DIR__.'/auth.php';

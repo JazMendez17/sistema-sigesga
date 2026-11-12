@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AutorizacionesCancelacione;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class AutorizacionesCancelacionController extends Controller
@@ -42,16 +43,22 @@ class AutorizacionesCancelacionController extends Controller
     // Aprobar solicitud de cancelación
     public function aprobar($id)
     {
-        $auth = AutorizacionesCancelacione::whereHas('servicio', fn($q) => $q->where('empresa_id', auth()->user()->empresa_id))->findOrFail($id);
-        $auth->update([
-            'estatus' => 'aprobada',
-            'usuario_resolutor_id' => Auth::id(),
-            'fecha_resolucion' => now(),
-        ]);
-
-        if ($auth->servicio) {
-            $auth->servicio->update(['estado' => 'cancelado']);
-        }
+        DB::transaction(function () use ($id) {
+            $auth = AutorizacionesCancelacione::where('estatus', 'pendiente')
+                ->whereHas('servicio', fn ($q) => $q->where('empresa_id', auth()->user()->empresa_id))
+                ->lockForUpdate()->findOrFail($id);
+            $servicio = $auth->servicio()->lockForUpdate()->firstOrFail();
+            $auth->update([
+                'estatus' => Auth::user()->rol === 'admin' ? 'cancelado_por_admin' : 'cancelado_por_cotizador',
+                'usuario_resolutor_id' => Auth::id(),
+                'fecha_resolucion' => now(),
+            ]);
+            $servicio->update(['estado' => 'cancelado']);
+            if ($servicio->operador_id) {
+                \App\Models\Operadore::where('id', $servicio->operador_id)
+                    ->where('empresa_id', $servicio->empresa_id)->update(['disponible' => true]);
+            }
+        });
 
         return back()->with('success', 'Autorización aprobada');
     }
@@ -59,12 +66,17 @@ class AutorizacionesCancelacionController extends Controller
     // Rechazar solicitud de cancelación
     public function rechazar($id)
     {
-        $auth = AutorizacionesCancelacione::whereHas('servicio', fn($q) => $q->where('empresa_id', auth()->user()->empresa_id))->findOrFail($id);
+        $auth = AutorizacionesCancelacione::where('estatus', 'pendiente')
+            ->whereHas('servicio', fn ($q) => $q->where('empresa_id', auth()->user()->empresa_id))->findOrFail($id);
         $auth->update([
             'estatus' => 'rechazada',
             'usuario_resolutor_id' => Auth::id(),
             'fecha_resolucion' => now(),
         ]);
+
+        if ($auth->servicio && $auth->servicio->estado === 'solicitud_cancelacion') {
+            $auth->servicio->update(['estado' => 'asignado']);
+        }
 
         return back()->with('success', 'Autorización rechazada');
     }

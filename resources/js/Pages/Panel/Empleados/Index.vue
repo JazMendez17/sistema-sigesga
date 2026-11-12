@@ -54,6 +54,7 @@ function eliminarEmpleado(id) {
       <!-- Tabla de empleados -->
       <div class="rounded-3xl bg-[#EEF2F7] p-6 shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
         <DataTable :columns="columns" :data="empleadosFiltrados">
+          <template #cell-puesto="{ row }">{{ $etiqueta(row.puesto) }}</template>
           <template #actions="{ row }">
             <div class="flex items-center gap-2">
               <button @click="router.visit(route('panel.empleados.show', { id: row.id }))" class="rounded-lg bg-[#EEF2F7] p-2 text-gray-500 shadow-[3px_3px_6px_#d0d5da,-3px_-3px_6px_#ffffff] transition-all hover:text-[#4F46E5]">

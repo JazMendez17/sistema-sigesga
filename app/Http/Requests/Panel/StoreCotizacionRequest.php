@@ -7,6 +7,7 @@ namespace App\Http\Requests\Panel;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
 
 class StoreCotizacionRequest extends FormRequest
 {
@@ -37,14 +38,24 @@ class StoreCotizacionRequest extends FormRequest
         $id = $this->route('id');
 
         $rules = [
-            'cliente_id' => 'required|exists:clientes,id',
-            'tipo_servicio_id' => 'required|exists:catalogo_servicios,id',
+            'cliente_id' => ['required', Rule::exists('clientes', 'id')->where('empresa_id', $this->user()?->empresa_id)->where('eliminado', false)],
+            'tipo_servicio_id' => ['required', Rule::exists('catalogo_servicios', 'id')->where('empresa_id', $this->user()?->empresa_id)->where('eliminado', false)],
+            'convenio_aplicado_id' => ['nullable', Rule::exists('convenios', 'id')->where('empresa_id', $this->user()?->empresa_id)->where('eliminado', false)],
+            'tarifa_empresa_aplicada_id' => ['nullable', Rule::exists('tarifas_empresa', 'id')->where('empresa_id', $this->user()?->empresa_id)->where('eliminado', false)],
             'origen_direccion' => 'required|string|max:500',
             'destino_direccion' => 'required|string|max:500',
             'distancia_km' => 'required|numeric|min:0.1',
             'costo_banderazo' => 'required|numeric|min:0',
             'costo_km' => 'required|numeric|min:0',
             'costo_total' => 'required|numeric|min:0',
+            'subtotal' => 'nullable|numeric|min:0',
+            'monto_descuento' => 'nullable|numeric|min:0',
+            'descuento_pct' => 'nullable|numeric|between:0,100',
+            'monto_iva' => 'nullable|numeric|min:0',
+            'km_incluidos' => 'nullable|numeric|min:0',
+            'costo_aprox_casetas' => 'nullable|numeric|min:0',
+            'incluye_peajes' => 'nullable|boolean',
+            'cargo_zona_especial' => 'nullable|numeric|min:0',
             'observaciones' => 'nullable|string|max:1000',
             'folio' => 'nullable|string|max:50|unique:cotizaciones,folio,' . $id,
             'origen_lat' => 'nullable|numeric|between:-90,90',

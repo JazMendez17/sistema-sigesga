@@ -43,7 +43,7 @@ const servicioSeleccionado = computed(() => {
 
 const kmExcedentes = computed(() => {
   if (!servicioSeleccionado.value) return 0
-  const kms = servicioSeleccionado.value.kms_termino || servicioSeleccionado.value.distancia_km || 0
+  const kms = servicioSeleccionado.value.kms_cobrados_reales || servicioSeleccionado.value.kms_termino || servicioSeleccionado.value.distancia_km || 0
   const incluidos = servicioSeleccionado.value.km_incluidos || 0
   return Math.max(0, kms - incluidos)
 })
@@ -57,27 +57,19 @@ function seleccionarServicio() {
   if (!s) return
   form.cliente_id = s.cliente_id || ''
   form.correo_envio_factura = s.cliente_email || ''
-  
-  // Calcular subtotal: banderazo + excedente de km
-  let banderazo = s.costo_banderazo || 0
-  let kmExtra = 0
-  if (s.kms_termino && s.km_incluidos) {
-    const excedente = Math.max(0, s.kms_termino - s.km_incluidos)
-    kmExtra = excedente * (s.costo_km || 0)
-  }
-  const subtotalCalc = banderazo + kmExtra
-  form.subtotal = subtotalCalc.toFixed(2)
-  form.iva = (subtotalCalc * 0.16).toFixed(2)
-  form.total = (subtotalCalc * 1.16).toFixed(2)
+  form.subtotal = Number(s.subtotal || 0).toFixed(2)
+  form.iva = Number(s.monto_iva || 0).toFixed(2)
+  form.total = Number(s.total || 0).toFixed(2)
 }
 
 function generarFactura() {
   form.post(route('panel.facturacion.store'), {
-    onSuccess: () => {
+    onSuccess: (response) => {
       mostrarModal.value = false
       form.reset()
-      Swal.fire('Generada', 'Factura creada y enviada por correo.', 'success')
+      Swal.fire('Factura', response.props.flash?.success || 'Factura generada.', 'success')
     },
+    onError: (errors) => Swal.fire('No se pudo generar', Object.values(errors).flat().join('\n') || 'Revisa los datos e intenta de nuevo.', 'error'),
   })
 }
 
@@ -152,6 +144,8 @@ const filteredFacturas = computed(() => {
                 <div class="flex justify-between"><span class="text-gray-500">KM Recorridos:</span><span>{{ servicioSeleccionado.kms_termino || servicioSeleccionado.distancia_km || 0 }} km</span></div>
                 <div class="flex justify-between"><span class="text-gray-500">KM Excedentes:</span><span class="text-orange-600">{{ kmExcedentes }} km × ${{ servicioSeleccionado.costo_km?.toFixed(2) || '0.00' }}</span></div>
                 <div class="flex justify-between"><span class="text-gray-500">Costo KM Extra:</span><span>${{ costoKmExtra }}</span></div>
+                <div v-if="servicioSeleccionado.descuento > 0" class="flex justify-between"><span class="text-gray-500">Descuento:</span><span>-${{ Number(servicioSeleccionado.descuento).toFixed(2) }}</span></div>
+                <div v-if="servicioSeleccionado.casetas > 0" class="flex justify-between"><span class="text-gray-500">Casetas/Peajes:</span><span>${{ Number(servicioSeleccionado.casetas).toFixed(2) }}</span></div>
               </div>
               <div class="border-t pt-1 font-semibold">
                 <div class="flex justify-between"><span>Subtotal:</span><span>${{ form.subtotal }}</span></div>
@@ -160,11 +154,11 @@ const filteredFacturas = computed(() => {
               </div>
             </div>
 
-            <NeumorphicInput v-model="form.subtotal" label="Subtotal ($)" type="number" step="0.01" placeholder="0.00" />
-            <NeumorphicInput v-model="form.iva" label="IVA 16% ($)" type="number" step="0.01" placeholder="0.00" />
-            <NeumorphicInput v-model="form.total" label="Total ($)" type="number" step="0.01" placeholder="0.00" />
-            <NeumorphicInput v-model="form.correo_envio_factura" label="Correo de envío" type="email" placeholder="cliente@correo.com" />
-            <p class="text-xs text-gray-400">La factura se enviará automáticamente por email al guardar</p>
+            <NeumorphicInput v-model="form.subtotal" label="Subtotal ($)" type="number" step="0.01" readonly />
+            <NeumorphicInput v-model="form.iva" label="IVA 16% ($)" type="number" step="0.01" readonly />
+            <NeumorphicInput v-model="form.total" label="Total ($)" type="number" step="0.01" readonly />
+            <NeumorphicInput v-model="form.correo_envio_factura" label="Correo de envío" type="email" placeholder="cliente@correo.com" required />
+            <p class="text-xs text-gray-400">El sistema valida el servicio y calcula los importes. El correo es obligatorio para enviar la factura.</p>
           </div>
 
           <!-- Footer fijo -->

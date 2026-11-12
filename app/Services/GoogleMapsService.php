@@ -106,7 +106,8 @@ class GoogleMapsService
 
     private function consultarGoogle(array $payload): array
     {
-        $respuesta = Http::timeout(15)
+        $respuesta = Http::withOptions(['verify' => base_path('certs/cacert.pem')])
+            ->timeout(15)
             ->withHeaders([
                 'X-Goog-Api-Key' => $this->apiKey,
                 'X-Goog-FieldMask' => self::FIELD_MASK,
