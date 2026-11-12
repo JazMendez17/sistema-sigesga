@@ -64,10 +64,12 @@ Al ejecutar los seeders, se crean automáticamente las siguientes cuentas para p
 
 ## 🚀 Requisitos
 
-- PHP ^8.2
+- PHP ^8.4
 - Composer
 - Node.js 18+ y npm
 - Base de datos (MySQL, MariaDB, PostgreSQL, SQLite o TiDB)
+
+Para publicar en HostGator, sigue la [guía de despliegue](DEPLOY_HOSTGATOR.md).
 
 ---
 
@@ -75,10 +77,10 @@ Al ejecutar los seeders, se crean automáticamente las siguientes cuentas para p
 
 ```bash
 # 1. Clonar el repositorio
-git clone https://github.com/JazMendez17/gruas-sigesga.git
+git clone https://github.com/JazMendez17/sistema-sigesga.git
 
 # 2. Acceder al directorio
-cd gruas-sigesga
+cd sistema-sigesga
 
 # 3. Instalar dependencias de PHP
 composer install
