@@ -6,7 +6,7 @@
     <img src="https://img.shields.io/badge/Laravel-12-red?logo=laravel" alt="Laravel 12">
     <img src="https://img.shields.io/badge/Inertia.js-blue?logo=inertia" alt="Inertia.js">
     <img src="https://img.shields.io/badge/Vue_3-green?logo=vue.js" alt="Vue 3">
-    <img src="https://img.shields.io/badge/PHP-8.2-purple?logo=php" alt="PHP 8.2">
+    <img src="https://img.shields.io/badge/PHP-8.3-purple?logo=php" alt="PHP 8.3">
     <img src="https://img.shields.io/badge/license-MIT-brightgreen" alt="MIT License">
   </p>
 </div>
@@ -64,7 +64,7 @@ Al ejecutar los seeders, se crean automáticamente las siguientes cuentas para p
 
 ## 🚀 Requisitos
 
-- PHP ^8.4
+- PHP ^8.3
 - Composer
 - Node.js 18+ y npm
 - Base de datos (MySQL, MariaDB, PostgreSQL, SQLite o TiDB)
