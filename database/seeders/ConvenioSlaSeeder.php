@@ -4,13 +4,14 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 // Seeder para inyectar los SLA / Penalizaciones de los 7 convenios
 class ConvenioSlaSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        Schema::disableForeignKeyConstraints();
 
         $slas = [
             [1, 30, 75,  '24/7',            '3% de descuento sobre el servicio por cada 15 min de retraso', 'Asignación Directa por Cabina'],
@@ -35,8 +36,8 @@ class ConvenioSlaSeeder extends Seeder
             );
         }
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        Schema::enableForeignKeyConstraints();
 
-        $this->command->info('ConvenioSlaSeeder: 7 registros SLA sincronizados correctamente.');
+        $this->command?->info('ConvenioSlaSeeder: 7 registros SLA sincronizados correctamente.');
     }
 }

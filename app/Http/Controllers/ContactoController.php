@@ -16,7 +16,7 @@ class ContactoController extends Controller
         $validated = $request->validate([
             'nombre' => 'required|string|max:150',
             'email' => 'required|email|max:150',
-            'mensaje' => 'required|string',
+            'mensaje' => 'required|string|max:2000',
         ]);
 
         $contacto = Contacto::create($validated);

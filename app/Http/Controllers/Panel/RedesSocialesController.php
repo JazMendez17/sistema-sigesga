@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
 use App\Models\EmpresaAccesosRapido;
+use App\Support\Auditoria;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -69,6 +70,7 @@ class RedesSocialesController extends Controller
     public function destroy(EmpresaAccesosRapido $accesoRapido)
     {
         $this->authorizeAccess($accesoRapido);
+        Auditoria::registrar($accesoRapido);
         $this->borrarImagenLocal($accesoRapido->imagen);
         $accesoRapido->delete();
 
@@ -80,8 +82,8 @@ class RedesSocialesController extends Controller
         $data = $request->validate([
             'titulo' => ['required', 'string', 'max:100'],
             'descripcion' => ['nullable', 'string', 'max:500'],
-            'link' => ['required', 'url', 'max:255'],
-            'imagen' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:2048'],
+            'link' => ['required', 'url:http,https', 'max:255'],
+            'imagen' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'icono' => ['nullable', 'string', 'max:100'],
             'activo' => ['boolean'],
         ]);
@@ -109,7 +111,7 @@ class RedesSocialesController extends Controller
 
     private function borrarImagenLocal(?string $ruta): void
     {
-        if (!$ruta || !str_starts_with($ruta, '/storage/')) {
+        if (!$ruta || !str_starts_with($ruta, '/storage/accesos-rapidos/') || str_contains($ruta, '..')) {
             return;
         }
 
@@ -118,6 +120,6 @@ class RedesSocialesController extends Controller
 
     private function authorizeAccess(EmpresaAccesosRapido $accesoRapido): void
     {
-        abort_unless($accesoRapido->empresa_id === Auth::user()->empresa_id, 403);
+        abort_unless(Auth::user()->isSuperAdmin() || $accesoRapido->empresa_id === Auth::user()->empresa_id, 403);
     }
 }

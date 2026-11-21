@@ -70,16 +70,21 @@ const menuGroups = computed(() => [
   },
 ])
 
-function canShow(group) {
-  if (!group.roles) return true
+function roleMatches(roles) {
+  if (!roles) return true
   if (!user.value) return false
-  return group.roles.includes(user.value.rol)
+  if (user.value.rol === 'superadmin') {
+    return roles.includes('superadmin') || roles.includes('admin')
+  }
+  return roles.includes(user.value.rol)
+}
+
+function canShow(group) {
+  return roleMatches(group.roles)
 }
 
 function canShowItem(item) {
-  if (!item.roles) return true
-  if (!user.value) return false
-  return item.roles.includes(user.value.rol)
+  return roleMatches(item.roles)
 }
 </script>
 

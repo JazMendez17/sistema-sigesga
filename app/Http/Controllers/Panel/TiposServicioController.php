@@ -1,23 +1,23 @@
 <?php
 
-// Controlador de tipos de servicio
+// Controlador de tipos de servicio (multi-tenant estricto + borrado físico)
 
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
-use App\Support\Auditoria;
-use App\Models\CatalogoServicio;
 use App\Http\Requests\Panel\StoreTipoServicioRequest;
+use App\Models\CatalogoServicio;
+use App\Models\Cotizacione;
+use App\Support\Auditoria;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class TiposServicioController extends Controller
 {
-    // Lista de tipos de servicio
     public function index()
     {
-        $user = Auth::user();
-        $empresaId = $user->empresa_id;
+        $empresaId = Auth::user()->empresa_id;
 
         $tipos = CatalogoServicio::where('empresa_id', $empresaId)
             ->latest()
@@ -25,8 +25,8 @@ class TiposServicioController extends Controller
             ->map(fn ($t) => [
                 'id' => $t->id,
                 'nombre' => $t->nombre ?? '—',
-                'requiere_maniobra' => $t->requiere_maniobra ?? false,
-                'activo' => $t->activo ?? true,
+                'requiere_maniobra' => (bool) ($t->requiere_maniobra ?? false),
+                'activo' => (bool) ($t->activo ?? true),
             ]);
 
         return Inertia::render('Panel/TiposServicio/Index', [
@@ -34,42 +34,37 @@ class TiposServicioController extends Controller
         ]);
     }
 
-    // Formulario para crear tipo de servicio
     public function create()
     {
         return Inertia::render('Panel/TiposServicio/Create');
     }
 
-    // Guardar tipo de servicio en base de datos
     public function store(StoreTipoServicioRequest $request)
     {
-        $user = Auth::user();
-
         $data = $request->validated();
-        $data['empresa_id'] = $user->empresa_id;
+        $data['empresa_id'] = Auth::user()->empresa_id;
         $data['requiere_maniobra'] = $request->boolean('requiere_maniobra');
-        $data['activo'] = $request->boolean('activo');
+        $data['activo'] = $request->has('activo') ? $request->boolean('activo') : true;
 
         CatalogoServicio::create($data);
 
-        return back()->with('success', 'Tipo de servicio creado correctamente');
+        return redirect()->route('panel.tipos-servicio.index')
+            ->with('success', 'Tipo de servicio creado correctamente');
     }
 
-    // Formulario para editar tipo de servicio
     public function edit($id)
     {
+        $tipo = CatalogoServicio::where('empresa_id', Auth::user()->empresa_id)->findOrFail($id);
+
         return Inertia::render('Panel/TiposServicio/Create', [
-            'tipoServicio' => CatalogoServicio::findOrFail($id),
+            'tipoServicio' => $tipo,
         ]);
     }
 
-    // Actualizar datos de tipo de servicio
     public function update(StoreTipoServicioRequest $request, $id)
     {
-        $tipo = CatalogoServicio::findOrFail($id);
+        $tipo = CatalogoServicio::where('empresa_id', Auth::user()->empresa_id)->findOrFail($id);
 
-        // Actualización parcial: solo se tocan los campos enviados para que
-        // activar/desactivar no borre el otro interruptor.
         $data = $request->validated();
 
         if ($request->has('requiere_maniobra')) {
@@ -81,18 +76,28 @@ class TiposServicioController extends Controller
 
         $tipo->update($data);
 
+        if ($request->has('nombre')) {
+            return redirect()->route('panel.tipos-servicio.index')
+                ->with('success', 'Tipo de servicio actualizado correctamente');
+        }
+
         return back()->with('success', 'Tipo de servicio actualizado correctamente');
     }
 
-    // Eliminar tipo de servicio
     public function destroy($id)
     {
-        $tipo = CatalogoServicio::findOrFail($id);
+        $tipo = CatalogoServicio::where('empresa_id', Auth::user()->empresa_id)->findOrFail($id);
 
-        Auditoria::registrar($tipo);
+        if (Cotizacione::where('tipo_servicio_id', $tipo->id)->exists()) {
+            return back()->with('error', 'No se puede eliminar este tipo de servicio porque tiene cotizaciones asociadas. Desactívalo en su lugar.');
+        }
 
-        $tipo->eliminar();
+        DB::transaction(function () use ($tipo) {
+            Auditoria::registrar($tipo);
+            $tipo->delete();
+        });
 
-        return back()->with('success', 'Tipo de servicio eliminado correctamente');
+        return redirect()->route('panel.tipos-servicio.index')
+            ->with('success', 'Tipo de servicio eliminado físicamente de forma correcta.');
     }
 }

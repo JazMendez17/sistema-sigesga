@@ -9,7 +9,7 @@ class DireccionSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::table('direcciones')->insert([
+        $direcciones = [
             [
                 'calle' => 'Av. Paseo de la Reforma',
                 'numero_exterior' => '222',
@@ -21,8 +21,6 @@ class DireccionSeeder extends Seeder
                 'estado' => 'Ciudad de México',
                 'pais' => 'México',
                 'referencias' => 'Entre Insurgentes y Bucareli. Edificio corporativo.',
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
             [
                 'calle' => 'Calzada de Tlalpan',
@@ -35,9 +33,14 @@ class DireccionSeeder extends Seeder
                 'estado' => 'Ciudad de México',
                 'pais' => 'México',
                 'referencias' => 'Cerca del metro Portales. Estacionamiento privado.',
-                'created_at' => now(),
-                'updated_at' => now(),
             ],
-        ]);
+        ];
+
+        foreach ($direcciones as $dir) {
+            DB::table('direcciones')->updateOrInsert(
+                ['calle' => $dir['calle'], 'numero_exterior' => $dir['numero_exterior'], 'codigo_postal' => $dir['codigo_postal']],
+                array_merge($dir, ['created_at' => now(), 'updated_at' => now()])
+            );
+        }
     }
 }

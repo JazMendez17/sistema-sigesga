@@ -60,13 +60,19 @@ const form = reactive({
     mensaje: '',
 })
 const contactoEnviado = ref(false)
+const contactoError = ref('')
 
 const submitContacto = async () => {
     if (!form.nombre || !form.email || !form.mensaje) return
+    contactoError.value = ''
     try {
         const res = await fetch('/contacto', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content },
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '',
+            },
             body: JSON.stringify({ ...form }),
         })
         if (res.ok) {
@@ -75,13 +81,18 @@ const submitContacto = async () => {
             form.email = ''
             form.mensaje = ''
             setTimeout(() => { contactoEnviado.value = false }, 6000)
+        } else {
+            const payload = await res.json().catch(() => ({}))
+            contactoError.value = payload.message || 'No se pudo enviar el mensaje. Verifica tus datos.'
         }
     } catch (e) {
         console.error('Error al enviar contacto:', e)
+        contactoError.value = 'Error de conexión al enviar tu mensaje.'
     }
 }
 
-const flash = computed(() => usePage().props.flash || {})
+const flashDismissed = ref(false)
+const flash = computed(() => flashDismissed.value ? {} : (usePage().props.flash || {}))
 
 const icons = {
     shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>',
@@ -117,12 +128,12 @@ const getIcon = (name) => icons[name] || ''
         <div v-if="flash.success" class="fixed top-4 right-4 z-[100] max-w-sm p-4 rounded-2xl bg-emerald-50 text-emerald-800 shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff] flex items-center gap-3 animate-[slideIn_0.3s_ease-out]">
             <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             <p class="text-sm font-medium">{{ flash.success }}</p>
-            <button @click="flash.success = null" class="ml-auto text-emerald-600 hover:text-emerald-800">&times;</button>
+            <button type="button" @click="flashDismissed = true" class="ml-auto text-emerald-600 hover:text-emerald-800">&times;</button>
         </div>
         <div v-if="flash.error" class="fixed top-4 right-4 z-[100] max-w-sm p-4 rounded-2xl bg-red-50 text-red-800 shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff] flex items-center gap-3 animate-[slideIn_0.3s_ease-out]">
             <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
             <p class="text-sm font-medium">{{ flash.error }}</p>
-            <button @click="flash.error = null" class="ml-auto text-red-600 hover:text-red-800">&times;</button>
+            <button type="button" @click="flashDismissed = true" class="ml-auto text-red-600 hover:text-red-800">&times;</button>
         </div>
         <nav class="shrink-0 z-50 bg-[var(--color-bg)] shadow-[8px_8px_16px_var(--neumorphic-dark),-8px_-8px_16px_var(--neumorphic-light)] transition-all duration-300 py-3 px-4 md:px-8">
             <div class="max-w-7xl mx-auto flex items-center justify-between">
@@ -275,7 +286,7 @@ const getIcon = (name) => icons[name] || ''
                              class="w-full sm:w-[calc(50%-12px)] lg:w-[calc(25%-18px)] max-w-xs p-6 rounded-3xl bg-[var(--color-bg)] shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff] transition-all duration-300 hover:shadow-[12px_12px_24px_#c9ced3,-12px_-12px_24px_#ffffff] group text-center">
                             <div class="w-20 h-20 rounded-2xl mx-auto mb-4 bg-[var(--color-bg)] shadow-[6px_6px_12px_#d0d5da,-6px_-6px_12px_#ffffff] flex items-center justify-center overflow-hidden transition-all duration-300 group-hover:scale-105">
                                 <img v-if="red.imagen" :src="red.imagen" :alt="red.titulo" class="h-full w-full object-contain p-2" />
-                                <span v-else class="text-2xl font-bold" :style="{ color: 'var(--color-primary)' }">{{ red.titulo.charAt(0) }}</span>
+                                <span v-else class="text-2xl font-bold" :style="{ color: 'var(--color-primary)' }">{{ (red.titulo || '?').charAt(0) }}</span>
                             </div>
                             <h4 class="text-base font-bold mb-2 text-gray-800">{{ red.titulo }}</h4>
                             <p class="text-sm text-gray-500 mb-6 min-h-[42px]">{{ red.descripcion }}</p>
@@ -311,7 +322,7 @@ const getIcon = (name) => icons[name] || ''
                         <div class="p-6">
                             <h3 class="text-xl font-bold mb-2" :style="{ color: svc.color }">{{ svc.tipo }}</h3>
                             <p class="text-gray-500 text-sm mb-5 leading-relaxed">{{ svc.descripcion }}</p>
-                            <a href="/register"
+                            <a href="/solicitar"
                                class="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-semibold text-white transition-all duration-200 shadow-[4px_4px_8px_#d0d5da,-4px_-4px_8px_#ffffff] hover:shadow-[6px_6px_12px_#c9ced3,-6px_-6px_12px_#ffffff]"
                                :style="{ backgroundColor: svc.color }">
                                 Solicitar
@@ -409,6 +420,7 @@ const getIcon = (name) => icons[name] || ''
                                           class="w-full px-5 py-3.5 rounded-2xl bg-[var(--color-bg)] shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] text-[var(--color-text)] placeholder-gray-400 focus:outline-none transition-all duration-200 resize-none"
                                           placeholder="Escribe tu mensaje aquí..."></textarea>
                             </div>
+                            <p v-if="contactoError" class="text-sm text-red-500 font-medium">{{ contactoError }}</p>
                             <button type="submit"
                                     class="w-full py-3.5 rounded-2xl text-sm font-semibold text-white transition-all duration-200 shadow-[6px_6px_12px_#d0d5da,-6px_-6px_12px_#ffffff] hover:shadow-[8px_8px_16px_#c9ced3,-8px_-8px_16px_#ffffff] hover:scale-[1.01] active:scale-[0.99]"
                                     :style="{ backgroundColor: 'var(--color-primary)' }">
@@ -431,24 +443,22 @@ const getIcon = (name) => icons[name] || ''
 
         <footer class="shrink-0 py-3 px-4 md:px-8">
             <div class="max-w-7xl mx-auto">
-                <div class="p-8 rounded-3xl bg-[var(--color-bg)] shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
-                    <p class="text-center text-sm text-gray-500">
+                <div class="p-6 rounded-3xl bg-[var(--color-bg)] shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff] flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <p class="text-center sm:text-left text-sm text-gray-500">
                         {{ empresa.texto_derechos || `© ${new Date().getFullYear()} ${empresa.nombre || 'SIGESGA'}. Todos los derechos reservados.` }}
                     </p>
+                    <div class="flex flex-wrap items-center gap-4 text-xs font-medium text-gray-500">
+                        <a href="/solicitar" class="hover:text-[var(--color-primary)] transition-colors">Solicitar Servicio</a>
+                        <a href="/rastrear" class="hover:text-[var(--color-primary)] transition-colors">Rastrear Folio</a>
+                        <a href="/soporte" class="hover:text-[var(--color-primary)] transition-colors">Soporte</a>
+                    </div>
                 </div>
             </div>
         </footer>
     </div>
 </template>
 
-<style>
-html,
-body {
-    overflow: hidden;
-}
-body {
-    background-color: var(--color-bg);
-}
+<style scoped>
 @keyframes slideIn {
     from { transform: translateX(100%); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }

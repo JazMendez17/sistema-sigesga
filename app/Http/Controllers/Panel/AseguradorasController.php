@@ -1,26 +1,23 @@
 <?php
 
-// Controlador de aseguradoras
+// Controlador de aseguradoras (transacciones, vigencia real, defaults NOT NULL y borrado físico)
 
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
-use App\Support\Auditoria;
-use App\Models\Aseguradora;
-use App\Models\AseguradoraContacto;
-use App\Models\Convenio;
 use App\Http\Requests\Panel\StoreAseguradoraRequest;
-use Illuminate\Support\Facades\Auth;
+use App\Models\Aseguradora;
+use App\Support\Auditoria;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class AseguradorasController extends Controller
 {
-    // Lista de aseguradoras
     public function index()
     {
-        $user = Auth::user();
-        $empresaId = $user->empresa_id;
+        $empresaId = Auth::user()->empresa_id;
 
         $aseguradoras = Aseguradora::where('empresa_id', $empresaId)
             ->latest()
@@ -38,39 +35,39 @@ class AseguradorasController extends Controller
         ]);
     }
 
-    // Formulario para crear aseguradora
     public function create()
     {
         return Inertia::render('Panel/Aseguradoras/Create');
     }
 
-    // Guardar aseguradora en base de datos
     public function store(StoreAseguradoraRequest $request)
     {
-        $user = Auth::user();
-
         $data = $request->validated();
-        $data['empresa_id'] = $user->empresa_id;
+        $data['empresa_id'] = Auth::user()->empresa_id;
 
         $contactos = $data['contactos'] ?? [];
         unset($data['contactos']);
 
-        $aseguradora = Aseguradora::create($data);
+        DB::transaction(function () use ($data, $contactos) {
+            $aseguradora = Aseguradora::create($data);
 
-        foreach ($contactos as $contacto) {
-            if (!empty($contacto['nombre_contacto'])) {
-                $aseguradora->aseguradoraContactos()->create($contacto);
+            foreach ($contactos as $contacto) {
+                if (!empty($contacto['nombre_contacto'])) {
+                    $contacto['departamento'] = $contacto['departamento'] ?? 'General';
+                    $aseguradora->aseguradoraContactos()->create($contacto);
+                }
             }
-        }
+        });
 
         return redirect()->route('panel.aseguradoras.index')
             ->with('success', 'Aseguradora creada correctamente');
     }
 
-    // Ver detalle de aseguradora
     public function show($id)
     {
-        $aseguradora = Aseguradora::with(['aseguradoraContactos', 'convenios'])->where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+        $aseguradora = Aseguradora::with(['aseguradoraContactos', 'convenios.tipoServicio'])
+            ->where('empresa_id', auth()->user()->empresa_id)
+            ->findOrFail($id);
 
         return Inertia::render('Panel/Aseguradoras/Show', [
             'aseguradora' => [
@@ -79,30 +76,32 @@ class AseguradorasController extends Controller
                 'nombre_comercial' => $aseguradora->nombre_comercial ?? '—',
                 'rfc' => $aseguradora->rfc ?? '—',
                 'telefono' => $aseguradora->telefono ?? '—',
-
                 'contactos' => $aseguradora->aseguradoraContactos->map(fn ($c) => [
                     'id' => $c->id,
                     'departamento' => $c->departamento ?? '—',
                     'nombre_contacto' => $c->nombre_contacto ?? '—',
                     'telefono' => $c->telefono ?? '—',
                     'email' => $c->email ?? '—',
-                    'activo' => $c->activo ?? true,
+                    'activo' => (bool) ($c->activo ?? true),
                 ]),
                 'convenios' => $aseguradora->convenios->map(fn ($c) => [
                     'id' => $c->id,
                     'nombre' => $c->nombre_convenio_poliza ?? '—',
                     'tipo_servicio' => $c->tipoServicio?->nombre ?? '—',
-                    'vigencia' => ($c->created_at?->format('d/m/Y') ?? '—') . ' al ' . ($c->updated_at?->format('d/m/Y') ?? '—'),
-                    'estatus' => $c->estatus ?? 'activo',
+                    'vigencia' => ($c->fecha_inicio ? \Carbon\Carbon::parse($c->fecha_inicio)->format('d/m/Y') : '—')
+                        . ' al '
+                        . ($c->fecha_fin ? \Carbon\Carbon::parse($c->fecha_fin)->format('d/m/Y') : '—'),
+                    'estatus' => $c->estatus ?? 'vigente',
                 ]),
             ],
         ]);
     }
 
-    // Formulario para editar aseguradora
     public function edit($id)
     {
-        $aseguradora = Aseguradora::with('aseguradoraContactos')->where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+        $aseguradora = Aseguradora::with('aseguradoraContactos')
+            ->where('empresa_id', auth()->user()->empresa_id)
+            ->findOrFail($id);
 
         return Inertia::render('Panel/Aseguradoras/Create', [
             'aseguradora' => array_merge($aseguradora->toArray(), [
@@ -111,35 +110,34 @@ class AseguradorasController extends Controller
         ]);
     }
 
-    // Actualizar datos de aseguradora
     public function update(StoreAseguradoraRequest $request, $id)
     {
-        $aseguradora = Aseguradora::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+        $aseguradora = Aseguradora::with('aseguradoraContactos')
+            ->where('empresa_id', auth()->user()->empresa_id)
+            ->findOrFail($id);
 
         $data = $request->validated();
         $contactos = $data['contactos'] ?? [];
         unset($data['contactos']);
 
-        $aseguradora->update($data);
+        DB::transaction(function () use ($request, $aseguradora, $data, $contactos) {
+            $aseguradora->update($data);
 
-        // Reemplazar lista de contactos: elimina los anteriores y crea los nuevos
-        if ($request->has('contactos')) {
-            foreach ($aseguradora->aseguradoraContactos as $contactoExistente) {
-                Auditoria::registrar($contactoExistente);
-                $contactoExistente->eliminar();
-            }
-            foreach ($contactos as $contacto) {
-                if (!empty($contacto['nombre_contacto'])) {
-                    $aseguradora->aseguradoraContactos()->create($contacto);
+            if ($request->has('contactos')) {
+                $aseguradora->aseguradoraContactos()->delete();
+                foreach ($contactos as $contacto) {
+                    if (!empty($contacto['nombre_contacto'])) {
+                        $contacto['departamento'] = $contacto['departamento'] ?? 'General';
+                        $aseguradora->aseguradoraContactos()->create($contacto);
+                    }
                 }
             }
-        }
+        });
 
         return redirect()->route('panel.aseguradoras.index')
             ->with('success', 'Aseguradora actualizada correctamente');
     }
 
-    // Alternar estado activo/inactivo de un contacto
     public function toggleContacto(Request $request, $id, $contactoId)
     {
         $aseguradora = Aseguradora::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
@@ -150,31 +148,32 @@ class AseguradorasController extends Controller
         return back()->with('success', 'Contacto actualizado correctamente');
     }
 
-    // Eliminar contacto individual
     public function destroyContacto($id, $contactoId)
     {
         $aseguradora = Aseguradora::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
         $contacto = $aseguradora->aseguradoraContactos()->findOrFail($contactoId);
 
-        Auditoria::registrar($contacto);
+        DB::transaction(function () use ($contacto) {
+            Auditoria::registrar($contacto);
+            $contacto->delete();
+        });
 
-        $contacto->eliminar();
-
-        return back()->with('success', 'Contacto eliminado correctamente');
+        return back()->with('success', 'Contacto eliminado físicamente.');
     }
 
-    // Eliminar aseguradora
     public function destroy($id)
     {
         $aseguradora = Aseguradora::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
 
-        $aseguradora->convenios()->get()->each(fn($x) => $x->eliminar());
-
-        Auditoria::registrar($aseguradora);
-
-        $aseguradora->eliminar();
+        DB::transaction(function () use ($aseguradora) {
+            foreach ($aseguradora->convenios()->get() as $convenio) {
+                Auditoria::registrar($convenio);
+            }
+            Auditoria::registrar($aseguradora);
+            $aseguradora->delete();
+        });
 
         return redirect()->route('panel.aseguradoras.index')
-            ->with('success', 'Aseguradora eliminada correctamente');
+            ->with('success', 'Aseguradora eliminada físicamente de forma correcta.');
     }
 }

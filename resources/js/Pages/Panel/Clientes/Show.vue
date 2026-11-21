@@ -65,7 +65,7 @@ function formato(val) {
         <div class="rounded-3xl bg-[#EEF2F7] p-6 shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
           <h3 class="text-lg font-semibold text-gray-700 mb-4">Aseguradora / Póliza</h3>
           <div class="space-y-3">
-            <div><p class="text-xs text-gray-500 uppercase tracking-wider">Aseguradora</p><p class="text-sm font-medium text-gray-800">{{ formato(cliente.aseguradora_comercial) || formato(cliente.aseguradora) }}</p></div>
+            <div><p class="text-xs text-gray-500 uppercase tracking-wider">Aseguradora</p><p class="text-sm font-medium text-gray-800">{{ formato(cliente.aseguradora_comercial || cliente.aseguradora) }}</p></div>
             <div><p class="text-xs text-gray-500 uppercase tracking-wider">Razón Social</p><p class="text-sm font-medium text-gray-800">{{ formato(cliente.aseguradora) }}</p></div>
             <div><p class="text-xs text-gray-500 uppercase tracking-wider">Número de Póliza</p><p class="text-sm font-medium text-gray-800">{{ formato(cliente.numero_poliza) }}</p></div>
             <div><p class="text-xs text-gray-500 uppercase tracking-wider">Tipo de Cobertura</p><p class="text-sm font-medium text-gray-800">{{ formato(cliente.tipo_cobertura_poliza) }}</p></div>
@@ -130,10 +130,41 @@ function formato(val) {
                 <td class="px-4 py-3 text-sm">{{ formato(c.tipo) }}</td>
                 <td class="px-4 py-3 text-sm">${{ c.monto?.toFixed(2) }}</td>
                 <td class="px-4 py-3 text-sm">{{ formato(c.fecha) }}</td>
-                <td class="px-4 py-3 text-sm"><Badge :variant="c.estatus">{{ $etiqueta(c.estatus) }}</Badge></td>
+                <td class="px-4 py-3 text-sm"><Badge :variant="c.estatus === 'aprobado' ? 'success' : c.estatus === 'rechazado' ? 'danger' : c.estatus === 'pendiente' ? 'warning' : 'neutral'">{{ $etiqueta(c.estatus) }}</Badge></td>
               </tr>
               <tr v-if="!cliente.cotizaciones.length">
                 <td colspan="5" class="px-4 py-8 text-center text-sm text-gray-400">Sin cotizaciones registradas</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Servicios -->
+      <div v-if="tabActivo === 'servicios'" class="rounded-3xl bg-[#EEF2F7] overflow-hidden shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff]">
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr class="border-b border-[#d0d5da]/30">
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Folio</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Tipo</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Operador</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Monto</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Fecha</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Estatus</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#d0d5da]/20">
+              <tr v-for="(s, i) in (cliente.servicios || [])" :key="s.id ?? i" class="hover:bg-white/30">
+                <td class="px-4 py-3 text-sm font-medium">{{ s.folio }}</td>
+                <td class="px-4 py-3 text-sm">{{ formato(s.tipo) }}</td>
+                <td class="px-4 py-3 text-sm">{{ formato(s.operador) }}</td>
+                <td class="px-4 py-3 text-sm">${{ Number(s.monto || 0).toFixed(2) }}</td>
+                <td class="px-4 py-3 text-sm">{{ formato(s.fecha) }}</td>
+                <td class="px-4 py-3 text-sm"><Badge :variant="s.estatus === 'finalizado' ? 'success' : s.estatus === 'cancelado' ? 'danger' : 'warning'">{{ $etiqueta(s.estatus) }}</Badge></td>
+              </tr>
+              <tr v-if="!(cliente.servicios && cliente.servicios.length)">
+                <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-400">Sin servicios registrados</td>
               </tr>
             </tbody>
           </table>

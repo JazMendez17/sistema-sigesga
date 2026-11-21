@@ -4,13 +4,14 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 // Seeder de conceptos adicionales para los 7 convenios (casetas, estancia, resguardo)
 class ConvenioConceptoAdicionalSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        Schema::disableForeignKeyConstraints();
 
         $conceptos = [
             [1, true,  'Incluido en tarifa',       175.00, 1, 230.00, false],
@@ -36,8 +37,8 @@ class ConvenioConceptoAdicionalSeeder extends Seeder
             );
         }
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        Schema::enableForeignKeyConstraints();
 
-        $this->command->info('Conceptos adicionales: 7 registros sincronizados.');
+        $this->command?->info('Conceptos adicionales: 7 registros sincronizados.');
     }
 }

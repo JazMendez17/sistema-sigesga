@@ -54,7 +54,6 @@ function generarCalificaciones() {
       <div class="flex items-center justify-between">
         <h1 class="text-2xl font-bold text-gray-800">Reportes</h1>
       </div>
-        <Badge :variant="badgeEstatus[s.estatus] || 'neutral'">{{ $etiqueta(s.estatus) }}</Badge>
       <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
         <div class="rounded-3xl bg-[#EEF2F7] p-6 shadow-[8px_8px_16px_#d0d5da,-8px_-8px_16px_#ffffff] space-y-4">
           <div>

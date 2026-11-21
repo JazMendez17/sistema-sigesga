@@ -2,18 +2,16 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\Ocultable;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 // Modelo de Servicio
 class Servicio extends Model
 {
-        use Ocultable;
-use HasFactory;
+        use HasFactory;
 
     protected $fillable = [
         'empresa_id',
@@ -68,10 +66,10 @@ use HasFactory;
         return $this->hasOne(BitacoraTiemposServicio::class);
     }
 
-    // RelaciÃ³n con autorizaciones de cancelaciÃ³n
-    public function autorizacionesCancelacion(): HasOne
+    // Relación con autorizaciones de cancelación
+    public function autorizacionesCancelacion(): HasMany
     {
-        return $this->hasOne(AutorizacionesCancelacione::class);
+        return $this->hasMany(AutorizacionesCancelacione::class);
     }
 
     // RelaciÃ³n con calificaciones

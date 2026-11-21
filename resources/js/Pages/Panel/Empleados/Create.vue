@@ -188,7 +188,7 @@ const onSubmit = val.handleSubmit(submit)
           <!-- Botones de acción -->
           <div class="flex gap-3 pt-2">
             <NeumorphicButton type="submit" :loading="form.processing">{{ editMode ? 'Actualizar Empleado' : 'Guardar Empleado' }}</NeumorphicButton>
-            <NeumorphicButton variant="secondary" @click="router.visit(route('panel.empleados.index'))">Cancelar</NeumorphicButton>
+            <NeumorphicButton type="button" variant="secondary" @click="router.visit(route('panel.empleados.index'))">Cancelar</NeumorphicButton>
           </div>
         </form>
       </div>

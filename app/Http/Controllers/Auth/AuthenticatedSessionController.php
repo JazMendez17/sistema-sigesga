@@ -1,6 +1,6 @@
 <?php
 
-// Controlador de gestión de sesiones (inicio y cierre de sesión)
+// Controlador de gestión de sesiones, desbloqueo seguro y cambio obligatorio de contraseña
 
 namespace App\Http\Controllers\Auth;
 
@@ -10,15 +10,17 @@ use App\Models\Usuario;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class AuthenticatedSessionController extends Controller
 {
-    // Muestra la vista de inicio de sesión
     public function create(): Response
     {
         return Inertia::render('Auth/Login', [
@@ -27,14 +29,12 @@ class AuthenticatedSessionController extends Controller
         ]);
     }
 
-    // Procesa la petición de inicio de sesión
     public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
 
         $request->session()->regenerate();
 
-        // Si debe cambiar contraseña, redirigir a la página de cambio
         if (Auth::user()->debe_cambiar_password) {
             return redirect()->route('password.cambiar');
         }
@@ -42,37 +42,56 @@ class AuthenticatedSessionController extends Controller
         return redirect()->intended(route('panel.dashboard', absolute: false));
     }
 
-    // Cierra la sesión del usuario autenticado
     public function destroy(Request $request): RedirectResponse
     {
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
-
         $request->session()->regenerateToken();
 
         return redirect('/');
     }
 
-    // Desbloquea la cuenta del usuario mediante código enviado por correo
     public function unlock(Request $request): RedirectResponse
     {
         $request->validate([
-            'email' => 'required|email',
+            'email' => 'required|email|max:254',
             'codigo' => 'required|string|size:6',
         ]);
 
-        $user = Usuario::where('email', $request->email)->first();
+        $emailNorm = Str::lower(trim($request->email));
+        $otpKey = 'unlock-otp:' . $emailNorm . '|' . $request->ip();
 
-        if (!$user || !$user->cuenta_bloqueada) {
+        if (RateLimiter::tooManyAttempts($otpKey, 5)) {
+            $seconds = RateLimiter::availableIn($otpKey);
             throw ValidationException::withMessages([
-                'email' => 'No se encontró una cuenta bloqueada con ese correo.',
+                'codigo' => "Demasiados intentos de desbloqueo. Intenta nuevamente en {$seconds} segundos.",
             ]);
         }
 
-        if ($user->codigo_desbloqueo !== $request->codigo) {
+        $user = Usuario::where('email', $emailNorm)->first();
+
+        if (!$user || !$user->cuenta_bloqueada) {
+            RateLimiter::hit($otpKey, 600);
             throw ValidationException::withMessages([
-                'codigo' => 'El código de desbloqueo no es válido.',
+                'codigo' => 'El correo o el código de desbloqueo no son válidos.',
+            ]);
+        }
+
+        if ($user->bloqueo_administrativo) {
+            RateLimiter::hit($otpKey, 600);
+            throw ValidationException::withMessages([
+                'email' => 'Tu cuenta fue suspendida por un administrador. Contacta a soporte para restablecer el acceso.',
+            ]);
+        }
+
+        if (!$user->codigo_desbloqueo || !hash_equals((string) $user->codigo_desbloqueo, (string) $request->codigo)) {
+            RateLimiter::hit($otpKey, 600);
+            if (RateLimiter::attempts($otpKey) >= 5) {
+                $user->update(['codigo_desbloqueo' => null, 'codigo_desbloqueo_expira' => null]);
+            }
+            throw ValidationException::withMessages([
+                'codigo' => 'El correo o el código de desbloqueo no son válidos.',
             ]);
         }
 
@@ -84,15 +103,17 @@ class AuthenticatedSessionController extends Controller
 
         $user->update([
             'cuenta_bloqueada' => false,
+            'bloqueo_administrativo' => false,
             'intentos_fallidos' => 0,
             'codigo_desbloqueo' => null,
             'codigo_desbloqueo_expira' => null,
         ]);
 
+        RateLimiter::clear($otpKey);
+
         return redirect()->route('login')->with('status', 'Cuenta desbloqueada correctamente. Ya puedes iniciar sesión.');
     }
 
-    // Cambiar contraseña obligatoria al primer inicio de sesión
     public function cambiarPassword(Request $request): RedirectResponse
     {
         $request->validate([
@@ -110,34 +131,34 @@ class AuthenticatedSessionController extends Controller
         return redirect()->route('panel.dashboard')->with('success', 'Contraseña actualizada correctamente.');
     }
 
-    // Reenviar código de desbloqueo por correo
     public function reenviarCodigo(Request $request): RedirectResponse
     {
-        $request->validate(['email' => 'required|email']);
+        $request->validate(['email' => 'required|email|max:254']);
 
-        $user = Usuario::where('email', $request->email)->first();
+        $emailNorm = Str::lower(trim($request->email));
+        $user = Usuario::where('email', $emailNorm)->first();
 
-        if (!$user || !$user->cuenta_bloqueada) {
-            return back()->with('error', 'No se encontró una cuenta bloqueada con ese correo.');
+        // Solo genera código si existe, está bloqueada automáticamente y NO fue suspendida por un administrador
+        if ($user && $user->cuenta_bloqueada && !$user->bloqueo_administrativo) {
+            $codigo = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            $user->update([
+                'codigo_desbloqueo' => $codigo,
+                'codigo_desbloqueo_expira' => now()->addMinutes(30),
+            ]);
+
+            try {
+                Mail::raw(
+                    "Tu nuevo código de desbloqueo para SIGESGA es: {$codigo}\n\nEste código expira en 30 minutos.",
+                    function ($message) use ($user) {
+                        $message->to($user->email)->subject('Nuevo código de desbloqueo - SIGESGA');
+                    }
+                );
+            } catch (\Throwable $e) {
+                Log::error('Error al reenviar código: ' . $e->getMessage());
+            }
         }
 
-        $codigo = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $user->update([
-            'codigo_desbloqueo' => $codigo,
-            'codigo_desbloqueo_expira' => now()->addMinutes(30),
-        ]);
-
-        try {
-            \Illuminate\Support\Facades\Mail::raw(
-                "Tu nuevo código de desbloqueo para SIGESGA es: {$codigo}\n\nEste código expira en 30 minutos.",
-                function ($message) use ($user) {
-                    $message->to($user->email)->subject('Nuevo código de desbloqueo - SIGESGA');
-                }
-            );
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Error al reenviar código: ' . $e->getMessage());
-        }
-
-        return back()->with('success', 'Se ha enviado un nuevo código a tu correo electrónico.');
+        // Respuesta neutra para evitar enumeración de cuentas bloqueadas
+        return back()->with('success', 'Si la cuenta es elegible para auto-desbloqueo, recibirás un nuevo código en tu correo electrónico.');
     }
 }

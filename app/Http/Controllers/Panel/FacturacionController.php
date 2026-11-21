@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
 use App\Mail\FacturaMail;
+use App\Models\Cliente;
 use App\Models\Factura;
 use App\Models\Servicio;
 use App\Services\FacturaCalculator;
@@ -13,17 +14,17 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class FacturacionController extends Controller
 {
-    // Lista de facturas
     public function index()
     {
-        $user = Auth::user();
-        $empresaId = $user->empresa_id;
+        $empresaId = Auth::user()->empresa_id;
 
         $facturas = Factura::with(['cliente', 'servicio.cotizacion'])
             ->where('empresa_id', $empresaId)
@@ -31,10 +32,10 @@ class FacturacionController extends Controller
             ->get()
             ->map(fn ($f) => [
                 'id' => $f->id,
-                'folio' => $f->folio_factura ?? 'FAC-' . str_pad($f->id, 5, '0', STR_PAD_LEFT),
+                'folio' => $f->folio_factura ?? 'FAC-' . str_pad((string) $f->id, 5, '0', STR_PAD_LEFT),
                 'cliente' => $f->cliente?->nombre ?? '—',
                 'correo_envio' => $f->correo_envio_factura ?? '—',
-                'servicio' => $f->servicio_id ? 'SVC-' . str_pad($f->servicio_id, 5, '0', STR_PAD_LEFT) : '—',
+                'servicio' => $f->servicio_id ? 'SVC-' . str_pad((string) $f->servicio_id, 5, '0', STR_PAD_LEFT) : '—',
                 'subtotal' => (float) ($f->subtotal ?? 0),
                 'iva' => (float) ($f->iva ?? 0),
                 'total' => (float) ($f->total ?? 0),
@@ -48,6 +49,7 @@ class FacturacionController extends Controller
             'servicios' => Servicio::with('cotizacion.cliente.aseguradora', 'cotizacion.tipoServicio')
                 ->where('empresa_id', $empresaId)
                 ->where('estado', 'finalizado')
+                ->whereHas('cotizacion', fn ($q) => $q->whereNotNull('cliente_id'))
                 ->whereDoesntHave('factura')
                 ->get()
                 ->map(function ($s) {
@@ -56,7 +58,7 @@ class FacturacionController extends Controller
 
                     return [
                         'id' => $s->id,
-                        'folio' => 'SVC-' . str_pad($s->id, 5, '0', STR_PAD_LEFT),
+                        'folio' => 'SVC-' . str_pad((string) $s->id, 5, '0', STR_PAD_LEFT),
                         'cliente_id' => $cot?->cliente_id,
                         'cliente_nombre' => $cot?->cliente?->nombre ?? '—',
                         'cliente_email' => $cot?->cliente?->email ?? '',
@@ -81,7 +83,6 @@ class FacturacionController extends Controller
         ]);
     }
 
-    // Generar nueva factura
     public function store(Request $request)
     {
         $user = Auth::user();
@@ -91,32 +92,49 @@ class FacturacionController extends Controller
                 'required',
                 Rule::exists('servicios', 'id')
                     ->where('empresa_id', $user->empresa_id)
-                    ->where('estado', 'finalizado')
-                    ->where('eliminado', false),
+                    ->where('estado', 'finalizado'),
             ],
             'correo_envio_factura' => 'required|email|max:150',
         ]);
 
-        $servicio = Servicio::with('cotizacion')
-            ->where('empresa_id', $user->empresa_id)
-            ->where('estado', 'finalizado')
-            ->whereDoesntHave('factura')
-            ->findOrFail($data['servicio_id']);
-        $calculo = app(FacturaCalculator::class)->calcular($servicio);
-        $data['empresa_id'] = $user->empresa_id;
-        $data['cliente_id'] = $servicio->cotizacion->cliente_id;
-        $data['estatus'] = 'vigente';
-        $data['subtotal'] = $calculo['subtotal'];
-        $data['iva'] = $calculo['iva'];
-        $data['total'] = $calculo['total'];
+        $factura = DB::transaction(function () use ($data, $user) {
+            $servicio = Servicio::with('cotizacion')
+                ->where('empresa_id', $user->empresa_id)
+                ->where('estado', 'finalizado')
+                ->lockForUpdate()
+                ->findOrFail($data['servicio_id']);
 
-        $factura = DB::transaction(function () use ($data) {
-            $data['folio_factura'] = 'FAC-' . str_pad((Factura::conEliminados()->lockForUpdate()->max('id') ?? 0) + 1, 5, '0', STR_PAD_LEFT);
+            if ($servicio->factura()->exists()) {
+                throw ValidationException::withMessages(['servicio_id' => 'Este servicio ya cuenta con una factura emitida.']);
+            }
 
-            return Factura::create($data);
+            if (!$servicio->cotizacion || !$servicio->cotizacion->cliente_id) {
+                throw ValidationException::withMessages(['servicio_id' => 'El servicio no tiene un cliente asociado para facturar.']);
+            }
+
+            $calculo = app(FacturaCalculator::class)->calcular($servicio);
+
+            $folios = Factura::query()->where('folio_factura', 'like', 'FAC-%')->lockForUpdate()->pluck('folio_factura');
+            $maxNum = 0;
+            foreach ($folios as $folio) {
+                if (preg_match('/^FAC-(\d+)$/', (string) $folio, $m)) {
+                    $maxNum = max($maxNum, (int) $m[1]);
+                }
+            }
+
+            return Factura::create([
+                'empresa_id' => $user->empresa_id,
+                'servicio_id' => $servicio->id,
+                'cliente_id' => $servicio->cotizacion->cliente_id,
+                'folio_factura' => 'FAC-' . str_pad((string) ($maxNum + 1), 5, '0', STR_PAD_LEFT),
+                'correo_envio_factura' => $data['correo_envio_factura'],
+                'subtotal' => $calculo['subtotal'],
+                'iva' => $calculo['iva'],
+                'total' => $calculo['total'],
+                'estatus' => 'vigente',
+            ]);
         });
 
-        // Enviar factura por email automáticamente si se proporcionó correo
         $enviada = $this->enviarFacturaPorEmail($factura);
 
         return back()->with('success', $enviada
@@ -124,10 +142,11 @@ class FacturacionController extends Controller
             : 'Factura generada. No se pudo enviar el correo; descarga el PDF desde el detalle.');
     }
 
-    // Enviar factura por correo electrónico
     public function enviarEmail($id)
     {
-        $factura = Factura::with('cliente')->where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+        $factura = Factura::with('cliente.aseguradora', 'servicio.cotizacion.tipoServicio')
+            ->where('empresa_id', auth()->user()->empresa_id)
+            ->findOrFail($id);
 
         if (empty($factura->correo_envio_factura)) {
             return back()->with('error', 'Esta factura no tiene un correo de envío registrado.');
@@ -140,7 +159,6 @@ class FacturacionController extends Controller
         return back()->with('success', 'Factura enviada por correo a ' . $factura->correo_envio_factura);
     }
 
-    // Método interno para enviar la factura por email
     protected function enviarFacturaPorEmail(Factura $factura): bool
     {
         if (empty($factura->correo_envio_factura)) {
@@ -148,13 +166,17 @@ class FacturacionController extends Controller
         }
 
         try {
-            Mail::to($factura->correo_envio_factura)->send(new FacturaMail($factura->loadMissing('cliente', 'servicio.cotizacion.tipoServicio')));
+            Mail::to($factura->correo_envio_factura)->send(
+                new FacturaMail($factura->loadMissing('cliente.aseguradora', 'servicio.cotizacion.tipoServicio'))
+            );
+
             return true;
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Error al enviar factura por email.', [
+            Log::error('Error al enviar factura por email.', [
                 'factura_id' => $factura->id,
                 'error' => $e->getMessage(),
             ]);
+
             return false;
         }
     }
@@ -162,12 +184,15 @@ class FacturacionController extends Controller
     public function pdf($id)
     {
         $user = auth()->user();
-        abort_unless(in_array($user->rol, ['admin', 'cotizador', 'cliente'], true), 403);
+        abort_unless(in_array($user->rol, ['superadmin', 'admin', 'cotizador', 'cliente'], true), 403);
 
         $query = Factura::with(['cliente.aseguradora', 'servicio.cotizacion.tipoServicio'])
             ->where('empresa_id', $user->empresa_id);
+
         if ($user->rol === 'cliente') {
-            $cliente = \App\Models\Cliente::where('usuario_id', $user->id)->firstOrFail();
+            $cliente = Cliente::where('empresa_id', $user->empresa_id)
+                ->where('usuario_id', $user->id)
+                ->firstOrFail();
             $query->where('cliente_id', $cliente->id);
         }
 
@@ -177,16 +202,18 @@ class FacturacionController extends Controller
             ->download($factura->folio_factura . '.pdf');
     }
 
-    // Ver detalle de factura
-    // Ver detalle de factura
     public function show($id)
     {
         $user = auth()->user();
+        abort_unless(in_array($user->rol, ['superadmin', 'admin', 'cotizador', 'cliente'], true), 403);
 
-        $query = Factura::with(['cliente.aseguradora', 'servicio.cotizacion.tipoServicio'])->where('empresa_id', $user->empresa_id);
+        $query = Factura::with(['cliente.aseguradora', 'servicio.cotizacion.tipoServicio'])
+            ->where('empresa_id', $user->empresa_id);
 
         if ($user->rol === 'cliente') {
-            $cliente = \App\Models\Cliente::where('usuario_id', $user->id)->first();
+            $cliente = Cliente::where('empresa_id', $user->empresa_id)
+                ->where('usuario_id', $user->id)
+                ->first();
             if (!$cliente) {
                 abort(404);
             }
@@ -194,7 +221,6 @@ class FacturacionController extends Controller
         }
 
         $factura = $query->findOrFail($id);
-
         $cot = $factura->servicio?->cotizacion;
 
         return Inertia::render('Panel/Facturacion/Show', [
@@ -218,7 +244,7 @@ class FacturacionController extends Controller
                 ],
                 'servicio' => [
                     'id' => $factura->servicio_id,
-                    'folio' => 'SVC-' . str_pad($factura->servicio_id, 5, '0', STR_PAD_LEFT),
+                    'folio' => 'SVC-' . str_pad((string) $factura->servicio_id, 5, '0', STR_PAD_LEFT),
                     'tipo' => $cot?->tipoServicio?->nombre ?? '—',
                     'origen' => $cot?->origen_direccion ?? '—',
                     'destino' => $cot?->destino_direccion ?? '—',
@@ -231,12 +257,21 @@ class FacturacionController extends Controller
         ]);
     }
 
-    // Vista de facturas para el cliente
     public function misFacturas()
     {
-        $cliente = \App\Models\Cliente::where('usuario_id', auth()->id())->first();
-        $facturas = Factura::where('empresa_id', auth()->user()->empresa_id)
-            ->where('cliente_id', $cliente?->id)->latest()->get()
+        $user = auth()->user();
+        $cliente = Cliente::where('empresa_id', $user->empresa_id)
+            ->where('usuario_id', $user->id)
+            ->first();
+
+        if (!$cliente) {
+            return Inertia::render('Panel/ClienteFacturas', ['facturas' => []]);
+        }
+
+        $facturas = Factura::where('empresa_id', $user->empresa_id)
+            ->where('cliente_id', $cliente->id)
+            ->latest()
+            ->get()
             ->map(fn ($f) => [
                 'id' => $f->id,
                 'folio' => $f->folio_factura ?? '—',

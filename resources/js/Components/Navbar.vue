@@ -37,16 +37,21 @@ function logout() {
   router.post(route('logout'))
 }
 
-function canShow(item) {
-  if (!item.roles) return true
+function roleMatches(allowedRoles) {
+  if (!allowedRoles) return true
   if (!user.value) return false
-  return item.roles.includes(user.value.rol)
+  if (user.value.rol === 'superadmin') {
+    return allowedRoles.includes('superadmin') || allowedRoles.includes('admin')
+  }
+  return allowedRoles.includes(user.value.rol)
+}
+
+function canShow(item) {
+  return roleMatches(item.roles)
 }
 
 function isGroupVisible(g) {
-  if (!g.roles) return true
-  if (!user.value) return false
-  return g.roles.includes(user.value.rol)
+  return roleMatches(g.roles)
 }
 
 function isGroupActive(g) {
@@ -87,6 +92,7 @@ const menuGroups = computed(() => [
       { label: 'Servicios', icon: 'M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2-1m3 1V9m4 8l2-1m-8-4h.01', route: 'panel.servicios.index', roles: ['admin', 'cotizador', 'operador'] },
       { label: 'Autorizaciones', icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z', route: 'panel.autorizaciones-cancelacion.index', roles: ['admin', 'cotizador', 'operador'] },
       { label: 'Facturación', icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z', route: 'panel.facturacion.index', roles: ['admin', 'cotizador'] },
+      { label: 'Reportes', icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', route: 'panel.reportes.index', roles: ['admin', 'cotizador'] },
     ],
   },
   {
@@ -133,8 +139,9 @@ const menuGroups = computed(() => [
     roles: ['admin'],
     items: [
       { label: 'Configuración', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z', route: 'panel.configuracion.index', roles: ['admin'] },
-        { label: 'Accesos Rápidos', icon: 'M13 10V3L4 14h7v7l9-11h-7z', route: 'panel.accesos-rapidos.index', roles: ['admin'] },
-        { label: 'Servicios de Landing', icon: 'M8 7h8m-8 4h8m-8 4h5M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z', route: 'panel.servicios-landing.index', roles: ['admin'] },
+      { label: 'Integraciones', icon: 'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1', route: 'panel.integraciones.index', roles: ['admin'] },
+      { label: 'Accesos Rápidos', icon: 'M13 10V3L4 14h7v7l9-11h-7z', route: 'panel.accesos-rapidos.index', roles: ['admin'] },
+      { label: 'Servicios de Landing', icon: 'M8 7h8m-8 4h8m-8 4h5M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z', route: 'panel.servicios-landing.index', roles: ['admin'] },
     ],
   },
   {
@@ -164,7 +171,7 @@ const menuGroups = computed(() => [
 
 const visibleGroups = computed(() => {
   return menuGroups.value.filter(g => {
-    if (g.roles && !g.roles.includes(user.value?.rol)) return false
+    if (!isGroupVisible(g)) return false
     return g.items.some(canShow)
   })
 })
@@ -266,7 +273,7 @@ const visibleGroups = computed(() => {
             </div>
             <div class="hidden sm:block text-left">
               <p class="text-sm font-medium text-[var(--color-text)]">{{ user?.name || 'Usuario' }}</p>
-              <p class="text-xs text-[var(--color-text)] opacity-60 capitalize">{{ user?.rol || '' }}</p>
+              <p class="text-xs text-[var(--color-text)] opacity-60">{{ $etiqueta(user?.rol) }}</p>
             </div>
           </button>
           <div v-if="userMenuOpen" class="absolute right-0 mt-2 w-48 rounded-2xl bg-[var(--color-surface)] p-2 shadow-[8px_8px_16px_var(--neumorphic-dark),-8px_-8px_16px_var(--neumorphic-light)] z-50">

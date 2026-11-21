@@ -4,8 +4,9 @@
 
 namespace App\Http\Requests\Panel;
 
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class StoreMantenimientoRequest extends FormRequest
@@ -34,13 +35,16 @@ class StoreMantenimientoRequest extends FormRequest
     // Define las reglas de validación
     public function rules(): array
     {
+        $id = $this->route('id');
+        $empresaId = $this->user()?->empresa_id;
+
         return [
-            'unidad_id' => 'required|exists:unidades,id',
+            'unidad_id' => ['required', Rule::exists('unidades', 'id')->where('empresa_id', $empresaId)],
             'tipo' => 'required|string|max:100',
             'fecha' => 'required|date',
             'kilometraje' => 'nullable|integer|min:0',
             'costo' => 'required|numeric|min:0',
-            'proximo_mantenimiento_fecha' => 'nullable|date|after:today',
+            'proximo_mantenimiento_fecha' => $id ? 'nullable|date' : 'nullable|date|after:today',
             'proximo_mantenimiento_km' => 'nullable|integer|min:0',
             'observaciones' => 'nullable|string|max:1000',
         ];

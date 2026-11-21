@@ -18,10 +18,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('unidad_mantenimientos', function (Blueprint $table) {
-            $table->dropForeign(['empresa_id']);
-            $table->dropIndex(['empresa_id']);
-            $table->dropColumn('empresa_id');
-        });
+        // La columna empresa_id ya se crea en la migración inicial 000013; no se elimina aquí.
     }
 };

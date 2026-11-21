@@ -84,7 +84,7 @@ function enviarFactura(id) {
     confirmButtonColor: '#4F46E5',
   }).then((result) => {
     if (result.isConfirmed) {
-      router.post(route('panel.facturacion.enviar', { id }), {
+      router.post(route('panel.facturacion.enviar', { id }), {}, {
         onSuccess: () => Swal.fire('Enviada', 'Factura enviada por correo.', 'success')
       })
     }

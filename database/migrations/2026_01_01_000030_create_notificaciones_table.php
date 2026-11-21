@@ -14,7 +14,7 @@ return new class extends Migration
             $table->foreignId('usuario_id')->constrained('usuarios')->onDelete('cascade');
             $table->text('mensaje');
             $table->enum('canal', ['whatsapp', 'sistema_push', 'sms', 'email']);
-            $table->enum('estado', ['pendiente', 'enviado', 'fallido'])->default('pendiente');
+            $table->enum('estado', ['pendiente', 'enviado', 'fallido', 'leido'])->default('pendiente');
             $table->string('proveedor_mensaje_id', 150)->nullable();
             $table->unsignedTinyInteger('intentos_envio')->default(0);
             $table->text('error_detalle')->nullable();

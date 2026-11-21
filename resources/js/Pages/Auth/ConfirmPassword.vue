@@ -2,6 +2,9 @@
 import { Head, useForm } from '@inertiajs/vue3'
 import { usePage } from '@inertiajs/vue3'
 import { computed } from 'vue'
+import { useTheme } from '@/Composables/useTheme'
+
+useTheme()
 
 const page = usePage()
 const empresa = computed(() => page.props.empresa)

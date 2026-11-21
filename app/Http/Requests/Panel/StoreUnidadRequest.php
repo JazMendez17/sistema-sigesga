@@ -48,13 +48,15 @@ class StoreUnidadRequest extends FormRequest
             'numero_economico' => ['required', 'string', 'max:50', Rule::unique('unidades', 'numero_economico')
                 ->where('empresa_id', $empresaId)
                 ->ignore($id)],
-            'seguro_vencimiento' => 'nullable|date|after:today',
+            'seguro_vencimiento' => $id ? 'nullable|date' : 'nullable|date|after:today',
             'estado_emplacado' => 'nullable|string|max:50',
             'activo' => 'nullable|boolean',
-            'oficina_id' => 'nullable|exists:oficinas,id',
-            'operador_asignado_id' => ['nullable', 'exists:operadores,id', Rule::unique('unidades', 'operador_asignado_id')
-                ->where('empresa_id', $empresaId)
-                ->ignore($id)],
+            'oficina_id' => ['nullable', Rule::exists('oficinas', 'id')->where('empresa_id', $empresaId)],
+            'operador_asignado_id' => [
+                'nullable',
+                Rule::exists('operadores', 'id')->where('empresa_id', $empresaId),
+                Rule::unique('unidades', 'operador_asignado_id')->ignore($id),
+            ],
         ];
     }
 

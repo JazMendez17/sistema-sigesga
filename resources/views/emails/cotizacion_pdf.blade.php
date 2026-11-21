@@ -47,10 +47,13 @@
     <tr><td>Banderazo Base</td><td align="right">${{ $banderazo }}</td></tr>
     <tr><td>KM Incluidos</td><td align="right">{{ $km_incluidos }} km</td></tr>
     <tr><td>KM Excedentes ({{ $km_excedente }} km × ${{ $costo_km }}/km)</td><td align="right">${{ $costo_km_extra_total }}</td></tr>
-    <tr><td>Casetas</td><td align="right">${{ $casetas }} {{ $incluye_peajes ? '(incluidas)' : '' }}</td></tr>
+    @if (($cargo_zona_especial_raw ?? 0) > 0)
+    <tr><td>Cargo por zona especial</td><td align="right">${{ $cargo_zona_especial }}</td></tr>
+    @endif
     <tr><td>Descuento ({{ $descuento_pct }}%)</td><td align="right">-${{ $monto_descuento }}</td></tr>
     <tr><td><strong>Subtotal</strong></td><td align="right"><strong>${{ $subtotal }}</strong></td></tr>
     <tr><td>IVA (16%)</td><td align="right">${{ $iva }}</td></tr>
+    <tr><td>Casetas</td><td align="right">${{ $casetas }} {{ $incluye_peajes ? '(incluidas)' : '' }}</td></tr>
     <tr class="total-row"><td><strong>TOTAL ESTIMADO</strong></td><td align="right"><strong>${{ $total }}</strong></td></tr>
   </table>
 </div>

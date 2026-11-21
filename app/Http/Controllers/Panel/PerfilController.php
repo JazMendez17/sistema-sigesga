@@ -33,7 +33,9 @@ class PerfilController extends Controller
         ];
 
         if ($user->empleado_id) {
-            $empleado = Empleado::with('direccion')->find($user->empleado_id);
+            $empleado = Empleado::with('direccion')
+                ->where('empresa_id', $user->empresa_id)
+                ->find($user->empleado_id);
             if ($empleado) {
                 $data['empleado'] = [
                     'nombre_completo' => trim($empleado->nombre . ' ' . $empleado->apellido_paterno . ' ' . $empleado->apellido_materno),
@@ -65,7 +67,10 @@ class PerfilController extends Controller
         }
 
         if ($user->rol === 'cliente') {
-            $cliente = Cliente::with('direccion', 'aseguradora')->where('usuario_id', $user->id)->first();
+            $cliente = Cliente::with('direccion', 'aseguradora')
+                ->where('empresa_id', $user->empresa_id)
+                ->where('usuario_id', $user->id)
+                ->first();
             if ($cliente) {
                 $data['cliente'] = [
                     'nombre_completo' => trim($cliente->nombre . ' ' . $cliente->apellido_paterno . ' ' . $cliente->apellido_materno),
@@ -141,6 +146,7 @@ class PerfilController extends Controller
 
         $user->update([
             'password' => $request->nueva,
+            'debe_cambiar_password' => false,
         ]);
 
         return back()->with('success', 'Contraseña actualizada correctamente');

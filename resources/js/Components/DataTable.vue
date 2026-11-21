@@ -1,18 +1,24 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import SkeletonLoader from '@/Components/SkeletonLoader.vue'
 
 const props = defineProps({
   columns: { type: Array, required: true },
   data: { type: Array, default: () => [] },
   pagination: { type: Object, default: null },
+  pageSize: { type: Number, default: 15 },
   loading: { type: Boolean, default: false },
 })
 
-defineEmits(['sort', 'pageChange', 'rowClick'])
+const emit = defineEmits(['sort', 'pageChange', 'rowClick'])
 
 const sortField = ref(null)
 const sortDir = ref('asc')
+const currentPage = ref(1)
+
+watch(() => props.data, () => {
+  currentPage.value = 1
+})
 
 function toggleSort(key) {
   if (sortField.value === key) {
@@ -21,7 +27,43 @@ function toggleSort(key) {
     sortField.value = key
     sortDir.value = 'asc'
   }
+  emit('sort', { field: sortField.value, dir: sortDir.value })
 }
+
+const sortedData = computed(() => {
+  const list = Array.isArray(props.data) ? [...props.data] : []
+  if (!sortField.value) return list
+  const key = sortField.value
+  const dir = sortDir.value === 'asc' ? 1 : -1
+  return list.sort((a, b) => {
+    const va = a?.[key]
+    const vb = b?.[key]
+    if (va == null && vb == null) return 0
+    if (va == null) return 1
+    if (vb == null) return -1
+    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir
+    return String(va).localeCompare(String(vb), 'es', { numeric: true, sensitivity: 'base' }) * dir
+  })
+})
+
+const totalClientPages = computed(() => {
+  if (props.pagination || !props.pageSize || props.pageSize <= 0) return 1
+  return Math.max(1, Math.ceil(sortedData.value.length / props.pageSize))
+})
+
+const visibleData = computed(() => {
+  if (props.pagination || !props.pageSize || props.pageSize <= 0) return sortedData.value
+  const start = (currentPage.value - 1) * props.pageSize
+  return sortedData.value.slice(start, start + props.pageSize)
+})
+
+const clientRange = computed(() => {
+  const total = sortedData.value.length
+  if (total === 0) return { from: 0, to: 0, total: 0 }
+  const from = (currentPage.value - 1) * props.pageSize + 1
+  const to = Math.min(total, currentPage.value * props.pageSize)
+  return { from, to, total }
+})
 
 function sortIcon(key) {
   if (sortField.value !== key) return 'M7 10l5 5 5-5'
@@ -66,7 +108,7 @@ function sortIcon(key) {
           </template>
           <!-- Filas de datos -->
           <template v-else>
-            <tr v-for="(row, i) in data" :key="i" @click="$emit('rowClick', row)" class="cursor-pointer hover:bg-white/30 transition-colors">
+            <tr v-for="(row, i) in visibleData" :key="row?.id ?? i" @click="$emit('rowClick', row)" class="cursor-pointer hover:bg-white/30 transition-colors">
               <td v-for="col in columns" :key="col.key" class="px-4 py-3 text-sm text-[var(--color-text)] whitespace-nowrap">
                 <slot :name="`cell-${col.key}`" :row="row" :value="row[col.key]">
                   {{ row[col.key] }}
@@ -77,7 +119,7 @@ function sortIcon(key) {
                 <slot name="cell-acciones" :row="row" />
               </td>
             </tr>
-            <tr v-if="data.length === 0">
+            <tr v-if="visibleData.length === 0">
               <td :colspan="columns.length + ($slots.actions || $slots['cell-acciones'] ? 1 : 0)" class="px-4 py-12 text-center text-[var(--color-text-muted)]">
                 No hay datos disponibles
               </td>
@@ -87,16 +129,32 @@ function sortIcon(key) {
       </table>
     </div>
 
-    <!-- Paginación -->
+    <!-- Paginación servidor -->
     <div v-if="pagination" class="flex items-center justify-between px-4 py-3 border-t border-[var(--neumorphic-dark)]/30">
       <p class="text-sm text-[var(--color-text-muted)]">
         Mostrando {{ pagination.from || 0 }} - {{ pagination.to || 0 }} de {{ pagination.total || 0 }}
       </p>
       <div class="flex gap-2">
-        <button :disabled="!pagination.prev" class="neumorphic-pressed px-3 py-1.5 rounded-xl text-sm disabled:opacity-30">
+        <button type="button" :disabled="!pagination.prev" @click="$emit('pageChange', pagination.prev)" class="neumorphic-pressed px-3 py-1.5 rounded-xl text-sm disabled:opacity-30">
           Anterior
         </button>
-        <button :disabled="!pagination.next" class="neumorphic-pressed px-3 py-1.5 rounded-xl text-sm disabled:opacity-30">
+        <button type="button" :disabled="!pagination.next" @click="$emit('pageChange', pagination.next)" class="neumorphic-pressed px-3 py-1.5 rounded-xl text-sm disabled:opacity-30">
+          Siguiente
+        </button>
+      </div>
+    </div>
+
+    <!-- Paginación cliente -->
+    <div v-else-if="totalClientPages > 1" class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-t border-[var(--neumorphic-dark)]/30">
+      <p class="text-sm text-[var(--color-text-muted)]">
+        Mostrando {{ clientRange.from }} - {{ clientRange.to }} de {{ clientRange.total }}
+      </p>
+      <div class="flex items-center gap-2">
+        <button type="button" :disabled="currentPage <= 1" @click="currentPage--" class="neumorphic-pressed px-3 py-1.5 rounded-xl text-sm disabled:opacity-30">
+          Anterior
+        </button>
+        <span class="text-xs font-medium text-[var(--color-text-muted)]">Página {{ currentPage }} de {{ totalClientPages }}</span>
+        <button type="button" :disabled="currentPage >= totalClientPages" @click="currentPage++" class="neumorphic-pressed px-3 py-1.5 rounded-xl text-sm disabled:opacity-30">
           Siguiente
         </button>
       </div>

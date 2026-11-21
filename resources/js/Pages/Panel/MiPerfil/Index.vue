@@ -6,9 +6,9 @@ import { usePasswordStrength } from '@/Composables/usePasswordStrength'
 import PasswordStrengthIndicator from '@/Components/PasswordStrengthIndicator.vue'
 
 const page = usePage()
-const usuario = page.props.usuario
-const empleado = page.props.empleado || null
-const cliente = page.props.cliente || null
+const usuario = computed(() => page.props.usuario || {})
+const empleado = computed(() => page.props.empleado || null)
+const cliente = computed(() => page.props.cliente || null)
 
 const editingTelefono = ref(false)
 const editingPassword = ref(false)
@@ -19,7 +19,7 @@ const deleting = ref(false)
 const passwordSubmitted = ref(false)
 
 const telefonoForm = useForm({
-  telefono: usuario.telefono || '',
+  telefono: usuario.value.telefono || '',
 })
 
 const passwordForm = useForm({
@@ -109,14 +109,7 @@ function deleteFoto() {
   })
 }
 
-const rolLabel = {
-  admin: 'Administrador',
-  cotizador: 'Cotizador',
-  operador: 'Operador',
-  cliente: 'Cliente',
-}
-
-const perfilData = empleado || cliente || null
+const perfilData = computed(() => empleado.value || cliente.value || null)
 </script>
 
 <template>
@@ -138,7 +131,7 @@ const perfilData = empleado || cliente || null
                 <img :src="'/storage/' + usuario.foto" class="w-full h-full object-cover" alt="Foto" />
               </div>
               <div v-else class="w-28 h-28 rounded-full flex items-center justify-center text-4xl font-bold text-white shadow-[8px_8px_16px_var(--neumorphic-dark),-8px_-8px_16px_var(--neumorphic-light)]" :style="{ backgroundColor: 'var(--color-primary)' }">
-                {{ usuario.name.charAt(0) }}
+                {{ usuario.name?.charAt(0) || '?' }}
               </div>
               <div v-if="previewUrl" class="absolute -bottom-2 right-6 flex gap-1">
                 <button @click="confirmUpload" :disabled="uploading" class="w-9 h-9 rounded-xl bg-green-500 text-white flex items-center justify-center cursor-pointer shadow-[3px_3px_6px_var(--neumorphic-dark),-3px_-3px_6px_var(--neumorphic-light)] hover:scale-105 transition-transform" title="Confirmar">
@@ -367,6 +360,7 @@ const perfilData = empleado || cliente || null
               <div>
                 <label class="text-xs opacity-60 uppercase tracking-wider mb-1.5 block" style="color: var(--color-text)">Nueva Contraseña</label>
                 <input v-model="passwordForm.nueva" type="password" class="w-full px-4 py-2.5 rounded-xl text-sm shadow-[inset_3px_3px_6px_var(--neumorphic-dark),inset_-3px_-3px_6px_var(--neumorphic-light)] focus:outline-none" style="background-color: var(--color-bg); color: var(--color-text)" placeholder="Nueva contraseña" />
+                <p v-if="passwordForm.errors.nueva" class="text-sm text-red-500 mt-1">{{ passwordForm.errors.nueva }}</p>
                 <div v-if="passwordForm.nueva" class="mt-3">
                   <PasswordStrengthIndicator
                     :password="passwordForm.nueva"

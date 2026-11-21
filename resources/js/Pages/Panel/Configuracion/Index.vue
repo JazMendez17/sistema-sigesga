@@ -100,15 +100,11 @@ const fonts = [
   'Figtree', 'Lexend', 'Urbanist', 'Be Vietnam Pro', 'Space Grotesk',
   'Epilogue', 'Barlow', 'Rubik', 'Nunito Sans', 'Mulish',
   'Public Sans', 'Chakra Petch', 'Prompt', 'Karla', 'IBM Plex Sans',
-  'Hanken Grotesk', 'Cabinet Grotesk', 'General Sans',
-  'Clash Display', 'Satoshi', 'Switzer', 'Gambarino', 'Excon',
-  'Sentient', 'Amulya', 'Boska', 'Gambetta', 'Synonym',
-  'Archivo', 'Chillax', 'Supreme', 'Ambit',
-  'Grostino', 'Khand', 'Chivo', 'Bricolage Grotesque', 'Familjen Grotesk',
-  'Red Hat Display', 'Red Hat Text', 'Albert Sans', 'Readex Pro',
-  'League Spartan', 'Fraunces', 'Ysabeau', 'Mohave', 'Crimson Pro',
-  'Geist', 'Geist Mono', 'Georama', 'Instrument Sans', 'Instrument Serif',
-  'Schibsted Grotesk', 'Sometype Mono', 'Wittgenstein', 'Zodiak',
+  'Hanken Grotesk', 'Archivo', 'Khand', 'Chivo', 'Bricolage Grotesque',
+  'Familjen Grotesk', 'Red Hat Display', 'Red Hat Text', 'Albert Sans',
+  'Readex Pro', 'League Spartan', 'Fraunces', 'Ysabeau', 'Mohave',
+  'Crimson Pro', 'Georama', 'Instrument Sans', 'Instrument Serif',
+  'Schibsted Grotesk', 'Sometype Mono',
 ]
 
 function uploadFile(type) {

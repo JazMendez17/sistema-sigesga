@@ -67,9 +67,13 @@ return new class extends Migration
     public function down(): void
     {
         foreach ($this->tablas as $tabla) {
-            Schema::table($tabla, function (Blueprint $table) {
-                $table->softDeletes();
-            });
+            if (Schema::hasTable($tabla) && !Schema::hasColumn($tabla, 'deleted_at')) {
+                Schema::table($tabla, function (Blueprint $table) {
+                    $table->softDeletes();
+                });
+            }
         }
+
+        Schema::dropIfExists('auditoria_eliminaciones');
     }
 };

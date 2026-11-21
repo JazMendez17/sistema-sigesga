@@ -21,6 +21,7 @@ const columns = [
 
 const page = usePage()
 const autorizaciones = computed(() => page.props.autorizaciones || [])
+const puedeResolver = computed(() => ['superadmin', 'admin', 'cotizador'].includes(page.props.auth?.user?.rol))
 
 const filtradas = computed(() => {
   const statusMap = { pendientes: 'pendiente', aprobadas: 'aprobada', rechazadas: 'rechazada' }
@@ -93,10 +94,10 @@ const badgeVariant = {
           </template>
           <template #actions="{ row }">
             <div class="flex items-center gap-2">
-              <button v-if="row.estatus === 'pendiente'" @click="aprobar(row.id)" class="rounded-lg bg-[#EEF2F7] p-2 text-gray-500 shadow-[3px_3px_6px_#d0d5da,-3px_-3px_6px_#ffffff] transition-all hover:text-[#059669]">
+              <button v-if="puedeResolver && row.estatus === 'pendiente'" @click="aprobar(row.id)" class="rounded-lg bg-[#EEF2F7] p-2 text-gray-500 shadow-[3px_3px_6px_#d0d5da,-3px_-3px_6px_#ffffff] transition-all hover:text-[#059669]" title="Aprobar">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
               </button>
-              <button v-if="row.estatus === 'pendiente'" @click="rechazar(row.id)" class="rounded-lg bg-[#EEF2F7] p-2 text-gray-500 shadow-[3px_3px_6px_#d0d5da,-3px_-3px_6px_#ffffff] transition-all hover:text-red-500">
+              <button v-if="puedeResolver && row.estatus === 'pendiente'" @click="rechazar(row.id)" class="rounded-lg bg-[#EEF2F7] p-2 text-gray-500 shadow-[3px_3px_6px_#d0d5da,-3px_-3px_6px_#ffffff] transition-all hover:text-red-500" title="Rechazar">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>

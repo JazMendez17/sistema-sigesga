@@ -36,38 +36,49 @@ class StoreOperadorRequest extends FormRequest
     public function rules(): array
     {
         $id = $this->route('id');
+        $empresaId = $this->user()?->empresa_id;
+
+        $vigenciaRules = ['required', 'date', 'after_or_equal:fecha_expedicion'];
+        if (!$id) {
+            $vigenciaRules[] = 'after:today';
+        }
+        $vigenciaRules[] = function ($attribute, $value, $fail) {
+            $expedicion = $this->input('fecha_expedicion');
+            if (!$expedicion || !$value) {
+                return;
+            }
+            try {
+                $exp = \Carbon\Carbon::parse($expedicion)->startOfDay();
+                $vig = \Carbon\Carbon::parse($value)->startOfDay();
+            } catch (\Exception $e) {
+                $fail('Error en la vigencia: ingrese un formato válido.');
+                return;
+            }
+            if (!$vig->gt($exp)) {
+                $fail('La fecha de vigencia debe ser posterior a la fecha de expedición.');
+                return;
+            }
+            $diffYears = (int) round($exp->diffInYears($vig));
+            if ($diffYears < 2 || $diffYears > 4) {
+                $fail('Error en la vigencia: ingrese un formato válido, solo años exactos (2, 3 o 4 años).');
+                return;
+            }
+            $expected = $exp->copy()->addYears($diffYears);
+            if (!$vig->isSameDay($expected)) {
+                $fail('Error en la vigencia: la fecha debe ser exactamente ' . $diffYears . ' años después (' . $expected->format('d/m/Y') . ').');
+            }
+        };
 
         return [
-            'empleado_id' => ['required', 'exists:empleados,id', Rule::unique('operadores', 'empleado_id')
-                ->where('empresa_id', $this->user()?->empresa_id)
-                ->ignore($id)],
+            'empleado_id' => [
+                'required',
+                Rule::exists('empleados', 'id')->where('empresa_id', $empresaId),
+                Rule::unique('operadores', 'empleado_id')->ignore($id),
+            ],
             'tipo_licencia' => 'required|string|max:50',
             'numero_licencia' => 'required|string|max:50',
             'fecha_expedicion' => 'required|date',
-            'fecha_vigencia' => ['required', 'date', 'after:today', 'after_or_equal:fecha_expedicion', function ($attribute, $value, $fail) {
-                $expedicion = $this->input('fecha_expedicion');
-                if (!$expedicion || !$value) return;
-                try {
-                    $exp = \Carbon\Carbon::parse($expedicion);
-                    $vig = \Carbon\Carbon::parse($value);
-                } catch (\Exception $e) {
-                    $fail('Error en la vigencia: ingrese un formato válido.');
-                    return;
-                }
-                if (!$vig->gt($exp)) {
-                    $fail('La fecha de vigencia debe ser posterior a la fecha de expedición.');
-                    return;
-                }
-                $diffYears = $exp->diffInYears($vig);
-                if ($diffYears < 2 || $diffYears > 4) {
-                    $fail('Error en la vigencia: ingrese un formato válido, solo años exactos (2, 3 o 4 años).');
-                    return;
-                }
-                $expected = $exp->copy()->addYears($diffYears);
-                if (!$vig->isSameDay($expected)) {
-                    $fail('Error en la vigencia: la fecha debe ser exactamente ' . $diffYears . ' años después (' . $expected->format('d/m/Y') . ').');
-                }
-            }],
+            'fecha_vigencia' => $vigenciaRules,
             'disponible' => 'nullable|boolean',
         ];
     }

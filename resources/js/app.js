@@ -7,6 +7,7 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import { createPinia } from 'pinia';
 import { etiqueta } from './Utils/labels';
+import CookieConsent from './Components/CookieConsent.vue';
 
 const appName = import.meta.env.VITE_APP_NAME || 'SIGESGA';
 
@@ -22,7 +23,7 @@ createInertiaApp({
     setup({ el, App, props, plugin }) {
         const pinia = createPinia();
 
-        const app = createApp({ render: () => h(App, props) })
+        const app = createApp({ render: () => [h(App, props), h(CookieConsent)] })
             .use(plugin)
             .use(pinia)
             .use(ZiggyVue);

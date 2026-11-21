@@ -115,7 +115,7 @@ function doSubmit() {
 
           <div class="flex gap-3 pt-2">
             <NeumorphicButton type="submit" :loading="form.processing">{{ isEdit ? 'Actualizar Operador' : 'Guardar Operador' }}</NeumorphicButton>
-            <NeumorphicButton variant="secondary" @click="router.visit(route('panel.operadores.index'))">Cancelar</NeumorphicButton>
+            <NeumorphicButton type="button" variant="secondary" @click="router.visit(route('panel.operadores.index'))">Cancelar</NeumorphicButton>
           </div>
         </form>
       </div>

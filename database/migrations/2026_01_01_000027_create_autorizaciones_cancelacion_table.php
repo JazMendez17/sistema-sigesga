@@ -11,11 +11,11 @@ return new class extends Migration
         Schema::create('autorizaciones_cancelacion', function (Blueprint $table) {
             $table->id();
             $table->foreignId('servicio_id')->constrained('servicios')->onDelete('cascade');
-            $table->foreignId('usuario_solicitante_id')->constrained('usuarios');
-            $table->foreignId('usuario_resolutor_id')->nullable()->constrained('usuarios');
+            $table->foreignId('usuario_solicitante_id')->nullable()->constrained('usuarios')->onDelete('set null');
+            $table->foreignId('usuario_resolutor_id')->nullable()->constrained('usuarios')->onDelete('set null');
             $table->text('motivo_cancelacion');
             $table->enum('tipo_incidencia', ['cliente_cancela', 'operador_siniestro', 'falla_mecanica', 'unidad_ponchada', 'otro']);
-            $table->enum('estatus', ['pendiente', 'cancelado_por_cotizador', 'cancelado_por_admin', 'rechazada'])->default('pendiente');
+            $table->enum('estatus', ['pendiente', 'aprobada', 'cancelado_por_cotizador', 'cancelado_por_admin', 'rechazada'])->default('pendiente');
             $table->dateTime('fecha_solicitud');
             $table->dateTime('fecha_resolucion')->nullable();
         });

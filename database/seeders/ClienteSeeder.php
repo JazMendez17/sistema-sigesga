@@ -4,13 +4,14 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 // Seeder de 5 clientes de prueba con direcciones y aseguradoras vinculadas
 class ClienteSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        Schema::disableForeignKeyConstraints();
 
         $empresaId = DB::table('empresas')->value('id') ?? 1;
 
@@ -84,8 +85,8 @@ class ClienteSeeder extends Seeder
             );
         }
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        Schema::enableForeignKeyConstraints();
 
-        $this->command->info('ClienteSeeder: 5 clientes con direcciones sincronizados correctamente.');
+        $this->command?->info('ClienteSeeder: 5 clientes con direcciones sincronizados correctamente.');
     }
 }

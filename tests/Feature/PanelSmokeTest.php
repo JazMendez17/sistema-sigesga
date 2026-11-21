@@ -84,7 +84,7 @@ class PanelSmokeTest extends TestCase
             'curp' => 'PELJ900101HDFRRN01',
             'fecha_nacimiento' => '1990-01-01',
             'telefono' => '5512345678',
-            'puesto' => 'Operador',
+            'puesto' => 'operador',
             'oficina_id' => null,
         ]);
         $response->assertSessionHasNoErrors();
@@ -98,11 +98,13 @@ class PanelSmokeTest extends TestCase
         $this->put("/panel/empleados/{$empleado->id}", [
             'nombre' => 'Juan',
             'apellido_paterno' => 'Pérez',
+            'sexo' => 'M',
             'telefono' => '5598765432',
-            'puesto' => 'Operador Senior',
+            'puesto' => 'cotizador',
         ])->assertSessionHasNoErrors();
 
         $this->delete("/panel/empleados/{$empleado->id}")->assertSessionHasNoErrors();
+        $this->assertDatabaseMissing('empleados', ['id' => $empleado->id]);
     }
 
     public function test_aseguradora_crud(): void
@@ -128,6 +130,7 @@ class PanelSmokeTest extends TestCase
         ])->assertSessionHasNoErrors();
 
         $this->delete("/panel/aseguradoras/{$aseguradora->id}")->assertSessionHasNoErrors();
+        $this->assertDatabaseMissing('aseguradoras', ['id' => $aseguradora->id]);
     }
 
     public function test_cliente_crud(): void
@@ -136,6 +139,8 @@ class PanelSmokeTest extends TestCase
 
         $this->post('/panel/clientes', [
             'empresa_id' => 1,
+            'tipo_cliente' => 'persona_fisica',
+            'nacionalidad' => 'Mexicana',
             'nombre' => 'Cliente Prueba',
             'email' => 'cliente@prueba.com',
             'telefono' => '5512345678',

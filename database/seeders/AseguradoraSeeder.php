@@ -4,13 +4,14 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 // Seeder para estandarizar las 7 aseguradoras y sus contactos por departamento
 class AseguradoraSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        Schema::disableForeignKeyConstraints();
 
         $empresaId = DB::table('empresas')->value('id') ?? 1;
 
@@ -93,8 +94,8 @@ class AseguradoraSeeder extends Seeder
             }
         }
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        Schema::enableForeignKeyConstraints();
 
-        $this->command->info('Aseguradoras: 7 registros con 14 contactos sincronizados correctamente.');
+        $this->command?->info('Aseguradoras: 7 registros con 14 contactos sincronizados correctamente.');
     }
 }

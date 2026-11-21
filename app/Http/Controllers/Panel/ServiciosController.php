@@ -1,18 +1,22 @@
 <?php
 
-// Controlador de servicios
+// Controlador de servicios (borrado físico, bitácora consistente, permisos estrictos)
 
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
-use App\Support\Auditoria;
-use App\Models\Servicio;
-use App\Models\Cotizacione;
-use App\Models\Operadore;
-use App\Models\Unidade;
-use App\Models\Oficina;
 use App\Http\Requests\Panel\StoreServicioRequest;
 use App\Models\AutorizacionesCancelacione;
+use App\Models\BitacoraTiemposServicio;
+use App\Models\CalificacionesServicio;
+use App\Models\Cliente;
+use App\Models\Cotizacione;
+use App\Models\Oficina;
+use App\Models\Operadore;
+use App\Models\Servicio;
+use App\Models\Unidade;
+use App\Services\FacturaCalculator;
+use App\Support\Auditoria;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -21,16 +25,23 @@ use Inertia\Inertia;
 
 class ServiciosController extends Controller
 {
-    // Lista de servicios
+    private const ESTADOS_ACTIVOS = ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino'];
+
     public function index()
     {
         $user = Auth::user();
         $empresaId = $user->empresa_id;
 
-        $query = Servicio::with(['cotizacion.cliente', 'operador.empleado', 'unidad'])
+        $query = Servicio::with(['cotizacion.cliente', 'cotizacion.tipoServicio', 'operador.empleado', 'unidad'])
             ->where('empresa_id', $empresaId);
 
         if ($user->rol === 'operador') {
+            if (!$user->empleado_id) {
+                return Inertia::render('Panel/Servicios/Index', [
+                    'servicios' => [],
+                    'puedeGestionar' => false,
+                ]);
+            }
             $query->whereHas('operador', fn ($q) => $q->where('empleado_id', $user->empleado_id));
         }
 
@@ -39,29 +50,27 @@ class ServiciosController extends Controller
             ->get()
             ->map(fn ($s) => [
                 'id' => $s->id,
-                'folio' => 'SVC-' . str_pad($s->id, 5, '0', STR_PAD_LEFT),
+                'folio' => 'SVC-' . str_pad((string) $s->id, 5, '0', STR_PAD_LEFT),
                 'cliente' => $s->cotizacion?->cliente?->nombre ?? '—',
                 'tipo' => $s->cotizacion?->tipoServicio?->nombre ?? '—',
                 'operador' => $s->operador?->empleado?->nombre ?? '—',
                 'origen' => $s->cotizacion?->origen_direccion ?? '—',
                 'destino' => $s->cotizacion?->destino_direccion ?? '—',
                 'fecha' => $s->created_at?->format('d/m/Y'),
-                'estatus' => $s->estado ?? 'pendiente',
+                'estatus' => $s->estado ?? 'asignado',
             ]);
 
         return Inertia::render('Panel/Servicios/Index', [
             'servicios' => $servicios,
+            'puedeGestionar' => in_array($user->rol, ['superadmin', 'admin', 'cotizador'], true),
         ]);
     }
 
-    // Formulario para crear servicio
     public function create()
     {
-        $user = Auth::user();
-        $empresaId = $user->empresa_id;
-        $estadosActivos = ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino'];
-        $operadoresOcupados = Servicio::where('empresa_id', $empresaId)->whereIn('estado', $estadosActivos)->select('operador_id');
-        $unidadesOcupadas = Servicio::where('empresa_id', $empresaId)->whereIn('estado', $estadosActivos)->select('unidad_id');
+        $empresaId = Auth::user()->empresa_id;
+        $operadoresOcupados = Servicio::where('empresa_id', $empresaId)->whereIn('estado', self::ESTADOS_ACTIVOS)->select('operador_id');
+        $unidadesOcupadas = Servicio::where('empresa_id', $empresaId)->whereIn('estado', self::ESTADOS_ACTIVOS)->select('unidad_id');
 
         return Inertia::render('Panel/Servicios/Create', [
             'cotizaciones' => Cotizacione::where('empresa_id', $empresaId)
@@ -76,31 +85,10 @@ class ServiciosController extends Controller
         ]);
     }
 
-    // Guardar servicio en base de datos
     public function store(StoreServicioRequest $request)
     {
         $user = Auth::user();
-
         $data = $request->validated();
-
-        if ($request->unidad_id) {
-            $activeService = Servicio::where('unidad_id', $request->unidad_id)
-                ->whereIn('estado', ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino'])
-                ->exists();
-            if ($activeService) {
-                return redirect()->back()->with('error', 'La unidad seleccionada ya está asignada a un servicio activo.');
-            }
-        }
-
-        if ($request->operador_id) {
-            $activeOperador = Servicio::where('operador_id', $request->operador_id)
-                ->whereIn('estado', ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino'])
-                ->exists();
-            if ($activeOperador) {
-                return redirect()->back()->with('error', 'El operador seleccionado ya está asignado a un servicio activo.');
-            }
-        }
-
         $data['empresa_id'] = $user->empresa_id;
         $data['estado'] = 'asignado';
 
@@ -113,9 +101,9 @@ class ServiciosController extends Controller
 
             $unidad = Unidade::where('empresa_id', $user->empresa_id)->lockForUpdate()->findOrFail($data['unidad_id']);
             $operador = Operadore::where('empresa_id', $user->empresa_id)->lockForUpdate()->findOrFail($data['operador_id']);
-            $estadosActivos = ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino'];
-            $unidadOcupada = Servicio::where('empresa_id', $user->empresa_id)->where('unidad_id', $unidad->id)->whereIn('estado', $estadosActivos)->exists();
-            $operadorOcupado = Servicio::where('empresa_id', $user->empresa_id)->where('operador_id', $operador->id)->whereIn('estado', $estadosActivos)->exists();
+
+            $unidadOcupada = Servicio::where('empresa_id', $user->empresa_id)->where('unidad_id', $unidad->id)->whereIn('estado', self::ESTADOS_ACTIVOS)->exists();
+            $operadorOcupado = Servicio::where('empresa_id', $user->empresa_id)->where('operador_id', $operador->id)->whereIn('estado', self::ESTADOS_ACTIVOS)->exists();
 
             if (!$unidad->activo || $unidadOcupada) {
                 throw ValidationException::withMessages(['unidad_id' => 'La unidad no está activa o ya tiene un servicio en curso.']);
@@ -124,7 +112,15 @@ class ServiciosController extends Controller
                 throw ValidationException::withMessages(['operador_id' => 'El operador no está disponible o ya tiene un servicio en curso.']);
             }
 
-            Servicio::create($data);
+            $data['cargo_zona_especial'] = $cotizacion->cargo_zona_especial ?? 0;
+            $data['costo_final_real'] = $cotizacion->costo_total;
+
+            $servicio = Servicio::create($data);
+            BitacoraTiemposServicio::create([
+                'servicio_id' => $servicio->id,
+                'hora_asignado' => now(),
+            ]);
+
             $operador->update(['disponible' => false]);
         });
 
@@ -132,7 +128,6 @@ class ServiciosController extends Controller
             ->with('success', 'Servicio creado correctamente');
     }
 
-    // Ver detalle de servicio con bitácora
     public function show($id)
     {
         $user = Auth::user();
@@ -143,23 +138,27 @@ class ServiciosController extends Controller
         ])->where('empresa_id', $user->empresa_id);
 
         if ($user->rol === 'cliente') {
-            $cliente = \App\Models\Cliente::where('usuario_id', $user->id)->first();
+            $cliente = Cliente::where('empresa_id', $user->empresa_id)->where('usuario_id', $user->id)->first();
             if (!$cliente) {
                 abort(404);
             }
             $query->whereHas('cotizacion', fn ($q) => $q->where('cliente_id', $cliente->id));
         } elseif ($user->rol === 'operador') {
+            if (!$user->empleado_id) {
+                abort(403);
+            }
             $query->whereHas('operador', fn ($q) => $q->where('empleado_id', $user->empleado_id));
-        } elseif (!in_array($user->rol, ['admin', 'cotizador'], true)) {
+        } elseif (!in_array($user->rol, ['superadmin', 'admin', 'cotizador'], true)) {
             abort(403);
         }
 
         $servicio = $query->findOrFail($id);
+        $bit = $servicio->bitacoraTiemposServicio;
 
         return Inertia::render('Panel/Servicios/Show', [
             'servicio' => [
                 'id' => $servicio->id,
-                'folio' => 'SVC-' . str_pad($servicio->id, 5, '0', STR_PAD_LEFT),
+                'folio' => 'SVC-' . str_pad((string) $servicio->id, 5, '0', STR_PAD_LEFT),
                 'cliente' => $servicio->cotizacion?->cliente?->nombre ?? '—',
                 'fecha' => $servicio->created_at?->format('d/m/Y'),
                 'tipo' => $servicio->cotizacion?->tipoServicio?->nombre ?? '—',
@@ -174,23 +173,28 @@ class ServiciosController extends Controller
                 'kms_termino_servicio' => $servicio->kms_termino_servicio,
                 'kms_regreso_base' => $servicio->kms_regreso_base,
                 'kms_cobrados_reales' => $servicio->kms_cobrados_reales,
-                'bitacora' => $servicio->bitacoraTiemposServicio ? [
-                    'salida' => $servicio->bitacoraTiemposServicio->hora_asignado,
-                    'llegada' => $servicio->bitacoraTiemposServicio->hora_inicio_servicio,
-                    'termino' => $servicio->bitacoraTiemposServicio->hora_finalizado,
-                    'regreso' => $servicio->bitacoraTiemposServicio->hora_regreso_base ?? null,
+                'bitacora' => $bit ? [
+                    'salida' => $bit->hora_asignado,
+                    'inicio' => $bit->hora_inicio_servicio,
+                    'llegada' => $bit->hora_en_sitio_origen,
+                    'salida_destino' => $bit->hora_salida_destino,
+                    'en_destino' => $bit->hora_en_destino,
+                    'termino' => $bit->hora_finalizado,
+                    'regreso' => $bit->hora_en_destino,
                 ] : null,
             ],
         ]);
     }
 
-    // Formulario para editar servicio
     public function edit($id)
     {
-        $user = Auth::user();
-        $empresaId = $user->empresa_id;
+        $empresaId = Auth::user()->empresa_id;
+        $servicio = Servicio::with('factura')->where('empresa_id', $empresaId)->findOrFail($id);
 
-        $servicio = Servicio::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+        if ($servicio->factura) {
+            return redirect()->route('panel.servicios.show', $servicio->id)
+                ->with('error', 'No se puede editar un servicio que ya fue facturado.');
+        }
 
         return Inertia::render('Panel/Servicios/Create', [
             'servicio' => $servicio,
@@ -201,102 +205,137 @@ class ServiciosController extends Controller
         ]);
     }
 
-    // Actualizar datos del servicio
     public function update(StoreServicioRequest $request, $id)
     {
-        $servicio = Servicio::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
-
+        $empresaId = auth()->user()->empresa_id;
         $data = $request->validated();
 
-        if ($request->unidad_id) {
-            $activeService = Servicio::where('unidad_id', $request->unidad_id)
-                ->whereIn('estado', ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino'])
-                ->where('id', '!=', $id)
-                ->exists();
-            if ($activeService) {
-                return redirect()->back()->with('error', 'La unidad seleccionada ya está asignada a un servicio activo.');
-            }
+        if (!isset($data['estado']) || $data['estado'] === null) {
+            unset($data['estado']);
+        }
+        if (array_key_exists('cargo_zona_especial', $data) && $data['cargo_zona_especial'] === null) {
+            $data['cargo_zona_especial'] = 0;
         }
 
-        if ($request->operador_id) {
-            $activeOperador = Servicio::where('operador_id', $request->operador_id)
-                ->whereIn('estado', ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino'])
-                ->where('id', '!=', $id)
-                ->exists();
-            if ($activeOperador) {
-                return redirect()->back()->with('error', 'El operador seleccionado ya está asignado a un servicio activo.');
-            }
-        }
+        DB::transaction(function () use ($empresaId, $id, $data) {
+            $servicio = Servicio::with('factura')->where('empresa_id', $empresaId)->lockForUpdate()->findOrFail($id);
 
-        $servicio->update($data);
+            if ($servicio->factura) {
+                throw ValidationException::withMessages(['servicio' => 'No se puede editar un servicio ya facturado.']);
+            }
+
+            $nuevoEstado = $data['estado'] ?? $servicio->estado;
+            $operadorAnteriorId = $servicio->operador_id;
+            $nuevoOperadorId = $data['operador_id'] ?? $servicio->operador_id;
+            $nuevaUnidadId = $data['unidad_id'] ?? $servicio->unidad_id;
+
+            if (in_array($nuevoEstado, self::ESTADOS_ACTIVOS, true)) {
+                if (Servicio::where('empresa_id', $empresaId)->where('unidad_id', $nuevaUnidadId)->whereIn('estado', self::ESTADOS_ACTIVOS)->where('id', '!=', $servicio->id)->exists()) {
+                    throw ValidationException::withMessages(['unidad_id' => 'La unidad seleccionada ya está asignada a un servicio activo.']);
+                }
+                if (Servicio::where('empresa_id', $empresaId)->where('operador_id', $nuevoOperadorId)->whereIn('estado', self::ESTADOS_ACTIVOS)->where('id', '!=', $servicio->id)->exists()) {
+                    throw ValidationException::withMessages(['operador_id' => 'El operador seleccionado ya está asignado a un servicio activo.']);
+                }
+            }
+
+            $servicio->update($data);
+
+            // Sincronizar disponibilidad de operadores
+            if ($operadorAnteriorId && ($operadorAnteriorId != $nuevoOperadorId || in_array($nuevoEstado, ['finalizado', 'cancelado'], true))) {
+                Operadore::where('id', $operadorAnteriorId)->where('empresa_id', $empresaId)->update(['disponible' => true]);
+            }
+            if ($nuevoOperadorId && in_array($nuevoEstado, self::ESTADOS_ACTIVOS, true)) {
+                Operadore::where('id', $nuevoOperadorId)->where('empresa_id', $empresaId)->update(['disponible' => false]);
+            }
+        });
 
         return redirect()->route('panel.servicios.index')
             ->with('success', 'Servicio actualizado correctamente');
     }
 
-    // Avanzar estado del servicio (panel del operador)
     public function avanzarEstado(Request $request, $id)
     {
-        $servicio = Servicio::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
-        if (auth()->user()->rol === 'operador' && $servicio->operador?->empleado_id !== auth()->user()->empleado_id) {
-            abort(403, 'Solo puedes actualizar servicios asignados a tu operador.');
-        }
+        $user = auth()->user();
         $nuevoEstado = $request->input('estado');
-
         $flujo = ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino', 'finalizado'];
-        if (!in_array($nuevoEstado, $flujo)) {
+
+        if (!in_array($nuevoEstado, $flujo, true)) {
             return back()->with('error', 'Estado no válido.');
         }
 
-        $indiceActual = array_search($servicio->estado, $flujo);
-        $indiceNuevo = array_search($nuevoEstado, $flujo);
+        // Validar antes de tocar la BD
+        if ($nuevoEstado === 'finalizado') {
+            $request->validate([
+                'kms_termino_servicio' => 'nullable|integer|min:0',
+                'kms_cobrados_reales' => 'nullable|integer|min:0',
+                'observaciones' => 'nullable|string|max:500',
+            ]);
+        }
 
-        // Solo se permite avanzar un paso a la vez dentro del flujo activo
+        $servicio = Servicio::with(['operador', 'cotizacion'])
+            ->where('empresa_id', $user->empresa_id)
+            ->findOrFail($id);
+
+        if ($user->rol === 'operador' && (!$user->empleado_id || !$servicio->operador || $servicio->operador->empleado_id !== $user->empleado_id)) {
+            abort(403, 'Solo puedes actualizar servicios asignados a tu operador.');
+        }
+
+        $indiceActual = array_search($servicio->estado, $flujo, true);
+        $indiceNuevo = array_search($nuevoEstado, $flujo, true);
+
         if ($indiceActual === false || $indiceNuevo !== $indiceActual + 1) {
             return back()->with('error', 'Transición no permitida: el servicio debe avanzar paso a paso desde su estado actual.');
         }
 
-        $data = ['estado' => $nuevoEstado];
+        DB::transaction(function () use ($request, $servicio, $nuevoEstado) {
+            $data = ['estado' => $nuevoEstado];
 
-        // Registrar bitácora de tiempos
-        $bitacora = $servicio->bitacoraTiemposServicio;
-        if (!$bitacora) {
-            $bitacora = \App\Models\BitacoraTiemposServicio::create(['servicio_id' => $servicio->id]);
-        }
+            $bitacora = $servicio->bitacoraTiemposServicio
+                ?? BitacoraTiemposServicio::create(['servicio_id' => $servicio->id, 'hora_asignado' => $servicio->created_at ?? now()]);
 
-        $camposTiempo = [
-            'asignado' => 'hora_asignado',
-            'inicio_servicio' => 'hora_inicio_servicio',
-            'en_sitio_origen' => 'hora_en_sitio_origen',
-            'salida_destino' => 'hora_salida_destino',
-            'en_destino' => 'hora_en_destino',
-            'finalizado' => 'hora_finalizado',
-        ];
+            $camposTiempo = [
+                'asignado' => 'hora_asignado',
+                'inicio_servicio' => 'hora_inicio_servicio',
+                'en_sitio_origen' => 'hora_en_sitio_origen',
+                'salida_destino' => 'hora_salida_destino',
+                'en_destino' => 'hora_en_destino',
+                'finalizado' => 'hora_finalizado',
+            ];
 
-        if (isset($camposTiempo[$nuevoEstado])) {
-            $bitacora->update([$camposTiempo[$nuevoEstado] => now()]);
-        }
-
-        if ($nuevoEstado === 'finalizado') {
-            $request->validate([
-                'kms_termino_servicio' => 'nullable|integer|min:0',
-                'observaciones' => 'nullable|string|max:500',
-            ]);
-            $data['kms_termino_servicio'] = $request->kms_termino_servicio;
-            $data['observaciones'] = $request->observaciones;
-
-            // Liberar operador
-            if ($servicio->operador_id) {
-                \App\Models\Operadore::where('id', $servicio->operador_id)->update(['disponible' => true]);
+            if (isset($camposTiempo[$nuevoEstado])) {
+                $bitacora->update([$camposTiempo[$nuevoEstado] => now()]);
             }
-        }
 
-        $servicio->update($data);
+            if ($nuevoEstado === 'finalizado') {
+                if ($request->filled('kms_termino_servicio')) {
+                    $data['kms_termino_servicio'] = (int) $request->kms_termino_servicio;
+                }
+                if ($request->filled('kms_cobrados_reales')) {
+                    $data['kms_cobrados_reales'] = (int) $request->kms_cobrados_reales;
+                }
+                if ($request->filled('observaciones')) {
+                    $data['observaciones'] = $request->observaciones;
+                }
+
+                $servicio->fill($data);
+                if ($servicio->cotizacion) {
+                    $calculo = app(FacturaCalculator::class)->calcular($servicio);
+                    $data['costo_final_real'] = $calculo['total'];
+                }
+
+                if ($servicio->operador_id) {
+                    Operadore::where('id', $servicio->operador_id)
+                        ->where('empresa_id', $servicio->empresa_id)
+                        ->update(['disponible' => true]);
+                }
+            }
+
+            $servicio->update($data);
+        });
 
         return back()->with('success', "Servicio actualizado a: {$nuevoEstado}");
     }
 
-    // Solicitar cancelación de un servicio (genera autorización)
     public function solicitarCancelacion(Request $request, $id)
     {
         $request->validate([
@@ -304,57 +343,71 @@ class ServiciosController extends Controller
             'tipo_incidencia' => 'required|in:cliente_cancela,operador_siniestro,falla_mecanica,unidad_ponchada,otro',
         ]);
 
-        $servicio = Servicio::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+        $user = auth()->user();
 
-        if (auth()->user()->rol === 'operador' && $servicio->operador?->empleado_id !== auth()->user()->empleado_id) {
-            abort(403, 'Solo puedes solicitar la cancelación de servicios asignados a tu operador.');
+        $resultado = DB::transaction(function () use ($request, $user, $id) {
+            $servicio = Servicio::with('operador')
+                ->where('empresa_id', $user->empresa_id)
+                ->lockForUpdate()
+                ->findOrFail($id);
+
+            if ($user->rol === 'operador' && (!$user->empleado_id || !$servicio->operador || $servicio->operador->empleado_id !== $user->empleado_id)) {
+                abort(403, 'Solo puedes solicitar la cancelación de servicios asignados a tu operador.');
+            }
+
+            if (!in_array($servicio->estado, self::ESTADOS_ACTIVOS, true)) {
+                return 'Este servicio no se puede solicitar en cancelación en su estado actual.';
+            }
+
+            $existente = AutorizacionesCancelacione::where('servicio_id', $servicio->id)
+                ->where('estatus', 'pendiente')
+                ->exists();
+            if ($existente) {
+                return 'Este servicio ya tiene una solicitud de cancelación pendiente.';
+            }
+
+            AutorizacionesCancelacione::create([
+                'servicio_id' => $servicio->id,
+                'usuario_solicitante_id' => $user->id,
+                'motivo_cancelacion' => $request->motivo_cancelacion,
+                'tipo_incidencia' => $request->tipo_incidencia,
+                'estatus' => 'pendiente',
+                'estado_previo' => $servicio->estado,
+                'fecha_solicitud' => now(),
+            ]);
+
+            $servicio->update(['estado' => 'solicitud_cancelacion']);
+
+            return null;
+        });
+
+        if ($resultado !== null) {
+            return back()->with('error', $resultado);
         }
-
-        if (!in_array($servicio->estado, ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino'])) {
-            return back()->with('error', 'Este servicio no se puede solicitar en cancelación en su estado actual.');
-        }
-
-        $existente = AutorizacionesCancelacione::where('servicio_id', $servicio->id)
-            ->where('estatus', 'pendiente')
-            ->exists();
-        if ($existente) {
-            return back()->with('error', 'Este servicio ya tiene una solicitud de cancelación pendiente.');
-        }
-
-        AutorizacionesCancelacione::create([
-            'servicio_id' => $servicio->id,
-            'usuario_solicitante_id' => auth()->id(),
-            'motivo_cancelacion' => $request->motivo_cancelacion,
-            'tipo_incidencia' => $request->tipo_incidencia,
-            'estatus' => 'pendiente',
-            'fecha_solicitud' => now(),
-        ]);
-
-        $servicio->update(['estado' => 'solicitud_cancelacion']);
 
         return back()->with('success', 'Solicitud de cancelación enviada. Queda pendiente de autorización.');
     }
 
-    // Página de evaluación del servicio para el cliente
+    // Página de evaluación: exclusiva para el cliente dueño sobre servicios finalizados
     public function evaluar($id)
     {
         $user = Auth::user();
+        abort_unless($user->rol === 'cliente', 403);
 
-        $query = Servicio::with('cotizacion.cliente')->where('empresa_id', $user->empresa_id);
+        $cliente = Cliente::where('empresa_id', $user->empresa_id)
+            ->where('usuario_id', $user->id)
+            ->firstOrFail();
 
-        if ($user->rol === 'cliente') {
-            $cliente = \App\Models\Cliente::where('usuario_id', $user->id)->first();
-            if (!$cliente) {
-                abort(404);
-            }
-            $query->whereHas('cotizacion', fn ($q) => $q->where('cliente_id', $cliente->id));
-        }
+        $servicio = Servicio::with(['cotizacion.cliente', 'cotizacion.tipoServicio'])
+            ->where('empresa_id', $user->empresa_id)
+            ->where('estado', 'finalizado')
+            ->whereHas('cotizacion', fn ($q) => $q->where('cliente_id', $cliente->id))
+            ->findOrFail($id);
 
-        $servicio = $query->findOrFail($id);
         return Inertia::render('Panel/EvaluarServicio', [
             'servicio' => [
                 'id' => $servicio->id,
-                'folio' => 'SVC-' . str_pad($servicio->id, 5, '0', STR_PAD_LEFT),
+                'folio' => 'SVC-' . str_pad((string) $servicio->id, 5, '0', STR_PAD_LEFT),
                 'cliente' => $servicio->cotizacion?->cliente?->nombre ?? '—',
                 'tipo' => $servicio->cotizacion?->tipoServicio?->nombre ?? '—',
                 'fecha' => $servicio->created_at?->format('d/m/Y'),
@@ -362,54 +415,60 @@ class ServiciosController extends Controller
         ]);
     }
 
-    // Guardar evaluación del cliente
     public function guardarEvaluacion(Request $request, $id)
     {
+        $usuario = auth()->user();
+        abort_unless($usuario->rol === 'cliente', 403);
+
         $request->validate([
             'estrellas' => 'required|integer|min:1|max:5',
             'comentario' => 'nullable|string|max:500',
         ]);
 
-        $usuario = auth()->user();
-        $clienteId = null;
+        $cliente = Cliente::where('empresa_id', $usuario->empresa_id)
+            ->where('usuario_id', $usuario->id)
+            ->firstOrFail();
 
-        $query = Servicio::with('cotizacion')->where('empresa_id', $usuario->empresa_id);
+        $servicio = Servicio::with('cotizacion')
+            ->where('empresa_id', $usuario->empresa_id)
+            ->where('estado', 'finalizado')
+            ->whereHas('cotizacion', fn ($q) => $q->where('cliente_id', $cliente->id))
+            ->findOrFail($id);
 
-        if ($usuario->rol === 'cliente') {
-            $cliente = \App\Models\Cliente::where('usuario_id', $usuario->id)->first();
-            if (!$cliente) {
-                abort(404);
-            }
-            $clienteId = $cliente->id;
-            $query->whereHas('cotizacion', fn ($q) => $q->where('cliente_id', $cliente->id));
-        }
-
-        $servicio = $query->findOrFail($id);
-
-        \App\Models\CalificacionesServicio::updateOrCreate(
+        CalificacionesServicio::updateOrCreate(
             ['servicio_id' => $servicio->id],
             [
-                'cliente_id' => $clienteId ?? $servicio->cotizacion?->cliente_id,
-                'estrellas' => $request->estrellas,
+                'cliente_id' => $cliente->id,
+                'estrellas' => (int) $request->estrellas,
                 'comentario' => $request->comentario,
+                'created_at' => now(),
             ]
         );
 
         return redirect()->route('panel.dashboard')->with('success', '¡Gracias por evaluar nuestro servicio!');
     }
 
-    // Lista de servicios pendientes de evaluar por el cliente
     public function misEvaluaciones()
     {
-        $cliente = \App\Models\Cliente::where('usuario_id', auth()->id())->first();
+        $user = auth()->user();
+        $cliente = Cliente::where('empresa_id', $user->empresa_id)
+            ->where('usuario_id', $user->id)
+            ->first();
+
+        if (!$cliente) {
+            return Inertia::render('Panel/ClienteEvaluaciones', ['servicios' => []]);
+        }
+
         $servicios = Servicio::with('cotizacion.tipoServicio')
-            ->whereHas('cotizacion', fn($q) => $q->where('cliente_id', $cliente?->id))
+            ->where('empresa_id', $user->empresa_id)
+            ->whereHas('cotizacion', fn ($q) => $q->where('empresa_id', $user->empresa_id)->where('cliente_id', $cliente->id))
             ->where('estado', 'finalizado')
             ->whereDoesntHave('calificacionesServicio')
-            ->latest()->get()
+            ->latest()
+            ->get()
             ->map(fn ($s) => [
                 'id' => $s->id,
-                'folio' => 'SVC-' . str_pad($s->id, 5, '0', STR_PAD_LEFT),
+                'folio' => 'SVC-' . str_pad((string) $s->id, 5, '0', STR_PAD_LEFT),
                 'tipo' => $s->cotizacion?->tipoServicio?->nombre ?? '—',
                 'fecha' => $s->created_at?->format('d/m/Y'),
                 'monto' => '$' . number_format($s->costo_final_real ?? $s->cotizacion?->costo_total ?? 0, 2),
@@ -418,16 +477,30 @@ class ServiciosController extends Controller
         return Inertia::render('Panel/ClienteEvaluaciones', ['servicios' => $servicios]);
     }
 
-    // Eliminar servicio
+    // Borrado físico real del servicio
     public function destroy($id)
     {
-        $servicio = Servicio::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+        $servicio = Servicio::with('factura')
+            ->where('empresa_id', auth()->user()->empresa_id)
+            ->findOrFail($id);
 
-        Auditoria::registrar($servicio);
+        if ($servicio->factura) {
+            return back()->with('error', 'No se puede eliminar un servicio que ya tiene una factura emitida.');
+        }
 
-        $servicio->eliminar();
+        DB::transaction(function () use ($servicio) {
+            Auditoria::registrar($servicio);
+
+            if ($servicio->operador_id && in_array($servicio->estado, self::ESTADOS_ACTIVOS, true)) {
+                Operadore::where('id', $servicio->operador_id)
+                    ->where('empresa_id', $servicio->empresa_id)
+                    ->update(['disponible' => true]);
+            }
+
+            $servicio->delete();
+        });
 
         return redirect()->route('panel.servicios.index')
-            ->with('success', 'Servicio eliminado correctamente');
+            ->with('success', 'Servicio eliminado físicamente de forma correcta.');
     }
 }

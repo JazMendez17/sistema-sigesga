@@ -1,6 +1,6 @@
 // Composable para validación de formularios del lado cliente
 import { ref, computed } from 'vue'
-import { showValidationErrors } from '@/stores/notification'
+import { showValidationErrors } from '@/Stores/notification'
 
 export function useFormValidation(form, rules) {
   const clientErrors = ref({})
@@ -79,13 +79,20 @@ export function useFormValidation(form, rules) {
   // Aplica una regla de validación a un campo
   function applyRule(field, value, rule, data) {
     if (typeof rule === 'string') {
-      const parts = rule.split(':')
-      const name = parts[0]
-      const param = parts[1]
+      const idx = rule.indexOf(':')
+      const name = idx >= 0 ? rule.slice(0, idx) : rule
+      const param = idx >= 0 ? rule.slice(idx + 1) : undefined
       return validateRule(name, value, param, data, field)
     }
     if (typeof rule === 'object' && rule.rule) {
-      return validateRule(rule.rule, value, rule.param, data, field, rule.message)
+      let name = rule.rule
+      let param = rule.param
+      if (param === undefined && typeof name === 'string' && name.includes(':')) {
+        const idx = name.indexOf(':')
+        param = name.slice(idx + 1)
+        name = name.slice(0, idx)
+      }
+      return validateRule(name, value, param, data, field, rule.message)
     }
     return ''
   }
@@ -108,12 +115,11 @@ export function useFormValidation(form, rules) {
         return ''
       }
       case 'min': {
-        const min = parseInt(param)
+        const min = parseInt(param, 10)
         if (value !== '' && typeof value === 'string' && value.length < min) {
           return customMessage || `Mínimo ${min} caracteres`
         }
-        const numVal = parseFloat(value)
-        if (value !== '' && !isNaN(numVal) && numVal < min) {
+        if (value !== '' && typeof value === 'number' && !isNaN(value) && value < min) {
           return customMessage || `El valor mínimo es ${min}`
         }
         return ''

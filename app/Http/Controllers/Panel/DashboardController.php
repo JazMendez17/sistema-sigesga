@@ -23,7 +23,7 @@ class DashboardController extends Controller
 
         $data = ['role' => $user->rol];
 
-        if (in_array($user->rol, ['admin', 'cotizador'])) {
+        if (in_array($user->rol, ['superadmin', 'admin', 'cotizador'], true)) {
             $data['kpis'] = [
                 ['title' => 'Cotizaciones Pendientes', 'value' => (string) Cotizacione::where('empresa_id', $empresaId)->where('estatus', 'pendiente')->count(), 'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01', 'color' => '#4F46E5'],
                 ['title' => 'Servicios Activos', 'value' => (string) Servicio::where('empresa_id', $empresaId)->whereIn('estado', ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino'])->count(), 'icon' => 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4', 'color' => '#059669'],
@@ -97,7 +97,7 @@ class DashboardController extends Controller
             ])->values();
 
             // Facturas terminadas (vigentes) por periodo: día, semana y mes (admin y cotizador)
-            if (in_array($user->rol, ['admin', 'cotizador'])) {
+            if (in_array($user->rol, ['superadmin', 'admin', 'cotizador'], true)) {
                 $facturasPorDia = collect(range(0, 6))->map(function ($i) use ($empresaId, $diasEs) {
                     $d = now()->startOfWeek()->addDays($i);
                     $stats = $d->gt(now())
@@ -179,7 +179,7 @@ class DashboardController extends Controller
             ];
 
             // Modo demostración: datos de ejemplo para visualizar las gráficas
-            if (env('CHARTS_DEMO_DATA', false)) {
+            if (config('app.charts_demo_data', false)) {
                 $demo = $this->registrosDemo();
                 $data['registrosPorDia'] = $demo['dia'];
                 $data['registrosPorSemana'] = $demo['semana'];
@@ -188,119 +188,140 @@ class DashboardController extends Controller
                 $data['resumenOperacion'] = ['asignados' => 4, 'enTransito' => 6, 'finalizados' => 18];
                 $data['demoData'] = true;
 
-                if (in_array($user->rol, ['admin', 'cotizador'])) {
-                    $demoFacturas = $this->facturasDemo();
-                    $data['facturasPorDia'] = $demoFacturas['dia'];
-                    $data['facturasPorSemana'] = $demoFacturas['semana'];
-                    $data['facturasPorMes'] = $demoFacturas['mes'];
-                }
+                $demoFacturas = $this->facturasDemo();
+                $data['facturasPorDia'] = $demoFacturas['dia'];
+                $data['facturasPorSemana'] = $demoFacturas['semana'];
+                $data['facturasPorMes'] = $demoFacturas['mes'];
             }
 
             $data['recentActivity'] = collect();
-            $cotizaciones = Cotizacione::with('cliente', 'tipoServicio')->where('empresa_id', $empresaId)->latest()->take(3)->get();
-            $servicios = Servicio::with('cotizacion.cliente', 'cotizacion.tipoServicio')->where('empresa_id', $empresaId)->latest()->take(3)->get();
+            $cotizaciones = Cotizacione::with('cliente', 'tipoServicio')->where('empresa_id', $empresaId)->latest()->take(5)->get();
+            $servicios = Servicio::with('cotizacion.cliente', 'cotizacion.tipoServicio')->where('empresa_id', $empresaId)->latest()->take(5)->get();
 
             $items = collect();
             foreach ($cotizaciones as $c) {
                 $items->push([
                     'id' => $c->id,
                     'type' => 'cotizacion',
-                    'title' => 'Cotización #' . ($c->folio ?? str_pad($c->id, 5, '0', STR_PAD_LEFT)),
+                    'title' => 'Cotización #' . ($c->folio ?? str_pad((string) $c->id, 5, '0', STR_PAD_LEFT)),
                     'description' => ($c->cliente?->nombre ?? '—') . ' — ' . ($c->tipoServicio?->nombre ?? '—'),
                     'time' => $c->created_at?->locale('es')->diffForHumans() ?? '—',
                     'status' => $c->estatus ?? 'pendiente',
+                    '_ts' => $c->created_at?->timestamp ?? 0,
                 ]);
             }
             foreach ($servicios as $s) {
                 $items->push([
                     'id' => $s->id,
                     'type' => 'servicio',
-                    'title' => 'Servicio #' . str_pad($s->id, 5, '0', STR_PAD_LEFT),
+                    'title' => 'Servicio #' . str_pad((string) $s->id, 5, '0', STR_PAD_LEFT),
                     'description' => ($s->cotizacion?->cliente?->nombre ?? '—') . ' — ' . ($s->cotizacion?->tipoServicio?->nombre ?? '—'),
                     'time' => $s->created_at?->locale('es')->diffForHumans() ?? '—',
                     'status' => $s->estado ?? 'pendiente',
+                    '_ts' => $s->created_at?->timestamp ?? 0,
                 ]);
             }
-            $data['recentActivity'] = $items->sortByDesc('created_at')->take(5)->values()
+            $data['recentActivity'] = $items->sortByDesc('_ts')->take(5)->values()
                 ->map(function ($item) {
+                    unset($item['_ts']);
                     $item['key'] = $item['type'] . '-' . $item['id'];
                     return $item;
                 });
         }
 
         if ($user->rol === 'operador') {
-            $operador = Operadore::where('empresa_id', $empresaId)
-                ->where('empleado_id', $user->empleado_id)
-                ->first();
+            $operador = $user->empleado_id
+                ? Operadore::where('empresa_id', $empresaId)
+                    ->where('empleado_id', $user->empleado_id)
+                    ->first()
+                : null;
 
             $data['disponible'] = $operador?->disponible ?? null;
             $data['tieneOperador'] = (bool) $operador;
 
-            $queryServiciosHoy = Servicio::with('cotizacion.cliente')
-                ->where('empresa_id', $empresaId)
-                ->whereDate('created_at', today())
-                ->where('operador_id', $operador?->id);
+            if ($operador) {
+                $baseQuery = Servicio::with('cotizacion.cliente')
+                    ->where('empresa_id', $empresaId)
+                    ->whereDate('created_at', today())
+                    ->where('operador_id', $operador->id);
 
-            $data['serviciosHoy'] = $queryServiciosHoy->orderByDesc('created_at')->get()
-                ->map(fn ($s) => [
-                    'id' => $s->id,
-                    'cliente' => $s->cotizacion?->cliente?->nombre ?? '—',
-                    'ruta' => 'SVC-' . str_pad($s->id, 5, '0', STR_PAD_LEFT) . ' • ' . ($s->cotizacion?->origen_direccion ?? '—') . ' → ' . ($s->cotizacion?->destino_direccion ?? '—'),
-                    'horario' => $s->created_at?->format('H:i') . ' - ' . $s->updated_at?->format('H:i'),
-                    'status' => $s->estado ?? 'asignado',
-                ]);
+                $data['serviciosHoy'] = (clone $baseQuery)->orderByDesc('created_at')->get()
+                    ->map(fn ($s) => [
+                        'id' => $s->id,
+                        'cliente' => $s->cotizacion?->cliente?->nombre ?? '—',
+                        'ruta' => 'SVC-' . str_pad((string) $s->id, 5, '0', STR_PAD_LEFT) . ' • ' . ($s->cotizacion?->origen_direccion ?? '—') . ' → ' . ($s->cotizacion?->destino_direccion ?? '—'),
+                        'horario' => $s->created_at?->format('H:i') . ' - ' . $s->updated_at?->format('H:i'),
+                        'status' => $s->estado ?? 'asignado',
+                    ]);
 
-            $siguiente = $queryServiciosHoy
-                ->whereNotIn('estado', ['finalizado', 'cancelado', 'solicitud_cancelacion'])
-                ->orderBy('created_at')
-                ->first();
+                $siguiente = (clone $baseQuery)
+                    ->whereNotIn('estado', ['finalizado', 'cancelado', 'solicitud_cancelacion'])
+                    ->orderBy('created_at')
+                    ->first();
 
-            $data['siguienteServicio'] = $siguiente ? [
-                'cliente' => $siguiente->cotizacion?->cliente?->nombre ?? '—',
-                'destino' => $siguiente->cotizacion?->destino_direccion ?? '—',
-                'inicio' => $siguiente->created_at?->format('H:i'),
-                'folio' => 'SVC-' . str_pad($siguiente->id, 5, '0', STR_PAD_LEFT),
-            ] : null;
+                $data['siguienteServicio'] = $siguiente ? [
+                    'cliente' => $siguiente->cotizacion?->cliente?->nombre ?? '—',
+                    'destino' => $siguiente->cotizacion?->destino_direccion ?? '—',
+                    'inicio' => $siguiente->created_at?->format('H:i'),
+                    'folio' => 'SVC-' . str_pad((string) $siguiente->id, 5, '0', STR_PAD_LEFT),
+                ] : null;
+            } else {
+                $data['serviciosHoy'] = [];
+                $data['siguienteServicio'] = null;
+            }
         }
 
         if ($user->rol === 'cliente') {
-            $cliente = Cliente::where('usuario_id', $user->id)->first();
-            $clienteId = $cliente?->id;
+            $cliente = Cliente::where('empresa_id', $empresaId)
+                ->where('usuario_id', $user->id)
+                ->first();
 
-            $data['historialCliente'] = Servicio::with('cotizacion', 'calificacionesServicio')
-                ->whereHas('cotizacion', fn ($q) => $q->where('cliente_id', $clienteId))
-                ->latest()
-                ->take(5)
-                ->get()
-                ->map(fn ($s) => [
-                    'id' => $s->id,
-                    'servicio' => $s->cotizacion?->tipoServicio?->nombre ?? 'Transporte',
-                    'fecha' => $s->created_at?->format('d M Y'),
-                    'status' => $s->estado ?? 'finalizado',
-                    'monto' => '$' . number_format($s->costo_final_real ?? $s->cotizacion?->costo_total ?? 0, 2),
-                    'evaluado' => (bool) $s->calificacionesServicio,
-                ]);
+            if (!$cliente) {
+                $data['historialCliente'] = [];
+                $data['cotizacionesCliente'] = [];
+                $data['facturasCliente'] = [];
+            } else {
+                $clienteId = $cliente->id;
 
-            $data['cotizacionesCliente'] = Cotizacione::where('cliente_id', $clienteId)
-                ->latest()->take(5)->get()
-                ->map(fn ($c) => [
-                    'id' => $c->id,
-                    'folio' => $c->folio ?? 'COT-' . str_pad($c->id, 5, '0', STR_PAD_LEFT),
-                    'tipo' => $c->tipoServicio?->nombre ?? '—',
-                    'estatus' => $c->estatus,
-                    'fecha' => $c->created_at?->format('d/m/Y'),
-                    'total' => '$' . number_format($c->costo_total ?? 0, 2),
-                ]);
+                $data['historialCliente'] = Servicio::with('cotizacion.tipoServicio', 'calificacionesServicio')
+                    ->where('empresa_id', $empresaId)
+                    ->whereHas('cotizacion', fn ($q) => $q->where('empresa_id', $empresaId)->where('cliente_id', $clienteId))
+                    ->latest()
+                    ->take(5)
+                    ->get()
+                    ->map(fn ($s) => [
+                        'id' => $s->id,
+                        'servicio' => $s->cotizacion?->tipoServicio?->nombre ?? 'Transporte',
+                        'fecha' => $s->created_at?->format('d M Y'),
+                        'status' => $s->estado ?? 'finalizado',
+                        'monto' => '$' . number_format($s->costo_final_real ?? $s->cotizacion?->costo_total ?? 0, 2),
+                        'evaluado' => (bool) $s->calificacionesServicio,
+                    ]);
 
-            $data['facturasCliente'] = \App\Models\Factura::where('cliente_id', $clienteId)
-                ->latest()->take(5)->get()
-                ->map(fn ($f) => [
-                    'id' => $f->id,
-                    'folio' => $f->folio_factura,
-                    'total' => '$' . number_format($f->total ?? 0, 2),
-                    'estatus' => $f->estatus,
-                    'fecha' => $f->created_at?->format('d/m/Y'),
-                ]);
+                $data['cotizacionesCliente'] = Cotizacione::with('tipoServicio')
+                    ->where('empresa_id', $empresaId)
+                    ->where('cliente_id', $clienteId)
+                    ->latest()->take(5)->get()
+                    ->map(fn ($c) => [
+                        'id' => $c->id,
+                        'folio' => $c->folio ?? 'COT-' . str_pad((string) $c->id, 5, '0', STR_PAD_LEFT),
+                        'tipo' => $c->tipoServicio?->nombre ?? '—',
+                        'estatus' => $c->estatus,
+                        'fecha' => $c->created_at?->format('d/m/Y'),
+                        'total' => '$' . number_format($c->costo_total ?? 0, 2),
+                    ]);
+
+                $data['facturasCliente'] = Factura::where('empresa_id', $empresaId)
+                    ->where('cliente_id', $clienteId)
+                    ->latest()->take(5)->get()
+                    ->map(fn ($f) => [
+                        'id' => $f->id,
+                        'folio' => $f->folio_factura,
+                        'total' => '$' . number_format($f->total ?? 0, 2),
+                        'estatus' => $f->estatus,
+                        'fecha' => $f->created_at?->format('d/m/Y'),
+                    ]);
+            }
         }
 
         return Inertia::render('Panel/Dashboard/Index', $data);

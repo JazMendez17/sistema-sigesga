@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
 use App\Models\EmpresaServicio;
+use App\Support\Auditoria;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -55,19 +56,24 @@ class ServiciosLandingController extends Controller
         $data = $this->validated($request, false);
 
         if ($request->hasFile('foto')) {
-            if ($servicioLanding->foto) Storage::disk('public')->delete($servicioLanding->foto);
+            $this->borrarFotoSegura($servicioLanding->foto);
             $data['foto'] = $request->file('foto')->store('servicios', 'public');
+        } else {
+            unset($data['foto']);
         }
 
         $servicioLanding->update($data);
+
         return redirect()->route('panel.servicios-landing.index')->with('success', 'Servicio actualizado correctamente.');
     }
 
     public function destroy(EmpresaServicio $servicioLanding)
     {
         $this->authorizeAccess($servicioLanding);
-        if ($servicioLanding->foto) Storage::disk('public')->delete($servicioLanding->foto);
+        Auditoria::registrar($servicioLanding);
+        $this->borrarFotoSegura($servicioLanding->foto);
         $servicioLanding->delete();
+
         return back()->with('success', 'Servicio eliminado correctamente.');
     }
 
@@ -85,7 +91,16 @@ class ServiciosLandingController extends Controller
         $data = $request->validate($rules);
         $data['orden'] = (int) ($data['orden'] ?? 0);
         $data['activo'] = $request->boolean('activo');
+
         return $data;
+    }
+
+    private function borrarFotoSegura(?string $ruta): void
+    {
+        if (!$ruta || !str_starts_with($ruta, 'servicios/') || str_contains($ruta, '..')) {
+            return;
+        }
+        Storage::disk('public')->delete($ruta);
     }
 
     private function colores($empresa): array
@@ -100,6 +115,6 @@ class ServiciosLandingController extends Controller
 
     private function authorizeAccess(EmpresaServicio $servicio): void
     {
-        abort_unless($servicio->empresa_id === Auth::user()->empresa_id, 403);
+        abort_unless(Auth::user()->isSuperAdmin() || $servicio->empresa_id === Auth::user()->empresa_id, 403);
     }
 }

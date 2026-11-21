@@ -83,7 +83,7 @@ chmod -R 775 storage bootstrap/cache public/storage
 
 Si Composer está disponible y necesitas regenerar dependencias, ejecuta `composer install --no-dev --optimize-autoloader` usando PHP 8.3. El repositorio ya contiene `vendor/`, por lo que no es un paso obligatorio para esta versión.
 
-`db:seed` agrega datos de demostración y cuatro cuentas de prueba con la contraseña inicial publicada `12345678`. Úsalo solo para una instalación de demostración; cambia inmediatamente las contraseñas de todas las cuentas. Para un sitio con datos reales, no ejecutes los seeders de demostración.
+`db:seed` agrega datos de demostración y cinco cuentas de prueba (`superadmin@sigesga.com`, `admin@sigesga.com`, `cotizador@sigesga.com`, `operador@sigesga.com` y `cliente@sigesga.com`) con la contraseña inicial `12345678`. Úsalo solo para una instalación de demostración; cambia inmediatamente las contraseñas de todas las cuentas (especialmente `superadmin@sigesga.com`). Para un sitio con datos reales, crea únicamente el Super Administrador y no ejecutes los seeders de demostración.
 
 ## 6. Comprobar el sitio
 

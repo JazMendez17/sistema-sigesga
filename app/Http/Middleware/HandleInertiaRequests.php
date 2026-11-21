@@ -46,6 +46,7 @@ class HandleInertiaRequests extends Middleware
                     'name' => $user->name,
                     'email' => $user->email,
                     'rol' => $user->rol,
+                    'is_superadmin' => $user->isSuperAdmin(),
                     'empresa_id' => $user->empresa_id,
                     'empleado_id' => $user->empleado_id,
                     'foto' => $user->foto,

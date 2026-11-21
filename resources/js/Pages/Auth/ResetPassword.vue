@@ -1,8 +1,11 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { Head, useForm, usePage } from '@inertiajs/vue3'
+import { useTheme } from '@/Composables/useTheme'
 import { usePasswordStrength } from '@/Composables/usePasswordStrength'
 import PasswordStrengthIndicator from '@/Components/PasswordStrengthIndicator.vue'
+
+useTheme()
 
 const props = defineProps({
     token: String,
@@ -61,6 +64,7 @@ const submit = () => {
                             <input v-model="form.email" type="email" readonly
                                 class="w-full bg-[var(--color-bg)] text-[var(--color-text)] rounded-2xl py-3 pl-12 pr-4 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]" />
                         </div>
+                        <p v-if="form.errors.email" class="mt-2 text-sm text-red-500">{{ form.errors.email }}</p>
                     </div>
 
                     <div class="mb-5">

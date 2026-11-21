@@ -9,6 +9,8 @@ use App\Models\Usuario;
 // Observer: Notificaciones personalizadas por rol en cada evento del servicio
 class ServicioObserver
 {
+    private const ROLES_GESTION = ['superadmin', 'admin', 'cotizador'];
+
     protected function actor(): string
     {
         return auth()->user()?->name ?? 'Sistema';
@@ -17,37 +19,39 @@ class ServicioObserver
     public function created(Servicio $servicio): void
     {
         $folio = $this->folio($servicio);
+        $folioCot = $servicio->cotizacion?->folio ?? $folio;
         $cliente = $servicio->cotizacion?->cliente;
         $clienteNombre = $cliente?->nombre ?? 'Cliente';
         $clienteUsuarioId = $cliente?->usuario_id;
         $operadorId = $servicio->operador?->empleado?->usuario?->id;
-        $operadorNombre = $servicio->operador?->empleado?->nombre ?? 'Pendiente';
+        $operadorNombre = $servicio->operador?->empleado?->nombre ?? 'Operador asignado';
         $unidad = $servicio->unidad?->placas ?? 'Pendiente';
         $origen = $servicio->cotizacion?->origen_direccion ?? '—';
         $actor = $this->actor();
 
-        if ($servicio->estado === 'asignado' && $operadorId) {
-            // Servicio creado ya aprobado y asignado
+        if ($servicio->estado === 'asignado') {
             $this->notificar($servicio, $clienteUsuarioId,
-                "Tu cotización {$folio} fue aprobada. Chofer: {$operadorNombre} | Unidad: {$unidad}.");
+                "Tu cotización {$folioCot} fue aprobada (Servicio {$folio}). Chofer: {$operadorNombre} | Unidad: {$unidad}.");
             $this->notificar($servicio, $operadorId,
                 "Nuevo servicio asignado: {$folio}. Origen: {$origen}. Toca para ver la ruta.");
-            $this->notificarRoles($servicio, ['admin', 'cotizador'],
+            $this->notificarRoles($servicio, self::ROLES_GESTION,
                 "{$actor} asignó al operador {$operadorNombre} (Unidad: {$unidad}) al servicio {$folio}.");
         } else {
-            // Servicio creado en espera
             $this->notificar($servicio, $clienteUsuarioId,
                 "Se ha registrado tu solicitud de servicio {$folio}. Está en revisión y espera de aprobación.");
-            $this->notificarRoles($servicio, ['admin', 'cotizador'],
+            $this->notificarRoles($servicio, self::ROLES_GESTION,
                 "{$actor} registró la solicitud de servicio {$folio} del cliente {$clienteNombre}. Pendiente de revisión.");
         }
     }
 
     public function updated(Servicio $servicio): void
     {
-        if (!$servicio->isDirty('estado')) return;
+        if (!$servicio->isDirty('estado')) {
+            return;
+        }
 
         $folio = $this->folio($servicio);
+        $folioCot = $servicio->cotizacion?->folio ?? $folio;
         $estado = $servicio->estado;
         $clienteUsuarioId = $servicio->cotizacion?->cliente?->usuario_id;
         $operadorId = $servicio->operador?->empleado?->usuario?->id;
@@ -57,41 +61,39 @@ class ServicioObserver
         $actor = $this->actor();
 
         match ($estado) {
-            'asignado' => $this->notificarAsignacion($servicio, $folio, $operadorNombre, $unidad, $clienteUsuarioId, $operadorId),
-            'inicio_servicio' => $this->notificarFase($servicio, $folio, $operadorNombre, $clienteUsuarioId, $operadorId,
+            'asignado' => $this->notificarAsignacion($servicio, $folio, $folioCot, $operadorNombre, $unidad, $clienteUsuarioId, $operadorId),
+            'inicio_servicio' => $this->notificarFase($servicio, $clienteUsuarioId,
                 'El operador va en camino a la ubicación de origen.',
                 "{$actor} - El operador {$operadorNombre} inició el servicio {$folio} (En camino al origen)."),
-            'en_sitio_origen' => $this->notificarFase($servicio, $folio, $operadorNombre, $clienteUsuarioId, $operadorId,
+            'en_sitio_origen' => $this->notificarFase($servicio, $clienteUsuarioId,
                 'El operador ha llegado a la ubicación de origen.',
                 "{$actor} - El operador {$operadorNombre} reportó llegada al origen en el servicio {$folio}."),
-            'salida_destino' => $this->notificarFase($servicio, $folio, $operadorNombre, $clienteUsuarioId, $operadorId,
+            'salida_destino' => $this->notificarFase($servicio, $clienteUsuarioId,
                 'La grúa va en tránsito con tu vehículo hacia la dirección de destino.',
                 "{$actor} - El operador {$operadorNombre} inició traslado hacia el destino en el servicio {$folio}."),
-            'en_destino' => $this->notificarFase($servicio, $folio, $operadorNombre, $clienteUsuarioId, $operadorId,
+            'en_destino' => $this->notificarFase($servicio, $clienteUsuarioId,
                 'Tu vehículo ha llegado a la dirección de destino.',
                 "{$actor} - El operador {$operadorNombre} reportó llegada al destino en el servicio {$folio}."),
+            'solicitud_cancelacion' => $this->notificarRoles($servicio, self::ROLES_GESTION,
+                "{$actor} solicitó la cancelación del servicio {$folio}. Pendiente de autorización."),
             'finalizado' => $this->notificarFinalizado($servicio, $folio, $operadorNombre, $kms, $clienteUsuarioId, $operadorId),
             'cancelado' => $this->notificarCancelacion($servicio, $folio, $clienteUsuarioId, $operadorId),
-            default => null
+            default => null,
         };
     }
 
-    // ─── Métodos de notificación ──────────────────────────────
-
-    protected function notificarAsignacion($s, $folio, $opNombre, $unidad, $clienteId, $operadorId): void
+    protected function notificarAsignacion($s, $folio, $folioCot, $opNombre, $unidad, $clienteId, $operadorId): void
     {
         $actor = $this->actor();
-        $this->notificar($s, $clienteId, "Tu cotización {$folio} fue aprobada. Chofer: {$opNombre} | Unidad: {$unidad}.");
+        $this->notificar($s, $clienteId, "Tu cotización {$folioCot} fue aprobada (Servicio {$folio}). Chofer: {$opNombre} | Unidad: {$unidad}.");
         $this->notificar($s, $operadorId, "Nuevo servicio asignado: {$folio}. Unidad: {$unidad}. Toca para ver la ruta.");
-        $this->notificarRoles($s, ['admin', 'cotizador'], "{$actor} asignó al operador {$opNombre} (Unidad: {$unidad}) al servicio {$folio}.");
+        $this->notificarRoles($s, self::ROLES_GESTION, "{$actor} asignó al operador {$opNombre} (Unidad: {$unidad}) al servicio {$folio}.");
     }
 
-    protected function notificarFase($s, $folio, $opNombre, $clienteId, $operadorId, string $msgCliente, string $msgAdmin): void
+    protected function notificarFase($s, $clienteId, string $msgCliente, string $msgAdmin): void
     {
-        // Cliente recibe actualización
         $this->notificar($s, $clienteId, $msgCliente);
-        // Admin y Cotizador reciben bitácora
-        $this->notificarRoles($s, ['admin', 'cotizador'], $msgAdmin);
+        $this->notificarRoles($s, self::ROLES_GESTION, $msgAdmin);
     }
 
     protected function notificarCancelacion($s, $folio, $clienteId, $operadorId): void
@@ -99,7 +101,7 @@ class ServicioObserver
         $mensaje = "El servicio {$folio} fue cancelado.";
         $this->notificar($s, $clienteId, $mensaje);
         $this->notificar($s, $operadorId, $mensaje);
-        $this->notificarRoles($s, ['admin', 'cotizador'], "{$this->actor()} canceló el servicio {$folio}.");
+        $this->notificarRoles($s, self::ROLES_GESTION, "{$this->actor()} canceló el servicio {$folio}.");
     }
 
     protected function notificarFinalizado($s, $folio, $opNombre, $kms, $clienteId, $operadorId): void
@@ -107,16 +109,16 @@ class ServicioObserver
         $this->notificar($s, $clienteId,
             "El servicio {$folio} ha sido finalizado. Evalúa nuestra atención: " . url('/panel/evaluar-servicio/' . $s->id));
         $this->notificar($s, $operadorId,
-            "Servicio {$folio} concluido con éxito. Unidad disponible.");
-        $this->notificarRoles($s, ['admin', 'cotizador'],
+            "Servicio {$folio} concluido con éxito.");
+        $this->notificarRoles($s, self::ROLES_GESTION,
             "{$this->actor()} - El operador {$opNombre} finalizó el servicio {$folio}. Odómetro: {$kms} km.");
     }
 
-    // ─── Helpers ──────────────────────────────────────────────
-
     protected function notificar(Servicio $s, ?int $usuarioId, string $mensaje): void
     {
-        if (!$usuarioId) return;
+        if (!$usuarioId) {
+            return;
+        }
         Notificacione::create([
             'empresa_id' => $s->empresa_id,
             'usuario_id' => $usuarioId,
@@ -139,6 +141,6 @@ class ServicioObserver
 
     protected function folio(Servicio $s): string
     {
-        return 'SVC-' . str_pad($s->id, 5, '0', STR_PAD_LEFT);
+        return 'SVC-' . str_pad((string) $s->id, 5, '0', STR_PAD_LEFT);
     }
 }

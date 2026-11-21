@@ -12,6 +12,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
+            \App\Http\Middleware\SecurityHeaders::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
             \App\Http\Middleware\CheckAccountStatus::class,
@@ -24,5 +25,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectUsersTo('/panel/dashboard');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->dontFlash([
+            'current_password',
+            'password',
+            'password_confirmation',
+            'tarjeta_numero',
+            'tarjeta_cvv',
+        ]);
     })->create();

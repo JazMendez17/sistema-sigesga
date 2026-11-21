@@ -13,14 +13,25 @@ class CalificacionesServicio extends Model
 
     protected $table = 'calificaciones_servicio';
 
-    public $timestamps = false;
+    public $timestamps = true;
+
+    public const UPDATED_AT = null;
 
     protected $fillable = [
         'servicio_id',
         'cliente_id',
         'estrellas',
         'comentario',
+        'created_at',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'estrellas' => 'integer',
+            'created_at' => 'datetime',
+        ];
+    }
 
     // Relación con servicio
     public function servicio(): BelongsTo

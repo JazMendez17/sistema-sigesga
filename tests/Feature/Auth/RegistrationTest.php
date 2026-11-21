@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\Empresa;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -18,6 +19,12 @@ class RegistrationTest extends TestCase
 
     public function test_new_users_can_register(): void
     {
+        Empresa::create([
+            'nombre' => 'Empresa Test',
+            'siglas' => 'TEST',
+            'email_contacto' => 'test@sigesga.test',
+        ]);
+
         $response = $this->post('/register', [
             'name' => 'Test User',
             'email' => 'test@example.com',

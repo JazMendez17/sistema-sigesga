@@ -4,13 +4,14 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 // Seeder para estandarizar los 7 convenios del sistema con datos completos
 class ConvenioSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        Schema::disableForeignKeyConstraints();
 
         $convenios = [
             [
@@ -88,8 +89,8 @@ class ConvenioSeeder extends Seeder
             );
         }
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        Schema::enableForeignKeyConstraints();
 
-        $this->command->info('Convenios estandarizados: 7 registros actualizados correctamente.');
+        $this->command?->info('Convenios estandarizados: 7 registros actualizados correctamente.');
     }
 }

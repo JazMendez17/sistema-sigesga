@@ -1,8 +1,11 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3'
+import { useTheme } from '@/Composables/useTheme'
 import { usePasswordStrength } from '@/Composables/usePasswordStrength'
 import PasswordStrengthIndicator from '@/Components/PasswordStrengthIndicator.vue'
+
+useTheme()
 
 const page = usePage()
 const empresa = computed(() => page.props.empresa)

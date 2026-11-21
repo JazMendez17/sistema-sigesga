@@ -46,6 +46,8 @@ function submit() {
     })
   }
 }
+
+const onSubmit = val.handleSubmit(submit)
 </script>
 
 <template>
@@ -58,7 +60,7 @@ function submit() {
       </div>
 
       <div class="neumorphic-card p-6 max-w-2xl">
-        <form @submit.prevent="val.handleSubmit(submit)" class="space-y-5">
+        <form @submit.prevent="onSubmit" class="space-y-5">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div class="md:col-span-2">
               <label class="block text-sm font-medium text-gray-600 mb-1">Nombre</label>
@@ -126,7 +128,7 @@ function submit() {
 
           <div class="flex gap-3 pt-2">
             <NeumorphicButton type="submit" :loading="form.processing">{{ isEdit ? 'Actualizar Oficina' : 'Guardar Oficina' }}</NeumorphicButton>
-            <NeumorphicButton variant="secondary" @click="router.visit(route('panel.oficinas.index'))">Cancelar</NeumorphicButton>
+            <NeumorphicButton type="button" variant="secondary" @click="router.visit(route('panel.oficinas.index'))">Cancelar</NeumorphicButton>
           </div>
         </form>
       </div>

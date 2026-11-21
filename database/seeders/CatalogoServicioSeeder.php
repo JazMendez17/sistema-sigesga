@@ -33,7 +33,7 @@ class CatalogoServicioSeeder extends Seeder
         // Reactivar restricciones de llaves foráneas
         Schema::enableForeignKeyConstraints();
 
-        $this->command->info('Catálogo de servicios estandarizado: 4 registros oficiales.');
+        $this->command?->info('Catálogo de servicios estandarizado: 4 registros oficiales.');
     }
 
     protected function reassignForeignKeys(): void

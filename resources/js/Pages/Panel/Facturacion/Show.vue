@@ -20,7 +20,7 @@ function formato(val) { return val || '—' }
           <Badge :variant="factura?.estatus === 'vigente' ? 'success' : 'danger'">{{ $etiqueta(factura?.estatus) }}</Badge>
           <NeumorphicButton variant="secondary" @click="router.visit(factura?.es_cliente ? route('panel.cliente.facturas') : route('panel.facturacion.index'))">Volver</NeumorphicButton>
           <a :href="route('panel.facturas.pdf', { id: factura.id })" class="inline-flex items-center justify-center rounded-2xl px-5 py-2.5 text-sm font-medium text-white" style="background-color: var(--color-primary)" target="_blank" rel="noopener">Descargar PDF</a>
-          <NeumorphicButton v-if="factura?.correo_envio_factura" @click="router.post(route('panel.facturacion.enviar', { id: factura.id }))">Reenviar PDF</NeumorphicButton>
+          <NeumorphicButton v-if="!factura?.es_cliente && factura?.correo_envio_factura" @click="router.post(route('panel.facturacion.enviar', { id: factura.id }))">Reenviar PDF</NeumorphicButton>
         </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">

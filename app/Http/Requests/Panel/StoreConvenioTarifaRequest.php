@@ -4,8 +4,9 @@
 
 namespace App\Http\Requests\Panel;
 
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class StoreConvenioTarifaRequest extends FormRequest
@@ -31,19 +32,21 @@ class StoreConvenioTarifaRequest extends FormRequest
 
     public function rules(): array
     {
+        $empresaId = $this->user()?->empresa_id;
+
         return [
-            'convenio_id' => 'required|exists:convenios,id',
-            'servicio_id' => 'required|exists:catalogo_servicios,id',
+            'convenio_id' => ['required', Rule::exists('convenios', 'id')->where('empresa_id', $empresaId)],
+            'servicio_id' => ['required', Rule::exists('catalogo_servicios', 'id')->where('empresa_id', $empresaId)],
             'servicio' => 'nullable|string|max:150',
             'alcance' => 'nullable|string|max:100',
             'banderazo' => 'nullable|numeric|min:0',
             'km_incluidos' => 'nullable|integer|min:0',
             'costo_km_extra' => 'nullable|numeric|min:0',
-            'tarifa_nocturna_recargo_pct' => 'nullable|numeric|min:0',
-            'tarifa_domingo_festivo_recargo_pct' => 'nullable|numeric|min:0',
+            'tarifa_nocturna_recargo_pct' => 'nullable|numeric|between:0,999.99',
+            'tarifa_domingo_festivo_recargo_pct' => 'nullable|numeric|between:0,999.99',
             'minutos_espera_incluidos' => 'nullable|integer|min:0',
             'costo_espera_adicional_hora' => 'nullable|numeric|min:0',
-            'descuento_pct' => 'nullable|numeric|min:0',
+            'descuento_pct' => 'nullable|numeric|between:0,999.99',
             'tipo_descuento' => 'nullable|string|max:50',
         ];
     }

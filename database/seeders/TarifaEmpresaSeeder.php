@@ -4,13 +4,14 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 // Seeder para inyectar 8 tarifas propias (4 servicios x 2 rutas)
 class TarifaEmpresaSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        Schema::disableForeignKeyConstraints();
 
         $tarifas = [
             // Arrastre con gancho (servicio 1)
@@ -44,8 +45,8 @@ class TarifaEmpresaSeeder extends Seeder
             );
         }
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        Schema::enableForeignKeyConstraints();
 
-        $this->command->info('TarifaEmpresaSeeder: 8 tarifas propias sincronizadas correctamente.');
+        $this->command?->info('TarifaEmpresaSeeder: 8 tarifas propias sincronizadas correctamente.');
     }
 }

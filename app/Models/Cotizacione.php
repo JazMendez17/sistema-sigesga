@@ -2,18 +2,16 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\Ocultable;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-// Modelo de CotizaciÃ³n
+// Modelo de Cotización
 class Cotizacione extends Model
 {
-        use Ocultable;
-use HasFactory;
+    use HasFactory;
 
     protected $table = 'cotizaciones';
 
@@ -47,6 +45,9 @@ use HasFactory;
         'monto_iva',
         'costo_total',
         'estatus',
+        'requiere_pago_tarjeta',
+        'estatus_pago',
+        'pagada_at',
         'cliente_aprobada_at',
         'aprobada_internamente_at',
     ];
@@ -54,9 +55,23 @@ use HasFactory;
     protected function casts(): array
     {
         return [
+            'requiere_pago_tarjeta' => 'boolean',
+            'pagada_at' => 'datetime',
             'cliente_aprobada_at' => 'datetime',
             'aprobada_internamente_at' => 'datetime',
         ];
+    }
+
+    /** Determina si la cotización corresponde a un cliente sin convenio de aseguradora y requiere pago con tarjeta. */
+    public function necesitaPagoTarjeta(): bool
+    {
+        if ($this->convenio_aplicado_id !== null) {
+            return false;
+        }
+
+        $cliente = $this->relationLoaded('cliente') ? $this->cliente : $this->cliente()->first();
+
+        return $cliente ? $cliente->aseguradora_id === null : (bool) $this->requiere_pago_tarjeta;
     }
 
     // RelaciÃ³n con empresa
@@ -95,9 +110,20 @@ use HasFactory;
         return $this->belongsTo(CatalogoServicio::class, 'tipo_servicio_id');
     }
 
-    // RelaciÃ³n con servicio
+    // Relación con servicio
     public function servicio(): HasOne
     {
         return $this->hasOne(Servicio::class, 'cotizacion_id');
+    }
+
+    // Pagos realizados con tarjeta para esta cotización
+    public function pagos(): HasMany
+    {
+        return $this->hasMany(PagoCotizacion::class, 'cotizacion_id');
+    }
+
+    public function ultimoPago(): HasOne
+    {
+        return $this->hasOne(PagoCotizacion::class, 'cotizacion_id')->latestOfMany();
     }
 }

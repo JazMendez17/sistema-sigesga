@@ -1,21 +1,19 @@
 <?php
 
-// Controlador de configuración general
+// Controlador de configuración general (borrado físico seguro y validación de rutas de archivos)
 
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
-use App\Support\Auditoria;
 use App\Models\EmpresaNosotros;
-use App\Models\EmpresaValore;
-use App\Models\EmpresaServicio;
+use App\Support\Auditoria;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class ConfiguracionController extends Controller
 {
-    // Mostrar configuración de la empresa
     public function index()
     {
         $user = Auth::user();
@@ -42,7 +40,6 @@ class ConfiguracionController extends Controller
         ]);
     }
 
-    // Guardar configuración de la empresa
     public function update(Request $request)
     {
         $user = Auth::user();
@@ -66,82 +63,98 @@ class ConfiguracionController extends Controller
             'color_texto' => 'nullable|string|max:20',
             'tipografia' => 'nullable|string|max:100',
             'modo_oscuro' => 'nullable|boolean',
-            'logo' => 'nullable|string|max:500',
-            'imagen_fondo' => 'nullable|string|max:500',
+            'logo' => ['nullable', 'string', 'max:500', 'not_regex:/\.\./'],
+            'imagen_fondo' => ['nullable', 'string', 'max:500', 'not_regex:/\.\./'],
             'nosotros' => 'nullable|array',
-            'nosotros.quienes_somos' => 'nullable|string',
-            'nosotros.mision' => 'nullable|string',
-            'nosotros.vision' => 'nullable|string',
+            'nosotros.quienes_somos' => 'nullable|string|max:5000',
+            'nosotros.mision' => 'nullable|string|max:5000',
+            'nosotros.vision' => 'nullable|string|max:5000',
             'valores' => 'nullable|array',
             'valores.*.valor' => 'nullable|string|max:100',
             'valores.*.descripcion' => 'nullable|string|max:255',
             'servicios_landing' => 'nullable|array',
+            'servicios_landing.*.id' => 'nullable|integer',
             'servicios_landing.*.tipo' => 'nullable|string|max:100',
-            'servicios_landing.*.foto' => 'nullable|string|max:255',
+            'servicios_landing.*.descripcion' => 'nullable|string|max:1000',
+            'servicios_landing.*.foto' => ['nullable', 'string', 'max:255', 'not_regex:/\.\./'],
             'modulo_colores' => 'nullable|array',
             'modulo_colores.*' => 'nullable|string|max:20|regex:/^#[0-9A-Fa-f]{6}$/',
         ]);
 
         $data['modo_oscuro'] = $request->boolean('modo_oscuro');
 
-        $empresa->update($data);
+        DB::transaction(function () use ($request, $empresa, $data) {
+            $empresa->update($data);
 
-        // Guardar Nosotros
-        $nosotrosData = $request->input('nosotros', []);
-        EmpresaNosotros::updateOrCreate(
-            ['empresa_id' => $empresa->id],
-            [
-                'quienes_somos' => $nosotrosData['quienes_somos'] ?? '',
-                'mision' => $nosotrosData['mision'] ?? '',
-                'vision' => $nosotrosData['vision'] ?? '',
-            ]
-        );
+            $nosotrosData = $request->input('nosotros', []);
+            EmpresaNosotros::updateOrCreate(
+                ['empresa_id' => $empresa->id],
+                [
+                    'quienes_somos' => $nosotrosData['quienes_somos'] ?? '',
+                    'mision' => $nosotrosData['mision'] ?? '',
+                    'vision' => $nosotrosData['vision'] ?? '',
+                ]
+            );
 
-        // Guardar Valores
-        $valoresData = $request->input('valores', []);
-        if (!empty($valoresData)) {
-            foreach ($empresa->empresaValores()->get() as $valor) {
-                Auditoria::registrar($valor);
-            }
-            $empresa->empresaValores()->each(fn($v) => $v->eliminar());
-            foreach ($valoresData as $i => $v) {
-                $empresa->empresaValores()->create([
-                    'valor' => $v['valor'] ?? '',
-                    'descripcion' => $v['descripcion'] ?? '',
-                    'orden' => $i,
-                ]);
-            }
-        }
-
-        // Guardar Servicios (landing)
-        $serviciosData = $request->input('servicios_landing', []);
-        if (!empty($serviciosData)) {
-            foreach ($empresa->empresaServicios()->get() as $servicioLanding) {
-                Auditoria::registrar($servicioLanding);
-            }
-            $empresa->empresaServicios()->each(fn($s) => $s->eliminar());
-            foreach ($serviciosData as $i => $s) {
-                $empresa->empresaServicios()->create([
-                    'tipo' => $s['tipo'] ?? '',
-                    'descripcion' => $s['descripcion'] ?? '',
-                    'foto' => $s['foto'] ?? null,
-                    'orden' => $i,
-                ]);
-            }
-        }
-
-        // Guardar colores de módulos
-        $moduloColores = $request->input('modulo_colores', []);
-        if (!empty($moduloColores)) {
-            foreach ($moduloColores as $modulo => $color) {
-                if (!empty($color)) {
-                    $empresa->empresaModuloColores()->updateOrCreate(
-                        ['modulo' => $modulo],
-                        ['color' => $color]
-                    );
+            $valoresData = $request->input('valores', []);
+            if ($request->has('valores')) {
+                foreach ($empresa->empresaValores()->get() as $valor) {
+                    Auditoria::registrar($valor);
+                    $valor->delete();
+                }
+                foreach ($valoresData as $i => $v) {
+                    if (filled($v['valor'] ?? null)) {
+                        $empresa->empresaValores()->create([
+                            'valor' => $v['valor'],
+                            'descripcion' => $v['descripcion'] ?? '',
+                            'orden' => $i,
+                        ]);
+                    }
                 }
             }
-        }
+
+            $serviciosData = $request->input('servicios_landing', []);
+            if (!empty($serviciosData)) {
+                $existentes = $empresa->empresaServicios()->get()->keyBy('id');
+                foreach ($serviciosData as $i => $s) {
+                    $existente = isset($s['id']) ? $existentes->get($s['id']) : null;
+                    // Solo se permite conservar la foto propia existente o una subida a servicios/empresa
+                    $foto = $existente?->foto;
+                    if (!empty($s['foto']) && (str_starts_with($s['foto'], 'empresa/') || str_starts_with($s['foto'], 'servicios/'))) {
+                        $foto = $s['foto'];
+                    }
+
+                    if ($existente) {
+                        $existente->update([
+                            'tipo' => $s['tipo'] ?? $existente->tipo,
+                            'descripcion' => $s['descripcion'] ?? '',
+                            'foto' => $foto,
+                            'orden' => $i,
+                        ]);
+                    } elseif (filled($s['tipo'] ?? null)) {
+                        $empresa->empresaServicios()->create([
+                            'tipo' => $s['tipo'],
+                            'descripcion' => $s['descripcion'] ?? '',
+                            'foto' => $foto,
+                            'orden' => $i,
+                            'activo' => true,
+                        ]);
+                    }
+                }
+            }
+
+            $moduloColores = $request->input('modulo_colores', []);
+            if (!empty($moduloColores)) {
+                foreach ($moduloColores as $modulo => $color) {
+                    if (!empty($color)) {
+                        $empresa->empresaModuloColores()->updateOrCreate(
+                            ['modulo' => $modulo],
+                            ['color' => $color]
+                        );
+                    }
+                }
+            }
+        });
 
         return back()->with('success', 'Configuración guardada correctamente');
     }

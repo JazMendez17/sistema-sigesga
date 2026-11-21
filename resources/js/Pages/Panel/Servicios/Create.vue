@@ -4,7 +4,7 @@ import AppLayout from '@/Pages/Panel/AppLayout.vue'
 import NeumorphicInput from '@/Components/NeumorphicInput.vue'
 import NeumorphicButton from '@/Components/NeumorphicButton.vue'
 import { useFormValidation } from '@/Composables/useFormValidation'
-import { showValidationErrors } from '@/stores/notification'
+import { showValidationErrors } from '@/Stores/notification'
 
 const props = defineProps({
   servicio: Object,
@@ -52,6 +52,7 @@ function submit() {
   if (isEdit) {
     form.put(route('panel.servicios.update', props.servicio.id), {
       onSuccess: () => form.reset(),
+      onError: (errors) => showValidationErrors(Object.values(errors).flat()),
     })
   } else {
     form.post(route('panel.servicios.store'), {
@@ -60,6 +61,8 @@ function submit() {
     })
   }
 }
+
+const onSubmit = val.handleSubmit(submit)
 </script>
 
 <template>
@@ -74,7 +77,7 @@ function submit() {
 
       <!-- Formulario de datos del servicio -->
       <div class="neumorphic-card p-6 max-w-2xl">
-        <form @submit.prevent="val.handleSubmit(submit)" class="space-y-5">
+        <form @submit.prevent="onSubmit" class="space-y-5">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Cotización</label>
@@ -164,7 +167,7 @@ function submit() {
 
           <div class="flex gap-3 pt-2">
             <NeumorphicButton type="submit" :loading="form.processing">{{ isEdit ? 'Actualizar Servicio' : 'Guardar Servicio' }}</NeumorphicButton>
-            <NeumorphicButton variant="secondary" @click="router.visit(route('panel.servicios.index'))">Cancelar</NeumorphicButton>
+            <NeumorphicButton type="button" variant="secondary" @click="router.visit(route('panel.servicios.index'))">Cancelar</NeumorphicButton>
           </div>
         </form>
       </div>

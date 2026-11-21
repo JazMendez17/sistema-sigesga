@@ -53,12 +53,17 @@ Al ejecutar los seeders, se crean automáticamente las siguientes cuentas para p
 
 | Rol | Nombre | Correo Electrónico | Contraseña |
 |:---:|--------|-------------------|:----------:|
-| Administrador | Juan Carlos Pérez | admin@sigesga.com | `123456` |
-| Cotizador | Cotizador Sistema | cotizador@sigesga.com | `123456` |
-| Operador | Roberto Méndez | operador@sigesga.com | `123456` |
-| Cliente | Cliente Demo | cliente@sigesga.com | `123456` |
+| Super Administrador | Super Administrador SIGESGA | superadmin@sigesga.com | `12345678` |
+| Administrador | Juan Carlos Pérez | admin@sigesga.com | `12345678` |
+| Cotizador | Cotizador Sistema | cotizador@sigesga.com | `12345678` |
+| Operador | Roberto Méndez | operador@sigesga.com | `12345678` |
+| Cliente | Cliente Demo | cliente@sigesga.com | `12345678` |
 
-> **Nota:** El rol `admin` tiene acceso completo al sistema. Los roles `cotizador`, `operador` y `cliente` tienen permisos limitados según su perfil.
+> **Seguridad y Roles:**
+> - El rol **`superadmin`** tiene control absoluto del sistema y es el único autorizado para crear, modificar, desbloquear o eliminar físicamente cuentas de tipo **`admin`** y **`superadmin`** (protegiendo siempre al último superadministrador activo).
+> - El rol **`admin`** gestiona la operación de su empresa y cuentas de `cotizador`, `operador` y `cliente`.
+> - Todas las eliminaciones son **borrado físico real** en base de datos, conservando un respaldo sin credenciales ni datos secretos en `auditoria_eliminaciones`.
+> - Incluye consentimiento de cookies, cifrado de sesión, cabeceras de seguridad HTTP (`X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `HSTS`), aislamiento estricto multi-empresa y limitación de velocidad (*rate limiting*).
 
 ---
 

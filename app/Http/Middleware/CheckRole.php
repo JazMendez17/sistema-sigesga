@@ -1,6 +1,7 @@
 <?php
 
-// Middleware para verificar que el usuario tenga el rol requerido
+// Middleware para verificar que el usuario tenga el rol requerido.
+// El rol `superadmin` tiene acceso completo a todos los módulos administrativos y operativos.
 
 namespace App\Http\Middleware;
 
@@ -10,13 +11,19 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CheckRole
 {
-    // Verifica si el usuario tiene alguno de los roles permitidos
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
         $user = $request->user();
 
         if (!$user) {
             return redirect()->route('login');
+        }
+
+        if ($user->rol === 'superadmin') {
+            // Superadmin administra todo (solo excluido de vistas estrictas de cliente sin otros roles)
+            if ($roles !== ['cliente']) {
+                return $next($request);
+            }
         }
 
         foreach ($roles as $role) {

@@ -1,26 +1,26 @@
 <?php
 
-// Controlador de convenios
+// Controlador de convenios (borrado físico y defaults NOT NULL)
 
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
-use App\Support\Auditoria;
-use App\Models\Convenio;
+use App\Http\Requests\Panel\StoreConvenioRequest;
 use App\Models\Aseguradora;
 use App\Models\CatalogoServicio;
-use App\Http\Requests\Panel\StoreConvenioRequest;
+use App\Models\Convenio;
+use App\Models\ConvenioTarifa;
 use App\Services\ImportaConvenios;
+use App\Support\Auditoria;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class ConveniosController extends Controller
 {
-    // Lista de convenios
     public function index()
     {
-        $user = Auth::user();
-        $empresaId = $user->empresa_id;
+        $empresaId = Auth::user()->empresa_id;
 
         $convenios = Convenio::with(['aseguradora', 'tipoServicio', 'convenioTarifas'])
             ->where('empresa_id', $empresaId)
@@ -39,8 +39,8 @@ class ConveniosController extends Controller
                 'estatus' => $c->estatus ?? 'vigente',
             ]);
 
-        $tarifasGlobales = \App\Models\ConvenioTarifa::with('convenio')
-            ->whereHas('convenio', fn($q) => $q->where('empresa_id', $empresaId))
+        $tarifasGlobales = ConvenioTarifa::with('convenio')
+            ->whereHas('convenio', fn ($q) => $q->where('empresa_id', $empresaId))
             ->get()
             ->map(fn ($t) => [
                 'id' => $t->id,
@@ -69,41 +69,38 @@ class ConveniosController extends Controller
         ]);
     }
 
-    // Formulario para crear convenio
     public function create()
     {
-        $user = Auth::user();
-        $empresaId = $user->empresa_id;
+        $empresaId = Auth::user()->empresa_id;
 
         return Inertia::render('Panel/Convenios/Create', [
             'aseguradoras' => Aseguradora::where('empresa_id', $empresaId)->get(['id', 'nombre']),
         ]);
     }
 
-    // Guardar convenio en base de datos
     public function store(StoreConvenioRequest $request)
     {
-        $user = Auth::user();
-
         $data = $request->validated();
-        $data['empresa_id'] = $user->empresa_id;
+        $data['empresa_id'] = Auth::user()->empresa_id;
+        $data['estatus'] = $data['estatus'] ?? 'vigente';
+        $data['km_seguros_incluidos'] = $data['km_seguros_incluidos'] ?? 0;
         $data['cubre_casetas_peaje'] = $request->boolean('cubre_casetas_peaje');
         $data['renovacion_automatica'] = $request->boolean('renovacion_automatica');
         $data['exclusivo'] = $request->boolean('exclusivo');
         $data['requiere_folio_cfdi'] = $request->boolean('requiere_folio_cfdi');
         $data['iva_incluido'] = $request->boolean('iva_incluido');
 
-        $convenio = Convenio::create($data);
+        Convenio::create($data);
 
         return redirect()->route('panel.convenios.index')
             ->with('success', 'Convenio creado correctamente');
     }
 
-    // Ver detalle de convenio
     public function show($id)
     {
         $convenio = Convenio::with(['aseguradora'])
-            ->where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+            ->where('empresa_id', auth()->user()->empresa_id)
+            ->findOrFail($id);
 
         return Inertia::render('Panel/Convenios/Show', [
             'convenio' => [
@@ -114,25 +111,22 @@ class ConveniosController extends Controller
                 'fecha_inicio' => $convenio->fecha_inicio ?? '—',
                 'fecha_fin' => $convenio->fecha_fin ?? '—',
                 'estatus' => $convenio->estatus ?? '—',
-                'renovacion_automatica' => $convenio->renovacion_automatica,
-                'exclusivo' => $convenio->exclusivo,
+                'renovacion_automatica' => (bool) $convenio->renovacion_automatica,
+                'exclusivo' => (bool) $convenio->exclusivo,
                 'dias_credito' => $convenio->dias_credito ?? '—',
                 'periodicidad_corte' => $convenio->periodicidad_corte ?? '—',
                 'aviso_previo_terminacion_dias' => $convenio->aviso_previo_terminacion_dias ?? '—',
-                'requiere_folio_cfdi' => $convenio->requiere_folio_cfdi,
-                'iva_incluido' => $convenio->iva_incluido,
+                'requiere_folio_cfdi' => (bool) $convenio->requiere_folio_cfdi,
+                'iva_incluido' => (bool) $convenio->iva_incluido,
                 'tope_credito' => $convenio->tope_credito,
             ],
         ]);
     }
 
-    // Formulario para editar convenio
     public function edit($id)
     {
-        $user = Auth::user();
-        $empresaId = $user->empresa_id;
-
-        $convenio = Convenio::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
+        $empresaId = Auth::user()->empresa_id;
+        $convenio = Convenio::where('empresa_id', $empresaId)->findOrFail($id);
 
         return Inertia::render('Panel/Convenios/Create', [
             'convenio' => $convenio,
@@ -141,12 +135,12 @@ class ConveniosController extends Controller
         ]);
     }
 
-    // Actualizar datos del convenio
     public function update(StoreConvenioRequest $request, $id)
     {
         $convenio = Convenio::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
 
         $data = $request->validated();
+        $data['estatus'] = $data['estatus'] ?? $convenio->estatus ?? 'vigente';
         $data['cubre_casetas_peaje'] = $request->boolean('cubre_casetas_peaje');
         $data['renovacion_automatica'] = $request->boolean('renovacion_automatica');
         $data['exclusivo'] = $request->boolean('exclusivo');
@@ -159,18 +153,16 @@ class ConveniosController extends Controller
             ->with('success', 'Convenio actualizado correctamente');
     }
 
-    // Eliminar convenio
     public function destroy($id)
     {
         $convenio = Convenio::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
 
-        $convenio->cotizaciones()->get()->each(fn($x) => $x->eliminar());
-
-        Auditoria::registrar($convenio);
-
-        $convenio->eliminar();
+        DB::transaction(function () use ($convenio) {
+            Auditoria::registrar($convenio);
+            $convenio->delete();
+        });
 
         return redirect()->route('panel.convenios.index')
-            ->with('success', 'Convenio eliminado correctamente');
+            ->with('success', 'Convenio eliminado físicamente de forma correcta.');
     }
 }

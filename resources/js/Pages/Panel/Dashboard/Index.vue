@@ -127,12 +127,12 @@ const badgeVariant = (status) => ({
           <p class="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--color-text-muted)]">Resumen</p>
           <h1 class="mt-1 text-3xl font-bold tracking-tight text-[var(--color-text)]">Dashboard</h1>
         </div>
-        <NeumorphicButton v-if="role === 'admin' || role === 'cotizador'" @click="router.visit(route('panel.cotizaciones.create'))">
+        <NeumorphicButton v-if="role === 'superadmin' || role === 'admin' || role === 'cotizador'" @click="router.visit(route('panel.cotizaciones.create'))">
           + Nueva Cotización
         </NeumorphicButton>
       </div>
 
-          <template v-if="role === 'admin' || role === 'cotizador'">
+          <template v-if="role === 'superadmin' || role === 'admin' || role === 'cotizador'">
         <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
           <KPICard
             v-for="(kpi, index) in kpis"
@@ -182,8 +182,8 @@ const badgeVariant = (status) => ({
             <p class="mt-3 text-center text-xs font-medium text-[var(--color-text-muted)]">{{ periodos[periodo].info }} — <span class="font-bold text-[var(--color-text)]">{{ totalPeriodo }}</span> registros <span v-if="totalPeriodo === 0" class="text-[var(--color-text-muted)]">(aún no hay cotizaciones en este periodo)</span></p>
           </div>
 
-          <!-- Facturación: facturas terminadas por periodo (admin y cotizador) -->
-          <div v-if="role === 'admin' || role === 'cotizador'" class="rounded-[30px] border border-white/40 bg-[var(--color-surface)] p-5 shadow-[10px_10px_20px_var(--neumorphic-dark),-10px_-10px_20px_var(--neumorphic-light)] sm:p-6">
+          <!-- Facturación: facturas terminadas por periodo (superadmin, admin y cotizador) -->
+          <div v-if="role === 'superadmin' || role === 'admin' || role === 'cotizador'" class="rounded-[30px] border border-white/40 bg-[var(--color-surface)] p-5 shadow-[10px_10px_20px_var(--neumorphic-dark),-10px_-10px_20px_var(--neumorphic-light)] sm:p-6">
             <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-text-muted)]">Facturación</p>
@@ -410,7 +410,7 @@ const badgeVariant = (status) => ({
               <h3 class="text-lg font-semibold text-gray-700 mb-4">Historial Reciente</h3>
               <div v-if="historialCliente?.length" class="overflow-x-auto">
                 <table class="w-full text-sm"><thead><tr class="border-b border-gray-200"><th class="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Folio</th><th class="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Servicio</th><th class="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Fecha</th><th class="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Monto</th><th class="text-left py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Estatus</th><th class="text-right py-2 px-3 text-xs font-semibold text-gray-500 uppercase">Acción</th></tr></thead>
-                <tbody><tr v-for="s in historialCliente" :key="s.id" class="border-b border-gray-100 hover:bg-white/50"><td class="py-3 px-3 font-medium">SVC-{{ String(s.id).padStart(5, '0') }}</td><td class="py-3 px-3">{{ s.servicio }}</td><td class="py-3 px-3 text-gray-500">{{ s.fecha }}</td><td class="py-3 px-3">{{ s.monto }}</td><td class="py-3 px-3"><Badge :variant="s.status === 'finalizado' ? 'success' : s.status === 'cancelado' ? 'danger' : 'warning'">{{ s.status }}</Badge></td><td class="py-3 px-3 text-right"><button @click="router.visit(route('panel.servicios.show.cliente', { id: s.id }))" class="rounded-lg bg-[#EEF2F7] p-2 text-gray-500 shadow-[3px_3px_6px_#d0d5da,-3px_-3px_6px_#ffffff] transition-all hover:text-[#4F46E5]"><svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg></button></td></tr></tbody></table>
+                <tbody><tr v-for="s in historialCliente" :key="s.id" class="border-b border-gray-100 hover:bg-white/50"><td class="py-3 px-3 font-medium">SVC-{{ String(s.id).padStart(5, '0') }}</td><td class="py-3 px-3">{{ s.servicio }}</td><td class="py-3 px-3 text-gray-500">{{ s.fecha }}</td><td class="py-3 px-3">{{ s.monto }}</td><td class="py-3 px-3"><Badge :variant="s.status === 'finalizado' ? 'success' : s.status === 'cancelado' ? 'danger' : 'warning'">{{ $etiqueta(s.status) }}</Badge></td><td class="py-3 px-3 text-right"><button @click="router.visit(route('panel.servicios.show.cliente', { id: s.id }))" class="rounded-lg bg-[#EEF2F7] p-2 text-gray-500 shadow-[3px_3px_6px_#d0d5da,-3px_-3px_6px_#ffffff] transition-all hover:text-[#4F46E5]"><svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg></button></td></tr></tbody></table>
               </div>
               <p v-else class="text-sm text-gray-400 text-center py-4">Sin historial</p>
             </div>

@@ -1,23 +1,21 @@
 <?php
 
-// FormRequest para validar los datos de cotizaciones
+// FormRequest para validar los datos de cotizaciones (borrado físico, multi-tenant y km_excedente)
 
 namespace App\Http\Requests\Panel;
 
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class StoreCotizacionRequest extends FormRequest
 {
-    // Autoriza la petición
     public function authorize(): bool
     {
         return true;
     }
 
-    // Limpia los campos antes de la validación
     protected function prepareForValidation(): void
     {
         $data = $this->all();
@@ -32,16 +30,16 @@ class StoreCotizacionRequest extends FormRequest
         }
     }
 
-    // Define las reglas de validación
     public function rules(): array
     {
         $id = $this->route('id');
+        $empresaId = $this->user()?->empresa_id;
 
-        $rules = [
-            'cliente_id' => ['required', Rule::exists('clientes', 'id')->where('empresa_id', $this->user()?->empresa_id)->where('eliminado', false)],
-            'tipo_servicio_id' => ['required', Rule::exists('catalogo_servicios', 'id')->where('empresa_id', $this->user()?->empresa_id)->where('eliminado', false)],
-            'convenio_aplicado_id' => ['nullable', Rule::exists('convenios', 'id')->where('empresa_id', $this->user()?->empresa_id)->where('eliminado', false)],
-            'tarifa_empresa_aplicada_id' => ['nullable', Rule::exists('tarifas_empresa', 'id')->where('empresa_id', $this->user()?->empresa_id)->where('eliminado', false)],
+        return [
+            'cliente_id' => ['required', Rule::exists('clientes', 'id')->where('empresa_id', $empresaId)],
+            'tipo_servicio_id' => ['required', Rule::exists('catalogo_servicios', 'id')->where('empresa_id', $empresaId)],
+            'convenio_aplicado_id' => ['nullable', Rule::exists('convenios', 'id')->where('empresa_id', $empresaId)],
+            'tarifa_empresa_aplicada_id' => ['nullable', Rule::exists('tarifas_empresa', 'id')->where('empresa_id', $empresaId)],
             'origen_direccion' => 'required|string|max:500',
             'destino_direccion' => 'required|string|max:500',
             'distancia_km' => 'required|numeric|min:0.1',
@@ -53,25 +51,18 @@ class StoreCotizacionRequest extends FormRequest
             'descuento_pct' => 'nullable|numeric|between:0,100',
             'monto_iva' => 'nullable|numeric|min:0',
             'km_incluidos' => 'nullable|numeric|min:0',
+            'km_excedente' => 'nullable|numeric|min:0',
             'costo_aprox_casetas' => 'nullable|numeric|min:0',
             'incluye_peajes' => 'nullable|boolean',
             'cargo_zona_especial' => 'nullable|numeric|min:0',
-            'observaciones' => 'nullable|string|max:1000',
-            'folio' => 'nullable|string|max:50|unique:cotizaciones,folio,' . $id,
+            'folio' => ['nullable', 'string', 'max:50', Rule::unique('cotizaciones', 'folio')->ignore($id)],
             'origen_lat' => 'nullable|numeric|between:-90,90',
             'origen_lng' => 'nullable|numeric|between:-180,180',
             'destino_lat' => 'nullable|numeric|between:-90,90',
             'destino_lng' => 'nullable|numeric|between:-180,180',
         ];
-
-        if ($id) {
-            $rules['estatus'] = 'nullable|in:pendiente,aprobado,rechazado';
-        }
-
-        return $rules;
     }
 
-    // Mensajes de error personalizados en español
     public function messages(): array
     {
         return [
@@ -93,24 +84,9 @@ class StoreCotizacionRequest extends FormRequest
             'costo_km.required' => 'El costo por km es obligatorio.',
             'folio.unique' => 'El folio ya está registrado en el sistema.',
             'folio.max' => 'El folio no debe exceder los 50 caracteres.',
-            'origen_lat.numeric' => 'La latitud de origen debe ser un valor numérico.',
-            'origen_lat.between' => 'La latitud de origen debe estar entre -90 y 90.',
-            'origen_lng.numeric' => 'La longitud de origen debe ser un valor numérico.',
-            'origen_lng.between' => 'La longitud de origen debe estar entre -180 y 180.',
-            'destino_lat.numeric' => 'La latitud de destino debe ser un valor numérico.',
-            'destino_lat.between' => 'La latitud de destino debe estar entre -90 y 90.',
-            'destino_lng.numeric' => 'La longitud de destino debe ser un valor numérico.',
-            'destino_lng.between' => 'La longitud de destino debe estar entre -180 y 180.',
-            'costo_banderazo.numeric' => 'El costo de banderazo debe ser un valor numérico.',
-            'costo_banderazo.min' => 'El costo de banderazo debe ser mayor o igual a 0.',
-            'costo_km.numeric' => 'El costo por km debe ser un valor numérico.',
-            'costo_km.min' => 'El costo por km debe ser mayor o igual a 0.',
-            'estatus.in' => 'El estatus debe ser pendiente, aprobado o rechazado.',
-            'observaciones.max' => 'Las observaciones no deben exceder los 1000 caracteres.',
         ];
     }
 
-    // Lanza excepción con los errores de validación
     protected function failedValidation(Validator $validator): void
     {
         throw ValidationException::withMessages($validator->errors()->toArray());

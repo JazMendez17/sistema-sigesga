@@ -3,23 +3,24 @@
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
-use App\Support\Auditoria;
-use App\Models\ConvenioSla;
 use App\Models\Convenio;
+use App\Models\ConvenioSla;
+use App\Support\Auditoria;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
-// Controlador para gestión de SLA / Penalizaciones por convenio
+// Controlador para gestión de SLA / Penalizaciones por convenio (multi-tenant estricto + borrado físico)
 class PenalizacionController extends Controller
 {
     public function index()
     {
-        $user = Auth::user();
-        $empresaId = $user->empresa_id;
+        $empresaId = Auth::user()->empresa_id;
 
         $slas = ConvenioSla::with('convenio.aseguradora')
-            ->whereHas('convenio', fn($q) => $q->where('empresa_id', $empresaId))
+            ->whereHas('convenio', fn ($q) => $q->where('empresa_id', $empresaId))
             ->get()
             ->map(fn ($s) => [
                 'id' => $s->id,
@@ -46,38 +47,58 @@ class PenalizacionController extends Controller
     {
         $data = $this->validateSla($request);
         ConvenioSla::create($data);
+
         return redirect()->route('panel.penalizaciones.index')->with('success', 'SLA registrado correctamente.');
     }
 
     public function edit($id)
     {
+        $empresaId = auth()->user()->empresa_id;
+        $sla = ConvenioSla::whereHas('convenio', fn ($q) => $q->where('empresa_id', $empresaId))
+            ->findOrFail($id);
+
         return Inertia::render('Panel/Penalizaciones/Create', [
-            'sla' => ConvenioSla::findOrFail($id),
-            'convenios' => Convenio::where('empresa_id', auth()->user()->empresa_id)->get(['id', 'nombre_convenio_poliza']),
+            'sla' => $sla,
+            'convenios' => Convenio::where('empresa_id', $empresaId)->get(['id', 'nombre_convenio_poliza']),
         ]);
     }
 
     public function update(Request $request, $id)
     {
+        $empresaId = auth()->user()->empresa_id;
+        $sla = ConvenioSla::whereHas('convenio', fn ($q) => $q->where('empresa_id', $empresaId))
+            ->findOrFail($id);
+
         $data = $this->validateSla($request, $id);
-        ConvenioSla::findOrFail($id)->update($data);
+        $sla->update($data);
+
         return redirect()->route('panel.penalizaciones.index')->with('success', 'SLA actualizado correctamente.');
     }
 
     public function destroy($id)
     {
-        $sla = ConvenioSla::findOrFail($id);
+        $empresaId = auth()->user()->empresa_id;
+        $sla = ConvenioSla::whereHas('convenio', fn ($q) => $q->where('empresa_id', $empresaId))
+            ->findOrFail($id);
 
-        Auditoria::registrar($sla);
+        DB::transaction(function () use ($sla) {
+            Auditoria::registrar($sla);
+            $sla->delete();
+        });
 
-        $sla->eliminar();
-        return redirect()->route('panel.penalizaciones.index')->with('success', 'SLA eliminado correctamente.');
+        return redirect()->route('panel.penalizaciones.index')->with('success', 'SLA eliminado físicamente.');
     }
 
-    protected function validateSla(Request $request, $id = null)
+    protected function validateSla(Request $request, $id = null): array
     {
-        return $request->validate([
-            'convenio_id' => 'required|exists:convenios,id|unique:convenio_sla,convenio_id,' . $id,
+        $empresaId = auth()->user()->empresa_id;
+
+        $data = $request->validate([
+            'convenio_id' => [
+                'required',
+                Rule::exists('convenios', 'id')->where('empresa_id', $empresaId),
+                Rule::unique('convenio_sla', 'convenio_id')->ignore($id),
+            ],
             'tiempo_max_respuesta_urbano_min' => 'required|integer|min:0',
             'tiempo_max_respuesta_carretera_min' => 'required|integer|min:0',
             'disponibilidad' => 'nullable|string|max:50',
@@ -85,9 +106,16 @@ class PenalizacionController extends Controller
             'protocolo_asignacion' => 'nullable|string|max:150',
         ], [
             'convenio_id.required' => 'El convenio es obligatorio.',
+            'convenio_id.exists' => 'El convenio seleccionado no pertenece a tu empresa.',
             'convenio_id.unique' => 'Este convenio ya tiene un SLA registrado.',
             'tiempo_max_respuesta_urbano_min.required' => 'El tiempo urbano es obligatorio.',
             'tiempo_max_respuesta_carretera_min.required' => 'El tiempo carretera es obligatorio.',
         ]);
+
+        $data['disponibilidad'] = !empty(trim((string) ($data['disponibilidad'] ?? '')))
+            ? trim((string) $data['disponibilidad'])
+            : '24/7';
+
+        return $data;
     }
 }

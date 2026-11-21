@@ -2,18 +2,20 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\Ocultable;
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 // Modelo de Convenio
 class Convenio extends Model
 {
-        use Ocultable;
-use HasFactory;
+        use HasFactory;
+
+    protected $attributes = [
+        'km_seguros_incluidos' => 0,
+    ];
 
     protected $fillable = [
         'empresa_id',
@@ -86,10 +88,22 @@ use HasFactory;
         return $this->hasMany(ConvenioDocumentosRequerido::class);
     }
 
-    // RelaciÃ³n con tarifas del convenio
+    // Relación con tarifas del convenio
     public function convenioTarifas(): HasMany
     {
         return $this->hasMany(ConvenioTarifa::class);
+    }
+
+    // Relación con conceptos adicionales del convenio
+    public function conceptosAdicionales(): HasOne
+    {
+        return $this->hasOne(ConvenioConceptoAdicional::class);
+    }
+
+    // Relación con SLA del convenio
+    public function sla(): HasOne
+    {
+        return $this->hasOne(ConvenioSla::class);
     }
 
     // RelaciÃ³n con cotizaciones

@@ -44,7 +44,7 @@ const rules = {
 const val = useFormValidation(form, rules)
 
 function doSubmit() {
-  if (!isEdit && form.password) {
+  if (form.password) {
     passwordSubmitted.value = true
     if (!isValid.value) return
   }
@@ -85,7 +85,7 @@ const onSubmit = val.handleSubmit(doSubmit)
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">{{ isEdit ? 'Contraseña (dejar vacío para mantener)' : 'Contraseña' }}</label>
               <NeumorphicInput v-model="form.password" type="password" placeholder="Mínimo 8 caracteres" :error="val.getError('password')" @input="val.handleInput('password')" />
-              <div v-if="!isEdit && form.password" class="mt-3">
+              <div v-if="form.password" class="mt-3">
                 <PasswordStrengthIndicator
                   :password="form.password"
                   :resultados="resultados"
@@ -97,11 +97,26 @@ const onSubmit = val.handleSubmit(doSubmit)
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Rol</label>
-              <select v-model="form.rol" @change="val.handleInput('rol')" class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300">
-                <option value="">Seleccionar rol...</option>
-                <option v-for="r in roles" :key="r.value" :value="r.value">{{ r.label }}</option>
-              </select>
-              <p v-if="val.getError('rol')" class="text-sm text-red-500 mt-1">{{ val.getError('rol') }}</p>
+              <template v-if="isEdit && usuario?.rol === 'superadmin'">
+                <input
+                  type="text"
+                  value="Super Administrador"
+                  disabled
+                  class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] opacity-60 cursor-not-allowed"
+                />
+                <p class="text-xs text-gray-500 mt-1">El rol de Super Administrador es único y no se puede modificar.</p>
+              </template>
+              <template v-else>
+                <select
+                  v-model="form.rol"
+                  @change="val.handleInput('rol')"
+                  class="w-full bg-[#E8EDF2] text-gray-700 rounded-2xl p-3 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                >
+                  <option value="">Seleccionar rol...</option>
+                  <option v-for="r in roles" :key="r.value" :value="r.value">{{ r.label }}</option>
+                </select>
+                <p v-if="val.getError('rol')" class="text-sm text-red-500 mt-1">{{ val.getError('rol') }}</p>
+              </template>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600 mb-1">Empleado</label>
@@ -126,7 +141,7 @@ const onSubmit = val.handleSubmit(doSubmit)
               <svg v-if="form.processing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" /><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
               {{ isEdit ? 'Actualizar Usuario' : 'Guardar Usuario' }}
             </button>
-            <NeumorphicButton variant="secondary" @click="router.visit(route('panel.usuarios.index'))">Cancelar</NeumorphicButton>
+            <NeumorphicButton type="button" variant="secondary" @click="router.visit(route('panel.usuarios.index'))">Cancelar</NeumorphicButton>
           </div>
         </form>
       </div>

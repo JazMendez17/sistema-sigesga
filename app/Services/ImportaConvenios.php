@@ -17,7 +17,9 @@ use App\Models\ConvenioUnidadesAutorizada;
 use App\Support\MachoteExcel;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -38,7 +40,7 @@ class ImportaConvenios
             ['campo' => 'fecha_inicio', 'etiqueta' => 'Fecha Inicio', 'ancho' => 16, 'tipo' => MachoteExcel::TIPO_FECHA, 'ejemplo' => '2026-01-01'],
             ['campo' => 'fecha_fin', 'etiqueta' => 'Fecha Fin', 'ancho' => 16, 'tipo' => MachoteExcel::TIPO_FECHA, 'ejemplo' => '2026-12-31'],
             ['campo' => 'estatus', 'etiqueta' => 'Estatus', 'ancho' => 18, 'opciones' => ['vigente', 'vencido', 'en_negociacion', 'cancelado'], 'ejemplo' => 'vigente'],
-            ['campo' => 'tipo_ruta', 'etiqueta' => 'Tipo Ruta', 'ancho' => 14, 'opciones' => ['local', 'foraneo'], 'ejemplo' => 'local'],
+            ['campo' => 'tipo_ruta', 'etiqueta' => 'Tipo Ruta', 'ancho' => 14, 'opciones' => ['local', 'foraneo', 'nacional', 'regional'], 'ejemplo' => 'local'],
             ['campo' => 'tipo_cobertura', 'etiqueta' => 'Tipo Cobertura', 'ancho' => 20, 'ejemplo' => 'Amplia'],
             ['campo' => 'alcance_geografico', 'etiqueta' => 'Alcance Geográfico', 'ancho' => 26, 'ejemplo' => 'Zona metropolitana'],
             ['campo' => 'costo_banderazo', 'etiqueta' => 'Banderazo ($)', 'ancho' => 15, 'tipo' => MachoteExcel::TIPO_NUMERO, 'ejemplo' => 850],
@@ -158,20 +160,25 @@ class ImportaConvenios
 
         $contexto = [
             'empresaId' => $empresaId,
-            'aseguradoras' => Aseguradora::where('empresa_id', $empresaId)->pluck('id', 'nombre'),
-            'servicios' => CatalogoServicio::where('empresa_id', $empresaId)->where('activo', true)->pluck('id', 'nombre'),
+            'aseguradoras' => $this->mapaAseguradoras($empresaId),
+            'servicios' => $this->mapaServicios($empresaId),
             'convenios' => [],
         ];
 
         $creados = 0;
         $actualizados = 0;
         $errores = [];
+        $codigosPadreRechazados = [];
 
         foreach ($filasPrincipales as $fila) {
             $resultado = $this->guardarConvenio($fila, $contexto);
 
             if (is_string($resultado)) {
                 $errores[] = ['hoja' => self::HOJA_PRINCIPAL, 'fila' => $fila['__fila'], 'mensaje' => $resultado];
+                $codigo = strtoupper(trim((string) ($fila[self::CAMPO_VINCULO] ?? '')));
+                if ($codigo !== '') {
+                    $codigosPadreRechazados[$codigo] = true;
+                }
             } elseif ($resultado) {
                 $actualizados++;
             } else {
@@ -184,7 +191,7 @@ class ImportaConvenios
                 continue;
             }
 
-            [$nuevos, $cambios, $erroresHoja] = $this->importarHojaHija($libro, $hoja, $contexto);
+            [$nuevos, $cambios, $erroresHoja] = $this->importarHojaHija($libro, $hoja, $contexto, $codigosPadreRechazados);
             $creados += $nuevos;
             $actualizados += $cambios;
             $errores = array_merge($errores, $erroresHoja);
@@ -193,9 +200,92 @@ class ImportaConvenios
         return ['creados' => $creados, 'actualizados' => $actualizados, 'errores' => $errores];
     }
 
+    /** @return array<string, int> */
+    private function mapaAseguradoras(int $empresaId): array
+    {
+        $mapa = [];
+
+        $aseguradoras = Aseguradora::where('empresa_id', $empresaId)
+            ->orderBy('id')
+            ->get(['id', 'nombre', 'nombre_comercial']);
+
+        foreach ($aseguradoras as $aseguradora) {
+            foreach ([$aseguradora->nombre, $aseguradora->nombre_comercial] as $nombre) {
+                $clave = self::normalizaTextoCatalogo($nombre);
+
+                if ($clave !== '') {
+                    $mapa[$clave] ??= $aseguradora->id;
+                }
+            }
+        }
+
+        // Nombre usado en el machote para la aseguradora registrada como AXA.
+        $axa = $mapa[self::normalizaTextoCatalogo('AXA')] ?? null;
+        if ($axa !== null) {
+            $mapa[self::normalizaTextoCatalogo('AXA Seguros')] ??= $axa;
+        }
+
+        return $mapa;
+    }
+
+    private static function normalizaTextoCatalogo(?string $texto): string
+    {
+        $texto = Str::ascii(mb_strtolower(trim((string) $texto), 'UTF-8'));
+
+        return trim(preg_replace('/\s+/', ' ', $texto) ?? $texto);
+    }
+
+    /** @return array<string, int> */
+    private function mapaServicios(int $empresaId): array
+    {
+        $mapa = [];
+
+        $servicios = CatalogoServicio::where('empresa_id', $empresaId)
+            ->where('activo', true)
+            ->orderBy('id')
+            ->get(['id', 'nombre']);
+
+        foreach ($servicios as $servicio) {
+            $clave = self::normalizaTextoCatalogo($servicio->nombre);
+            if ($clave !== '') {
+                $mapa[$clave] ??= $servicio->id;
+            }
+        }
+
+        // Alias usados por el machote de convenios para los servicios del catálogo.
+        $aliases = [
+            'grua plataforma' => ['arrastre en plataforma hidraulica'],
+            'grua de arrastre' => ['arrastre con gancho'],
+        ];
+
+        foreach ($aliases as $alias => $nombresCatalogo) {
+            foreach ($nombresCatalogo as $nombreCatalogo) {
+                $id = $mapa[self::normalizaTextoCatalogo($nombreCatalogo)] ?? null;
+                if ($id !== null) {
+                    $mapa[self::normalizaTextoCatalogo($alias)] ??= $id;
+                    break;
+                }
+            }
+        }
+
+        return $mapa;
+    }
+
     /** Devuelve true si actualizó un convenio existente, false si creó uno nuevo, o un mensaje de error. */
     private function guardarConvenio(array $fila, array &$contexto): bool|string
     {
+        if (isset($fila['tipo_ruta']) && is_string($fila['tipo_ruta'])) {
+            $tipoRuta = self::normalizaTextoCatalogo($fila['tipo_ruta']);
+
+            if ($tipoRuta === 'local' || $tipoRuta === 'locales') {
+                $fila['tipo_ruta'] = 'local';
+            } elseif (in_array($tipoRuta, ['foraneo', 'foranea', 'foraneos', 'foraneas'], true)) {
+                $fila['tipo_ruta'] = 'foraneo';
+            } elseif (in_array($tipoRuta, ['nacional', 'regional'], true)) {
+                $fila['tipo_ruta'] = $tipoRuta;
+            }
+        }
+
         $validacion = Validator::make($fila, self::REGLAS[self::HOJA_PRINCIPAL], self::MENSAJES, self::atributos(self::HOJA_PRINCIPAL));
 
         if ($validacion->fails()) {
@@ -207,9 +297,9 @@ class ImportaConvenios
         $codigo = strtoupper($datos['codigo_convenio']);
         $datos['codigo_convenio'] = $codigo;
 
-        $idAseguradora = $contexto['aseguradoras']->get(trim($datos['aseguradora']));
+        $idAseguradora = $contexto['aseguradoras'][self::normalizaTextoCatalogo($datos['aseguradora'])] ?? null;
         if (!$idAseguradora) {
-            return "La aseguradora «" . trim($datos['aseguradora']) . "» no existe en tu empresa.";
+            return "La aseguradora «" . trim($datos['aseguradora']) . "» no está dada de alta en el catálogo de tu empresa. Agrégala en Aseguradoras y vuelve a importar esta fila.";
         }
 
         $convenio = Convenio::where('empresa_id', $contexto['empresaId'])
@@ -224,7 +314,7 @@ class ImportaConvenios
 
         if (isset($datos['tipo_servicio'])) {
             $nombre = trim($datos['tipo_servicio']);
-            $idServicio = $contexto['servicios']->get($nombre);
+            $idServicio = $contexto['servicios'][self::normalizaTextoCatalogo($nombre)] ?? null;
 
             if (!$idServicio) {
                 return "El tipo de servicio «{$nombre}» no está en el catálogo de servicios de tu empresa.";
@@ -240,7 +330,9 @@ class ImportaConvenios
                 $convenio = Convenio::create($datos + ['empresa_id' => $contexto['empresaId']]);
             }
         } catch (QueryException $e) {
-            return 'No se pudo guardar: ' . $e->getMessage();
+            Log::warning('Error importando convenio', ['empresa_id' => $contexto['empresaId'], 'codigo' => $codigo, 'error' => $e->getMessage()]);
+
+            return 'No se pudo guardar el convenio por un conflicto de datos en la base de datos.';
         }
 
         $contexto['convenios'][$codigo] = $convenio;
@@ -249,7 +341,7 @@ class ImportaConvenios
     }
 
     /** @return array{0:int, 1:int, 2:array} */
-    private function importarHojaHija($libro, string $hoja, array &$contexto): array
+    private function importarHojaHija($libro, string $hoja, array &$contexto, array $codigosPadreRechazados = []): array
     {
         try {
             $filas = MachoteExcel::leerHoja($libro, self::COLUMNAS[$hoja], $hoja);
@@ -268,6 +360,15 @@ class ImportaConvenios
         $errores = [];
 
         foreach ($filas as $fila) {
+            $codigoPadre = strtoupper(trim((string) ($fila[self::CAMPO_VINCULO] ?? '')));
+            if (
+                isset($codigosPadreRechazados[$codigoPadre])
+                && !isset($contexto['convenios'][$codigoPadre])
+                && !Convenio::where('empresa_id', $contexto['empresaId'])->where('codigo_convenio', $codigoPadre)->exists()
+            ) {
+                continue;
+            }
+
             $mensaje = $this->guardarHijo($hoja, $fila, $contexto);
 
             if ($mensaje !== null) {
@@ -306,9 +407,13 @@ class ImportaConvenios
 
         if ($hoja === 'Tarifas') {
             $nombre = trim($datos['servicio']);
-            $datos['servicio_id'] = $contexto['servicios']->get($nombre);
+            $datos['servicio_id'] = $contexto['servicios'][self::normalizaTextoCatalogo($nombre)] ?? null;
             $datos['servicio'] = $nombre;
-            $clave = ['convenio_id' => $convenio->id, 'servicio' => $nombre];
+            $clave = [
+                'convenio_id' => $convenio->id,
+                'servicio' => $nombre,
+                'alcance' => $datos['alcance'] ?? null,
+            ];
         } elseif ($hoja === 'Coberturas') {
             $clave = ['convenio_id' => $convenio->id, 'tipo_cobertura' => $datos['tipo_cobertura']];
             $datos = $clave;
@@ -335,7 +440,9 @@ class ImportaConvenios
                 $registro->save();
             });
         } catch (QueryException $e) {
-            return 'No se pudo guardar: ' . $e->getMessage();
+            Log::warning('Error importando registro hijo de convenio', ['empresa_id' => $contexto['empresaId'], 'hoja' => $hoja, 'error' => $e->getMessage()]);
+
+            return 'No se pudo guardar el registro por un conflicto de datos en la base de datos.';
         }
 
         return null;
@@ -379,7 +486,7 @@ class ImportaConvenios
             'fecha_inicio' => 'nullable|date',
             'fecha_fin' => 'nullable|date|after_or_equal:fecha_inicio',
             'estatus' => 'nullable|in:vigente,vencido,en_negociacion,cancelado',
-            'tipo_ruta' => 'nullable|in:local,foraneo',
+            'tipo_ruta' => 'nullable|in:local,foraneo,nacional,regional',
             'tipo_cobertura' => 'nullable|string|max:100',
             'alcance_geografico' => 'nullable|string|max:255',
             'costo_banderazo' => 'nullable|numeric|min:0',
@@ -469,7 +576,7 @@ class ImportaConvenios
         'tiempo_max_respuesta_urbano_min.required' => 'La Respuesta máxima urbano es obligatoria.',
         'tiempo_max_respuesta_carretera_min.required' => 'La Respuesta máxima carretera es obligatoria.',
         'estatus.in' => 'El Estatus debe ser vigente, vencido, en_negociacion o cancelado.',
-        'tipo_ruta.in' => 'El Tipo Ruta debe ser local o foraneo.',
+        'tipo_ruta.in' => 'El Tipo Ruta debe ser local, foraneo, nacional o regional.',
         'fecha_fin.after_or_equal' => 'La Fecha Fin no puede ser anterior a la Fecha Inicio.',
         'fecha_inicio.date' => 'La Fecha Inicio no tiene un formato válido (usa aaaa-mm-dd).',
         'fecha_fin.date' => 'La Fecha Fin no tiene un formato válido (usa aaaa-mm-dd).',

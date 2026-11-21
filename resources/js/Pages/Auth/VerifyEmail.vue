@@ -1,7 +1,12 @@
 <script setup>
 import { computed } from 'vue'
-import { Head, Link, useForm } from '@inertiajs/vue3'
-import { usePage } from '@inertiajs/vue3'
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3'
+import { useTheme } from '@/Composables/useTheme'
+
+useTheme()
+
+const props = defineProps({ status: String })
+const verificationLinkSent = computed(() => props.status === 'verification-link-sent')
 
 const page = usePage()
 const empresa = computed(() => page.props.empresa)
@@ -32,6 +37,9 @@ const submit = () => { form.post(route('verification.send')) }
                     </svg>
                 </div>
                 <p class="text-[var(--color-text)] text-sm mb-6">Antes de continuar, revisa tu correo para el enlace de verificación. Si no lo recibiste, solicita uno nuevo.</p>
+                <div v-if="verificationLinkSent" class="mb-4 p-3 rounded-2xl bg-green-100 text-green-700 text-sm text-center">
+                    Se envió un nuevo enlace de verificación a tu correo electrónico.
+                </div>
                 <form @submit.prevent="submit">
                     <button type="submit" :disabled="form.processing"
                         class="w-full py-3 px-6 text-white font-medium rounded-2xl transition-all duration-200 disabled:opacity-50" :style="{ backgroundColor: 'var(--color-primary)', boxShadow: '0 10px 15px -3px color-mix(in srgb, var(--color-primary) 20%, transparent), 0 4px 6px -4px color-mix(in srgb, var(--color-primary) 20%, transparent)' }">

@@ -4,8 +4,9 @@
 
 namespace App\Http\Requests\Panel;
 
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class StoreConvenioRequest extends FormRequest
@@ -34,16 +35,18 @@ class StoreConvenioRequest extends FormRequest
     // Define las reglas de validación
     public function rules(): array
     {
+        $empresaId = $this->user()?->empresa_id;
+
         return [
-            'nombre_convenio_poliza' => 'required|string|max:255',
+            'nombre_convenio_poliza' => 'required|string|max:150',
             'codigo_convenio' => 'nullable|string|max:50',
-            'aseguradora_id' => 'required|exists:aseguradoras,id',
+            'aseguradora_id' => ['required', Rule::exists('aseguradoras', 'id')->where('empresa_id', $empresaId)],
             'fecha_inicio' => 'nullable|date',
-            'fecha_fin' => 'nullable|date',
+            'fecha_fin' => 'nullable|date|after_or_equal:fecha_inicio',
             'renovacion_automatica' => 'nullable|boolean',
             'exclusivo' => 'nullable|boolean',
-            'tipo_ruta' => 'nullable|in:local,foraneo',
-            'tipo_cobertura' => 'nullable|string|max:255',
+            'tipo_ruta' => 'nullable|in:local,foraneo,nacional,regional',
+            'tipo_cobertura' => 'nullable|string|max:100',
             'alcance_geografico' => 'nullable|string|max:255',
             'costo_banderazo' => 'nullable|numeric|min:0',
             'costo_km' => 'nullable|numeric|min:0',

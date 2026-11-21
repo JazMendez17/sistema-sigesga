@@ -43,9 +43,7 @@ class StoreClienteRequest extends FormRequest
             'apellido_materno' => 'nullable|string|max:100',
             'tipo_cliente' => 'required|in:persona_fisica,persona_moral',
             'sexo' => 'nullable|in:M,F',
-            'curp' => ['nullable', 'string', 'size:18', Rule::unique('clientes', 'curp')
-                ->where('empresa_id', $this->user()?->empresa_id)
-                ->ignore($id)],
+            'curp' => ['nullable', 'string', 'size:18', Rule::unique('clientes', 'curp')->ignore($id)],
             'fecha_nacimiento' => 'nullable|date',
             'telefono' => 'nullable|string|max:20',
             'telefono_local' => 'nullable|string|max:20',
@@ -53,19 +51,19 @@ class StoreClienteRequest extends FormRequest
             'folio_ine' => 'nullable|string|max:20',
             'nacionalidad' => 'required|string|max:50',
             'contacto_enlace' => 'nullable|string|max:150',
-            'aseguradora_id' => 'nullable|exists:aseguradoras,id',
+            'aseguradora_id' => ['nullable', Rule::exists('aseguradoras', 'id')->where('empresa_id', $this->user()?->empresa_id)],
             'numero_poliza' => 'nullable|string|max:50',
             'tipo_cobertura_poliza' => 'nullable|string|max:100',
             'calle' => 'nullable|string|max:150',
-            'numero_exterior' => 'nullable|string|max:50',
-            'numero_interior' => 'nullable|string|max:50',
+            'numero_exterior' => 'nullable|string|max:20',
+            'numero_interior' => 'nullable|string|max:20',
             'colonia' => 'nullable|string|max:100',
             'codigo_postal' => 'nullable|string|max:10',
             'municipio_alcaldia' => 'nullable|string|max:100',
             'ciudad' => 'nullable|string|max:100',
             'estado' => 'nullable|string|max:60',
             'pais' => 'nullable|string|max:60',
-            'referencias' => 'nullable|string|max:500',
+            'referencias' => 'nullable|string|max:255',
         ];
     }
 

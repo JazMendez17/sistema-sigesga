@@ -20,7 +20,7 @@ const columns = [
 const page = usePage()
 const clientes = computed(() => page.props.clientes || [])
 const machote = computed(() => page.props.machote || { hojas: { Clientes: [] } })
-const esAdmin = computed(() => page.props.auth?.user?.rol === 'admin')
+const esAdmin = computed(() => ['superadmin', 'admin'].includes(page.props.auth?.user?.rol))
 
 const filtrados = computed(() => {
   if (!busqueda.value) return clientes.value
@@ -85,16 +85,6 @@ function eliminarCliente(id) {
             </div>
           </template>
         </DataTable>
-      </div>
-
-      <div class="flex items-center justify-center gap-2">
-        <button class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF2F7] text-gray-500 shadow-[4px_4px_8px_#d0d5da,-4px_-4px_8px_#ffffff] transition-all hover:text-gray-700">
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-        </button>
-        <span class="text-sm text-gray-500">Página 1</span>
-        <button class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF2F7] text-gray-500 shadow-[4px_4px_8px_#d0d5da,-4px_-4px_8px_#ffffff] transition-all hover:text-gray-700">
-          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-        </button>
       </div>
     </div>
   </AppLayout>

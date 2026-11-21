@@ -4,8 +4,9 @@
 
 namespace App\Http\Requests\Panel;
 
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class StoreTarifaPropiaRequest extends FormRequest
@@ -34,9 +35,11 @@ class StoreTarifaPropiaRequest extends FormRequest
     // Define las reglas de validación
     public function rules(): array
     {
+        $empresaId = $this->user()?->empresa_id;
+
         return [
-            'nombre_tarifa' => 'required|string|max:255',
-            'tipo_servicio_id' => 'nullable|exists:catalogo_servicios,id',
+            'nombre_tarifa' => 'required|string|max:150',
+            'tipo_servicio_id' => ['nullable', Rule::exists('catalogo_servicios', 'id')->where('empresa_id', $empresaId)],
             'servicio' => 'nullable|string|max:150',
             'alcance' => 'nullable|string|max:100',
             'tipo_ruta' => 'nullable|in:local,foraneo',
@@ -44,11 +47,11 @@ class StoreTarifaPropiaRequest extends FormRequest
             'costo_km' => 'nullable|numeric|min:0',
             'km_incluidos' => 'nullable|numeric|min:0',
             'costo_km_extra' => 'nullable|numeric|min:0',
-            'tarifa_nocturna_recargo_pct' => 'nullable|numeric|min:0',
-            'tarifa_domingo_festivo_recargo_pct' => 'nullable|numeric|min:0',
+            'tarifa_nocturna_recargo_pct' => 'nullable|numeric|between:0,999.99',
+            'tarifa_domingo_festivo_recargo_pct' => 'nullable|numeric|between:0,999.99',
             'minutos_espera_incluidos' => 'nullable|integer|min:0',
             'costo_espera_adicional_hora' => 'nullable|numeric|min:0',
-            'descuento_pct' => 'nullable|numeric|min:0',
+            'descuento_pct' => 'nullable|numeric|between:0,999.99',
             'tipo_descuento' => 'nullable|string|max:50',
             'cubre_casetas_peaje' => 'nullable|boolean',
             'activo' => 'nullable|boolean',

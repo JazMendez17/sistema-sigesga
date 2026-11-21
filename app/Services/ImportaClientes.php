@@ -9,8 +9,10 @@ use App\Models\Cliente;
 use App\Models\Direccion;
 use App\Models\Usuario;
 use App\Support\MachoteExcel;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -118,7 +120,7 @@ class ImportaClientes
         $email = isset($datos['email']) ? mb_strtolower(trim($datos['email'])) : null;
 
         // CURP es única en toda la base, no solo por empresa.
-        if ($curp && Cliente::withoutGlobalScopes()->where('curp', $curp)->where('empresa_id', '!=', $empresaId)->exists()) {
+        if ($curp && Cliente::where('curp', $curp)->where('empresa_id', '!=', $empresaId)->exists()) {
             return "La CURP {$curp} ya está registrada en otra empresa.";
         }
 
@@ -157,39 +159,67 @@ class ImportaClientes
             unset($datos['aseguradora']);
         }
 
-        DB::transaction(function () use (&$datos, &$existente, $empresaId, $fila) {
-            $direccion = $this->extraeDireccion($datos);
+        try {
+            DB::transaction(function () use (&$datos, &$existente, $empresaId) {
+                $direccion = $this->extraeDireccion($datos);
 
-            if ($direccion !== null) {
-                if ($existente?->direccion_id) {
-                    Direccion::find($existente->direccion_id)?->update($direccion);
-                } else {
-                    $datos['direccion_id'] = Direccion::create($direccion)->id;
+                if ($direccion !== null) {
+                    if ($existente?->direccion_id) {
+                        Direccion::find($existente->direccion_id)?->update($direccion);
+                    } else {
+                        $datos['direccion_id'] = Direccion::create($direccion)->id;
+                    }
                 }
-            }
 
-            if ($existente) {
-                $existente->update($datos);
+                if ($existente) {
+                    if (
+                        !$existente->usuario_id
+                        && !empty($datos['email'])
+                        && !Usuario::where('email', $datos['email'])->exists()
+                    ) {
+                        $usuario = Usuario::create([
+                            'empresa_id' => $empresaId,
+                            'name' => trim(
+                                ($datos['nombre'] ?? $existente->nombre) . ' ' .
+                                ($datos['apellido_paterno'] ?? $existente->apellido_paterno ?? '') . ' ' .
+                                ($datos['apellido_materno'] ?? $existente->apellido_materno ?? '')
+                            ),
+                            'email' => $datos['email'],
+                            'password' => self::PASSWORD_TEMPORAL,
+                            'debe_cambiar_password' => true,
+                            'email_verified_at' => now(),
+                            'rol' => 'cliente',
+                        ]);
+                        $datos['usuario_id'] = $usuario->id;
+                    }
 
-                return;
-            }
+                    $existente->update($datos);
 
-            $datos['empresa_id'] = $empresaId;
+                    return;
+                }
 
-            if (!empty($datos['email']) && !Usuario::where('email', $datos['email'])->exists()) {
-                $usuario = Usuario::create([
-                    'empresa_id' => $empresaId,
-                    'name' => trim($datos['nombre'] . ' ' . ($datos['apellido_paterno'] ?? '') . ' ' . ($datos['apellido_materno'] ?? '')),
-                    'email' => $datos['email'],
-                    'password' => self::PASSWORD_TEMPORAL,
-                    'debe_cambiar_password' => true,
-                    'rol' => 'cliente',
-                ]);
-                $datos['usuario_id'] = $usuario->id;
-            }
+                $datos['empresa_id'] = $empresaId;
 
-            Cliente::create($datos);
-        });
+                if (!empty($datos['email']) && !Usuario::where('email', $datos['email'])->exists()) {
+                    $usuario = Usuario::create([
+                        'empresa_id' => $empresaId,
+                        'name' => trim($datos['nombre'] . ' ' . ($datos['apellido_paterno'] ?? '') . ' ' . ($datos['apellido_materno'] ?? '')),
+                        'email' => $datos['email'],
+                        'password' => self::PASSWORD_TEMPORAL,
+                        'debe_cambiar_password' => true,
+                        'email_verified_at' => now(),
+                        'rol' => 'cliente',
+                    ]);
+                    $datos['usuario_id'] = $usuario->id;
+                }
+
+                Cliente::create($datos);
+            });
+        } catch (QueryException $e) {
+            Log::warning('Error importando fila de clientes', ['empresa_id' => $empresaId, 'error' => $e->getMessage()]);
+
+            return 'No se pudo guardar el registro por un conflicto de datos (verifica CURP o correo duplicados).';
+        }
 
         return null;
     }

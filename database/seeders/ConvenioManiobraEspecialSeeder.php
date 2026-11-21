@@ -4,13 +4,14 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 // Seeder para inyectar 70 maniobras especiales (10 por convenio)
 class ConvenioManiobraEspecialSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        Schema::disableForeignKeyConstraints();
 
         $maniobras = [
             // Quálitas (convenio 1)
@@ -99,8 +100,8 @@ class ConvenioManiobraEspecialSeeder extends Seeder
             );
         }
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        Schema::enableForeignKeyConstraints();
 
-        $this->command->info('ConvenioManiobraEspecialSeeder: 70 maniobras sincronizadas correctamente.');
+        $this->command?->info('ConvenioManiobraEspecialSeeder: 70 maniobras sincronizadas correctamente.');
     }
 }

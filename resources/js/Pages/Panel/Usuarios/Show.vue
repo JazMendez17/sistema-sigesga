@@ -6,17 +6,11 @@ import Badge from '@/Components/Badge.vue'
 
 const props = defineProps({
   usuario: { type: Object, required: true },
+  puedeGestionar: { type: Boolean, default: true },
 })
 
 function formato(val) {
   return val || '—'
-}
-
-const rolLabel = {
-  admin: 'Administrador',
-  cotizador: 'Cotizador',
-  operador: 'Operador',
-  cliente: 'Cliente',
 }
 </script>
 
@@ -31,7 +25,7 @@ const rolLabel = {
         </div>
         <div class="flex gap-3">
           <NeumorphicButton variant="secondary" @click="router.visit(route('panel.usuarios.index'))">Volver</NeumorphicButton>
-          <NeumorphicButton @click="router.visit(route('panel.usuarios.edit', usuario.id))">Editar</NeumorphicButton>
+          <NeumorphicButton v-if="puedeGestionar" @click="router.visit(route('panel.usuarios.edit', usuario.id))">Editar</NeumorphicButton>
         </div>
       </div>
 

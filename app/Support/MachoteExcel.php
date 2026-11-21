@@ -150,7 +150,7 @@ class MachoteExcel
 
         $libro = $hoja->getParent();
         $ayuda = $libro->createSheet();
-        $ayuda->setTitle(mb_substr($hoja->getTitle(), 0, 28) . ' ayuda');
+        $ayuda->setTitle(mb_substr($hoja->getTitle(), 0, 25) . ' ayuda');
 
         $ayuda->setCellValue('A1', 'Columna');
         $ayuda->setCellValue('B1', 'Obligatorio');
@@ -173,6 +173,7 @@ class MachoteExcel
         $fila++;
         $ayuda->setCellValue("A{$fila}", 'Notas');
         $ayuda->getStyle("A{$fila}")->getFont()->setBold(true);
+        $fila++;
         foreach ($notas as $nota) {
             $ayuda->setCellValue("A{$fila}", $nota);
             $fila++;
@@ -209,9 +210,15 @@ class MachoteExcel
     /** Abre el libro una sola vez para leer varias hojas sin recargarlo. */
     public static function abrir(UploadedFile $archivo): Spreadsheet
     {
-        $libro = IOFactory::load($archivo->getRealPath());
+        $ruta = $archivo->getRealPath() ?: $archivo->getPathname();
 
-        return $libro;
+        try {
+            return IOFactory::load($ruta);
+        } catch (\Throwable) {
+            throw ValidationException::withMessages([
+                'archivo' => 'El archivo Excel no es válido o está dañado.',
+            ]);
+        }
     }
 
     /** @return array<int, array<string, mixed>> */
@@ -230,8 +237,9 @@ class MachoteExcel
             $etiquetas[self::normalizaEncabezado($columna['etiqueta'])] = $columna;
         }
 
+        $ultimaColumna = $hoja->getHighestDataColumn();
         $mapeo = [];
-        $encabezados = $hoja->rangeToArray('A2:ZZ2', null, true, false)[0] ?? [];
+        $encabezados = $hoja->rangeToArray("A2:{$ultimaColumna}2", null, true, false)[0] ?? [];
         foreach ($encabezados as $indice => $encabezado) {
             $clave = self::normalizaEncabezado((string) $encabezado);
             if ($clave !== '' && isset($etiquetas[$clave])) {
@@ -257,7 +265,7 @@ class MachoteExcel
         if ($ultimaFila < 4) {
             return [];
         }
-        $datos = $hoja->rangeToArray('A4:ZZ' . $ultimaFila, null, true, false);
+        $datos = $hoja->rangeToArray("A4:{$ultimaColumna}{$ultimaFila}", null, true, false);
 
         foreach ($datos as $offset => $valores) {
             $fila = $offset + 4;
@@ -293,7 +301,7 @@ class MachoteExcel
             $valor = (int) $valor;
         }
 
-        if (is_int($valor) && ($columna['tipo'] ?? self::TIPO_TEXTO) === self::TIPO_TEXTO) {
+        if ((is_int($valor) || is_float($valor)) && ($columna['tipo'] ?? self::TIPO_TEXTO) === self::TIPO_TEXTO) {
             $valor = (string) $valor;
         }
 
@@ -345,13 +353,28 @@ class MachoteExcel
         }
 
         if (preg_match('#^(\d{1,2})/(\d{1,2})/(\d{2,4})$#', $texto, $m)) {
-            $año = strlen($m[3]) === 2 ? '20' . $m[3] : $m[3];
-            $texto = sprintf('%04d-%02d-%02d', $año, $m[2], $m[1]);
+            $dia = (int) $m[1];
+            $mes = (int) $m[2];
+            $anio = strlen($m[3]) === 2
+                ? ((int) $m[3] >= 50 ? 1900 + (int) $m[3] : 2000 + (int) $m[3])
+                : (int) $m[3];
+
+            if (!checkdate($mes, $dia, $anio)) {
+                return $texto;
+            }
+
+            return sprintf('%04d-%02d-%02d', $anio, $mes, $dia);
         }
 
-        $fecha = strtotime($texto);
+        if (preg_match('#^(\d{4})-(\d{1,2})-(\d{1,2})$#', $texto, $m)) {
+            if (!checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
+                return $texto;
+            }
 
-        return $fecha ? date('Y-m-d', $fecha) : $texto;
+            return sprintf('%04d-%02d-%02d', (int) $m[1], (int) $m[2], (int) $m[3]);
+        }
+
+        return $texto;
     }
 
     private static function normalizaBooleano(mixed $valor): ?bool
@@ -360,7 +383,11 @@ class MachoteExcel
             return $valor;
         }
         if (is_int($valor)) {
-            return $valor === 1;
+            return match ($valor) {
+                1 => true,
+                0 => false,
+                default => null,
+            };
         }
 
         $texto = mb_strtolower(trim((string) $valor), 'UTF-8');

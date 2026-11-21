@@ -1,26 +1,25 @@
 <?php
 
-// Controlador de unidades
+// Controlador de unidades (eager loading sin N+1 y borrado físico real)
 
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
-use App\Support\Auditoria;
-use App\Models\Unidade;
-use App\Models\Operadore;
+use App\Http\Requests\Panel\StoreUnidadRequest;
 use App\Models\Empleado;
 use App\Models\Oficina;
-use App\Http\Requests\Panel\StoreUnidadRequest;
+use App\Models\Servicio;
+use App\Models\Unidade;
+use App\Support\Auditoria;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class UnidadesController extends Controller
 {
-    // Lista de unidades
     public function index()
     {
-        $user = Auth::user();
-        $empresaId = $user->empresa_id;
+        $empresaId = Auth::user()->empresa_id;
 
         $unidades = Unidade::with('operadorAsignado.empleado')
             ->where('empresa_id', $empresaId)
@@ -35,7 +34,7 @@ class UnidadesController extends Controller
                 'numero_economico' => $u->numero_economico ?? '—',
                 'seguro_vencimiento' => $u->seguro_vencimiento ?? '—',
                 'estado_emplacado' => $u->estado_emplacado ?? '—',
-                'activo' => $u->activo ?? true,
+                'activo' => (bool) ($u->activo ?? true),
                 'oficina_id' => $u->oficina_id,
                 'operador_asignado_id' => $u->operador_asignado_id,
                 'operador' => $u->operadorAsignado?->empleado?->nombre ?? '—',
@@ -46,21 +45,20 @@ class UnidadesController extends Controller
         ]);
     }
 
-    // Formulario para crear unidad
     public function create()
     {
-        $user = Auth::user();
-        $empresaId = $user->empresa_id;
+        $empresaId = Auth::user()->empresa_id;
 
         return Inertia::render('Panel/Unidades/Create', [
-            'operadores' => Empleado::where('empresa_id', $empresaId)
+            'operadores' => Empleado::with('operador')
+                ->where('empresa_id', $empresaId)
                 ->where('puesto', 'like', '%operador%')
                 ->get()
                 ->map(fn ($e) => [
                     'id' => $e->operador?->id ?? null,
                     'empleado_id' => $e->id,
                     'nombre_operador' => trim($e->nombre . ' ' . ($e->apellido_paterno ?? '') . ' ' . ($e->apellido_materno ?? '')),
-                    'disponible' => $e->operador?->disponible ?? true,
+                    'disponible' => (bool) ($e->operador?->disponible ?? true),
                 ])
                 ->filter(fn ($o) => $o['id'] !== null)
                 ->values(),
@@ -68,14 +66,11 @@ class UnidadesController extends Controller
         ]);
     }
 
-    // Guardar unidad en base de datos
     public function store(StoreUnidadRequest $request)
     {
-        $user = Auth::user();
-
         $data = $request->validated();
-        $data['empresa_id'] = $user->empresa_id;
-        $data['activo'] = $request->boolean('activo');
+        $data['empresa_id'] = Auth::user()->empresa_id;
+        $data['activo'] = $request->has('activo') ? $request->boolean('activo') : true;
 
         Unidade::create($data);
 
@@ -83,30 +78,30 @@ class UnidadesController extends Controller
             ->with('success', 'Unidad creada correctamente');
     }
 
-    // Ver detalle de unidad
     public function show($id)
     {
         return Inertia::render('Panel/Unidades/Show', [
-            'unidad' => Unidade::with('operadorAsignado.empleado', 'oficina')->where('empresa_id', auth()->user()->empresa_id)->findOrFail($id),
+            'unidad' => Unidade::with('operadorAsignado.empleado', 'oficina')
+                ->where('empresa_id', auth()->user()->empresa_id)
+                ->findOrFail($id),
         ]);
     }
 
-    // Formulario para editar unidad
     public function edit($id)
     {
-        $user = Auth::user();
-        $empresaId = $user->empresa_id;
+        $empresaId = Auth::user()->empresa_id;
 
         return Inertia::render('Panel/Unidades/Create', [
-            'unidad' => Unidade::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id),
-            'operadores' => Empleado::where('empresa_id', $empresaId)
+            'unidad' => Unidade::where('empresa_id', $empresaId)->findOrFail($id),
+            'operadores' => Empleado::with('operador')
+                ->where('empresa_id', $empresaId)
                 ->where('puesto', 'like', '%operador%')
                 ->get()
                 ->map(fn ($e) => [
                     'id' => $e->operador?->id ?? null,
                     'empleado_id' => $e->id,
                     'nombre_operador' => trim($e->nombre . ' ' . ($e->apellido_paterno ?? '') . ' ' . ($e->apellido_materno ?? '')),
-                    'disponible' => $e->operador?->disponible ?? true,
+                    'disponible' => (bool) ($e->operador?->disponible ?? true),
                 ])
                 ->filter(fn ($o) => $o['id'] !== null)
                 ->values(),
@@ -114,7 +109,6 @@ class UnidadesController extends Controller
         ]);
     }
 
-    // Actualizar datos de la unidad
     public function update(StoreUnidadRequest $request, $id)
     {
         $unidad = Unidade::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
@@ -127,19 +121,23 @@ class UnidadesController extends Controller
             ->with('success', 'Unidad actualizada correctamente');
     }
 
-    // Eliminar unidad
     public function destroy($id)
     {
         $unidad = Unidade::where('empresa_id', auth()->user()->empresa_id)->findOrFail($id);
 
-        $unidad->unidadMantenimientos()->get()->each(fn($x) => $x->eliminar());
-        $unidad->servicios()->whereIn('estado', ['asignado', 'inicio_servicio', 'en_sitio_origen', 'salida_destino', 'en_destino'])->get()->each(fn($x) => $x->eliminar());
+        if (Servicio::where('unidad_id', $unidad->id)->exists()) {
+            return back()->with('error', 'No se puede eliminar esta unidad porque tiene servicios registrados en el historial. Desactívala en su lugar.');
+        }
 
-        Auditoria::registrar($unidad);
-
-        $unidad->eliminar();
+        DB::transaction(function () use ($unidad) {
+            foreach ($unidad->unidadMantenimientos()->get() as $m) {
+                Auditoria::registrar($m);
+            }
+            Auditoria::registrar($unidad);
+            $unidad->delete();
+        });
 
         return redirect()->route('panel.unidades.index')
-            ->with('success', 'Unidad eliminada correctamente');
+            ->with('success', 'Unidad eliminada físicamente de forma correcta.');
     }
 }

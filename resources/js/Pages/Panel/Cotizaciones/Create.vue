@@ -7,9 +7,11 @@ import NeumorphicInput from '@/Components/NeumorphicInput.vue'
 import NeumorphicButton from '@/Components/NeumorphicButton.vue'
 import CotizacionRutas from '@/Components/CotizacionRutas.vue'
 import { useFormValidation } from '@/Composables/useFormValidation'
-import { showValidationErrors } from '@/stores/notification'
+import { showValidationErrors } from '@/Stores/notification'
 
 const page = usePage()
+const cotizacion = computed(() => page.props.cotizacion ?? null)
+const isEdit = computed(() => Boolean(cotizacion.value))
 const clientes = computed(() => page.props.clientes ?? [])
 const tiposServicio = computed(() => page.props.tiposServicio ?? [])
 const submitted = ref(false)
@@ -24,7 +26,7 @@ const errorColoniasOrigen = ref('')
 const errorColoniasDestino = ref('')
 const consultasCP = { origen: 0, destino: 0 }
 
-const casetasPeaje = ref(0)
+const casetasPeaje = ref(Number(page.props.cotizacion?.costo_aprox_casetas ?? 0) || 0)
 const monedaCasetas = ref('MXN')
 
 function direccionParaRuta(direccion) {
@@ -120,21 +122,23 @@ function handleCodigoPostalBlur(cp, tipo) {
   }
 }
 
+const cotInicial = page.props.cotizacion ?? null
+
 const form = useForm({
-  cliente_id: '',
-  tipo_servicio_id: '',
-  origen: { calle:'',numero_exterior:'',numero_interior:'',colonia:'',codigo_postal:'',municipio_alcaldia:'',estado:'',pais:'México',referencias:'' },
-  destino: { calle:'',numero_exterior:'',numero_interior:'',colonia:'',codigo_postal:'',municipio_alcaldia:'',estado:'',pais:'México',referencias:'' },
-  distancia_km: '',
-  costo_total: '',
-  costo_banderazo: '',
-  km_incluidos: '',
-  costo_km_extra: '',
-  cubre_casetas: false,
-  descuento_pct: '',
-  convenio_id: '',
-  tarifa_empresa_aplicada_id: '',
-  observaciones: '',
+  cliente_id: cotInicial?.cliente_id ?? '',
+  tipo_servicio_id: cotInicial?.tipo_servicio_id ?? '',
+  origen: { calle: cotInicial?.origen_direccion ?? '', numero_exterior:'', numero_interior:'', colonia:'', codigo_postal:'', municipio_alcaldia:'', estado:'', pais:'México', referencias:'' },
+  destino: { calle: cotInicial?.destino_direccion ?? '', numero_exterior:'', numero_interior:'', colonia:'', codigo_postal:'', municipio_alcaldia:'', estado:'', pais:'México', referencias:'' },
+  distancia_km: cotInicial?.distancia_km ?? '',
+  costo_total: cotInicial?.costo_total ?? '',
+  costo_banderazo: cotInicial?.costo_banderazo ?? '',
+  km_incluidos: cotInicial?.km_incluidos ?? '',
+  costo_km_extra: cotInicial?.costo_km ?? '',
+  cubre_casetas: Boolean(cotInicial?.incluye_peajes ?? false),
+  descuento_pct: cotInicial?.descuento_pct ?? '',
+  convenio_id: cotInicial?.convenio_aplicado_id ?? '',
+  tarifa_empresa_aplicada_id: cotInicial?.tarifa_empresa_aplicada_id ?? '',
+  observaciones: cotInicial?.observaciones ?? '',
 })
 
 // Auto-llenado al cambiar cliente o tipo de servicio
@@ -149,7 +153,6 @@ watch([() => form.cliente_id, () => form.tipo_servicio_id], async ([clienteId, s
       form.costo_banderazo = data.banderazo || ''
       form.km_incluidos = data.km_incluidos || ''
       form.costo_km_extra = data.costo_km_extra || ''
-      form.cubre_casetas = data.cubre_casetas || false
       form.cubre_casetas = Boolean(data.incluye_casetas ?? data.cubre_casetas)
       form.descuento_pct = data.descuento_pct || ''
       form.convenio_id = data.convenio_id || ''
@@ -163,24 +166,6 @@ watch([() => form.cliente_id, () => form.tipo_servicio_id], async ([clienteId, s
   }
 })
 
-function calcularTotal() {
-  const banderazo = parseFloat(form.costo_banderazo) || 0
-  const km = parseFloat(form.distancia_km) || 0
-  const kmIncluidos = parseFloat(form.km_incluidos) || 0
-  const kmExcedentes = Math.max(0, km - kmIncluidos)
-  const costoKm = parseFloat(form.costo_km_extra) || 0
-  const costoKmTotal = kmExcedentes * costoKm
-  const descuentoPct = parseFloat(form.descuento_pct) || 0
-  const subtotalBruto = banderazo + costoKmTotal
-  const montoDescuento = subtotalBruto * (descuentoPct / 100)
-  const subtotalNeto = subtotalBruto - montoDescuento
-  const iva = subtotalNeto * 0.16
-  // Casetas: si la empresa las cubre (cubre_casetas) no se cargan al cliente.
-  const casetas = form.cubre_casetas ? 0 : casetasPeaje.value
-  const total = Math.max(banderazo, subtotalNeto) + iva + casetas
-  form.costo_total = total.toFixed(2)
-}
-
 function calculosDetalle() {
   const banderazo = parseFloat(form.costo_banderazo) || 0
   const km = parseFloat(form.distancia_km) || 0
@@ -188,11 +173,12 @@ function calculosDetalle() {
   const kmExcedentes = Math.max(0, km - kmIncluidos)
   const costoKm = parseFloat(form.costo_km_extra) || 0
   const costoKmTotal = kmExcedentes * costoKm
-  const descuentoPct = parseFloat(form.descuento_pct) || 0
+  const descuentoPct = Math.min(100, Math.max(0, parseFloat(form.descuento_pct) || 0))
   const subtotalBruto = banderazo + costoKmTotal
   const montoDescuento = subtotalBruto * (descuentoPct / 100)
   const subtotalNeto = Math.max(banderazo, subtotalBruto - montoDescuento)
   const iva = subtotalNeto * 0.16
+  // Casetas: si la empresa las cubre (cubre_casetas) no se cargan al cliente.
   const casetas = form.cubre_casetas ? 0 : casetasPeaje.value
   return {
     banderazo, kmExcedentes, costoKm, costoKmTotal,
@@ -201,7 +187,21 @@ function calculosDetalle() {
   }
 }
 
-watch(() => form.distancia_km, () => calcularTotal())
+function calcularTotal() {
+  form.costo_total = calculosDetalle().total.toFixed(2)
+}
+
+watch(
+  [
+    () => form.distancia_km,
+    () => form.costo_banderazo,
+    () => form.km_incluidos,
+    () => form.costo_km_extra,
+    () => form.descuento_pct,
+    () => form.cubre_casetas,
+  ],
+  () => calcularTotal()
+)
 
 const rules = {
   cliente_id: ['required'],
@@ -212,15 +212,20 @@ const mostrandoPreview = ref(false)
 
 function vistaPrevia() {
   submitted.value = true
-  if (!val.validate()) { const e = Object.values(val.clientErrors).filter(Boolean); if (e.length) showValidationErrors(e); return }
+  if (!val.validate()) { const e = Object.values(val.clientErrors.value).filter(Boolean); if (e.length) showValidationErrors(e); return }
   if (!form.origen.calle) { showValidationErrors(['La dirección de origen es obligatoria.']); return }
   mostrandoPreview.value = true
 }
 
 function doSubmit() {
   if (!mostrandoPreview.value) { vistaPrevia(); return }
-  const build = d => [d.calle,d.numero_exterior,d.numero_interior,d.colonia,d.codigo_postal,d.municipio_alcaldia,d.estado,d.pais].filter(Boolean).join(', ') + (d.referencias?' ('+d.referencias+')':'')
-  form.transform(data => {
+  const build = d => {
+    const partes = [d.calle, d.numero_exterior, d.numero_interior, d.colonia, d.codigo_postal, d.municipio_alcaldia, d.estado]
+      .filter(Boolean)
+    if (partes.length > 1 && d.pais) partes.push(d.pais)
+    return partes.join(', ') + (d.referencias ? ' (' + d.referencias + ')' : '')
+  }
+  const transformado = form.transform(data => {
     const calc = calculosDetalle()
     return {
       ...data,
@@ -239,13 +244,21 @@ function doSubmit() {
       costo_km: data.costo_km_extra,
       costo_total: calc.total,
     }
-  }).post(route('panel.cotizaciones.store'), {
-    onSuccess: () => { form.reset(); mostrandoPreview.value = false },
+  })
+
+  const opciones = {
+    onSuccess: () => { if (!isEdit.value) form.reset(); mostrandoPreview.value = false },
     onError: (errors) => {
       const mensajes = Object.values(errors).flat().filter(Boolean)
       showValidationErrors(mensajes.length ? mensajes : ['No se pudo guardar la cotización. Revisa los datos e intenta de nuevo.'])
     },
-  })
+  }
+
+  if (isEdit.value) {
+    transformado.put(route('panel.cotizaciones.update', cotizacion.value.id), opciones)
+  } else {
+    transformado.post(route('panel.cotizaciones.store'), opciones)
+  }
 }
 
 function clienteNombre() {
@@ -267,8 +280,8 @@ function aseguradoraNombre() {
   <AppLayout>
     <div class="space-y-6">
       <div>
-        <h1 class="text-2xl font-bold text-gray-800">Nueva Cotización</h1>
-        <p class="text-sm text-gray-500 mt-1">Llena los datos para generar una nueva cotización</p>
+        <h1 class="text-2xl font-bold text-gray-800">{{ isEdit ? 'Editar Cotización' : 'Nueva Cotización' }}</h1>
+        <p class="text-sm text-gray-500 mt-1">{{ isEdit ? 'Actualiza los datos de la cotización' : 'Llena los datos para generar una nueva cotización' }}</p>
       </div>
       <div class="neumorphic-card p-6 max-w-3xl">
         <form @submit.prevent="doSubmit" class="space-y-5">
@@ -405,6 +418,9 @@ function aseguradoraNombre() {
             <p class="text-sm text-green-700 font-medium">
               {{ tarifaAplicada.origen === 'convenio' ? 'Convenio: ' + tarifaAplicada.convenio_nombre : 'Tarifa Pública' }}
             </p>
+            <p v-if="tarifaAplicada.origen !== 'convenio'" class="text-xs text-amber-700 mt-1">
+              Cliente sin convenio con aseguradora: al aprobar la cotización se solicitarán los datos de su tarjeta para procesar el cobro.
+            </p>
           </div>
           <div v-if="cargandoTarifa" class="text-sm text-gray-400">Cargando tarifa...</div>
 
@@ -459,7 +475,7 @@ function aseguradoraNombre() {
               <NeumorphicButton type="submit" :loading="form.processing">Confirmar y Guardar</NeumorphicButton>
               <NeumorphicButton variant="secondary" @click="mostrandoPreview = false" type="button">Editar</NeumorphicButton>
             </template>
-            <NeumorphicButton variant="secondary" @click="router.visit(route('panel.cotizaciones.index'))">Cancelar</NeumorphicButton>
+            <NeumorphicButton type="button" variant="secondary" @click="router.visit(route('panel.cotizaciones.index'))">Cancelar</NeumorphicButton>
           </div>
         </form>
       </div>

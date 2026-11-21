@@ -4,13 +4,15 @@ import { router, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Pages/Panel/AppLayout.vue'
 import Badge from '@/Components/Badge.vue'
 import NeumorphicButton from '@/Components/NeumorphicButton.vue'
+import Swal from 'sweetalert2'
 
 const filtroActivo = ref('todos')
 const filtros = ['todos', 'pendiente', 'leido']
-const enPapelera = ref(false)
 
 const page = usePage()
-const notificaciones = computed(() => page.props.notificaciones?.data || page.props.notificaciones || [])
+const paginacion = computed(() => page.props.notificaciones || {})
+const notificaciones = computed(() => paginacion.value?.data || (Array.isArray(paginacion.value) ? paginacion.value : []))
+const links = computed(() => Array.isArray(paginacion.value?.links) ? paginacion.value.links : [])
 
 function notificacionesFiltradas() {
   const data = Array.isArray(notificaciones.value) ? notificaciones.value : []
@@ -26,17 +28,20 @@ function marcarTodas() {
   router.post(route('panel.notificaciones.marcar-todas'))
 }
 
-function cambiarVista(papelera) {
-  enPapelera.value = papelera
-  router.visit(route('panel.notificaciones.index', papelera ? { papelera: 1 } : {}), { preserveScroll: true })
-}
-
 function eliminar(id) {
-  router.delete(route('panel.notificaciones.eliminar', { id }))
-}
-
-function restaurar(id) {
-  router.put(route('panel.notificaciones.restaurar', { id }))
+  Swal.fire({
+    title: '¿Eliminar notificación?',
+    text: 'Se eliminará permanentemente del sistema.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Eliminar',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: '#DC2626',
+  }).then((res) => {
+    if (res.isConfirmed) {
+      router.delete(route('panel.notificaciones.eliminar', { id }))
+    }
+  })
 }
 
 function getBadgeVariant(estado) {
@@ -54,25 +59,12 @@ function getBadgeVariant(estado) {
           <h1 class="text-2xl font-bold text-gray-800">Notificaciones</h1>
           <p class="text-sm text-gray-500 mt-1">Eventos operativos de servicios y cotizaciones</p>
         </div>
-        <NeumorphicButton v-if="!enPapelera" type="button" @click="marcarTodas" :disabled="!(page.props.noLeidas > 0)">
+        <NeumorphicButton type="button" @click="marcarTodas" :disabled="!(page.props.noLeidas > 0)">
           Marcar todas como leídas
         </NeumorphicButton>
       </div>
 
       <div class="flex flex-wrap gap-2">
-        <button @click="cambiarVista(false)"
-          class="rounded-xl px-5 py-2 text-sm font-medium transition-all duration-200"
-          :class="!enPapelera ? 'bg-[#EEF2F7] text-[#4F46E5] shadow-[4px_4px_8px_#d0d5da,-4px_-4px_8px_#ffffff]' : 'text-gray-500'">
-          Notificaciones
-        </button>
-        <button @click="cambiarVista(true)"
-          class="rounded-xl px-5 py-2 text-sm font-medium transition-all duration-200"
-          :class="enPapelera ? 'bg-[#EEF2F7] text-[#4F46E5] shadow-[4px_4px_8px_#d0d5da,-4px_-4px_8px_#ffffff]' : 'text-gray-500'">
-          Papelera
-        </button>
-      </div>
-
-      <div v-if="!enPapelera" class="flex flex-wrap gap-2">
         <button v-for="f in filtros" :key="f" @click="filtroActivo = f"
           class="rounded-xl px-5 py-2 text-sm font-medium capitalize transition-all duration-200"
           :class="filtroActivo === f ? 'bg-[#EEF2F7] text-[#4F46E5] shadow-[4px_4px_8px_#d0d5da,-4px_-4px_8px_#ffffff]' : 'bg-transparent text-gray-500 hover:text-gray-700'">
@@ -99,26 +91,40 @@ function getBadgeVariant(estado) {
             <div class="flex-1 min-w-0">
               <div class="flex items-start justify-between gap-2">
                 <p class="text-sm font-medium text-gray-800">{{ n.mensaje }}</p>
-                <Badge :variant="getBadgeVariant(n.estado)">{{ n.estado === 'leido' ? 'Leída' : n.estado }}</Badge>
+                <Badge :variant="getBadgeVariant(n.estado)">{{ n.estado === 'leido' ? 'Leída' : $etiqueta(n.estado) }}</Badge>
               </div>
               <div class="flex items-center gap-3 mt-1.5">
                 <span class="text-xs text-gray-400">{{ n.fecha }}</span>
-                <button v-if="!enPapelera && n.estado !== 'leido'" @click="marcarLeida(n.id)"
+                <button v-if="n.estado !== 'leido'" @click="marcarLeida(n.id)"
                   class="ml-auto text-xs text-[var(--color-primary)] hover:underline font-medium">
                   Marcar como leída
                 </button>
-                <button v-if="!enPapelera" @click="eliminar(n.id)"
-                  class="text-xs text-red-500 hover:underline font-medium">
+                <button @click="eliminar(n.id)"
+                  class="text-xs text-red-500 hover:underline font-medium"
+                  :class="{ 'ml-auto': n.estado === 'leido' }">
                   Eliminar
-                </button>
-                <button v-else @click="restaurar(n.id)"
-                  class="ml-auto text-xs text-[var(--color-primary)] hover:underline font-medium">
-                  Restaurar
                 </button>
               </div>
             </div>
           </div>
         </div>
+      </div>
+
+      <div v-if="links.length > 3" class="flex flex-wrap items-center justify-center gap-2">
+        <button
+          v-for="(link, idx) in links"
+          :key="idx"
+          type="button"
+          :disabled="!link.url"
+          @click="link.url && router.visit(link.url, { preserveScroll: true })"
+          class="rounded-xl px-3.5 py-1.5 text-sm font-medium transition-all"
+          :class="link.active
+            ? 'bg-[var(--color-primary)] text-white shadow'
+            : link.url
+              ? 'bg-[#EEF2F7] text-gray-700 shadow-[3px_3px_6px_#d0d5da,-3px_-3px_6px_#ffffff] hover:text-[var(--color-primary)]'
+              : 'opacity-40 cursor-not-allowed text-gray-400'"
+          v-html="link.label"
+        />
       </div>
     </div>
   </AppLayout>

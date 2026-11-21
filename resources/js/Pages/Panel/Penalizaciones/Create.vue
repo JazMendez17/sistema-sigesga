@@ -4,7 +4,7 @@ import { router, useForm, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Pages/Panel/AppLayout.vue'
 import NeumorphicInput from '@/Components/NeumorphicInput.vue'
 import NeumorphicButton from '@/Components/NeumorphicButton.vue'
-import { showValidationErrors } from '@/stores/notification'
+import { showValidationErrors } from '@/Stores/notification'
 
 const page = usePage()
 const sla = page.props.sla
@@ -66,7 +66,7 @@ function doSubmit() {
 
           <div class="flex gap-3 pt-2">
             <NeumorphicButton type="submit" :loading="form.processing">{{ isEdit ? 'Actualizar SLA' : 'Guardar SLA' }}</NeumorphicButton>
-            <NeumorphicButton variant="secondary" @click="router.visit(route('panel.penalizaciones.index'))">Cancelar</NeumorphicButton>
+            <NeumorphicButton type="button" variant="secondary" @click="router.visit(route('panel.penalizaciones.index'))">Cancelar</NeumorphicButton>
           </div>
         </form>
       </div>

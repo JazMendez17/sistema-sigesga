@@ -40,15 +40,15 @@ class StoreOficinaRequest extends FormRequest
             'email' => 'nullable|email|max:150',
             'encargado' => 'nullable|string|max:150',
             'calle' => 'nullable|string|max:150',
-            'numero_exterior' => 'nullable|string|max:50',
-            'numero_interior' => 'nullable|string|max:50',
+            'numero_exterior' => 'nullable|string|max:20',
+            'numero_interior' => 'nullable|string|max:20',
             'colonia' => 'nullable|string|max:100',
             'codigo_postal' => 'nullable|string|max:10',
             'municipio_alcaldia' => 'nullable|string|max:100',
             'ciudad' => 'nullable|string|max:100',
             'estado' => 'nullable|string|max:60',
             'pais' => 'nullable|string|max:60',
-            'referencias' => 'nullable|string|max:500',
+            'referencias' => 'nullable|string|max:255',
         ];
     }
 

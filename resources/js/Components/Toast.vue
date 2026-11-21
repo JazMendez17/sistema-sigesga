@@ -1,7 +1,7 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 import { usePage, router } from '@inertiajs/vue3'
-import { validationErrors, clearValidationErrors } from '@/stores/notification'
+import { validationErrors, clearValidationErrors } from '@/Stores/notification'
 
 const page = usePage()
 const visible = ref(false)
@@ -53,8 +53,13 @@ function checkFlash() {
   show(msg, flash.error ? 'error' : 'success')
 }
 
-router.on('finish', () => {
+const removeFinishListener = router.on('finish', () => {
   setTimeout(checkFlash, 200)
+})
+
+onUnmounted(() => {
+  if (typeof removeFinishListener === 'function') removeFinishListener()
+  if (timer) clearTimeout(timer)
 })
 
 watch(() => page.props.flash?.success, (val) => {

@@ -2,8 +2,9 @@
 
 namespace App\Http\Requests\Panel;
 
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 // FormRequest para validar maniobras especiales de convenio
@@ -23,8 +24,10 @@ class StoreManiobraEspecialRequest extends FormRequest
 
     public function rules(): array
     {
+        $empresaId = $this->user()?->empresa_id;
+
         return [
-            'convenio_id' => 'required|exists:convenios,id',
+            'convenio_id' => ['required', Rule::exists('convenios', 'id')->where('empresa_id', $empresaId)],
             'concepto' => 'required|string|max:150',
             'aplica' => 'nullable|boolean',
             'forma_cobro' => 'nullable|string|max:50',

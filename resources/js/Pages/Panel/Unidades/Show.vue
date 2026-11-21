@@ -33,7 +33,7 @@ const props = defineProps({
           <div><p class="text-xs text-gray-500 uppercase tracking-wider">Modelo</p><p class="text-sm font-medium text-gray-800">{{ unidad.modelo || '—' }}</p></div>
           <div><p class="text-xs text-gray-500 uppercase tracking-wider">Tipo</p><p class="text-sm font-medium text-gray-800">{{ unidad.tipo || '—' }}</p></div>
           <div><p class="text-xs text-gray-500 uppercase tracking-wider">Placas</p><p class="text-sm font-medium text-gray-800">{{ unidad.placas || '—' }}</p></div>
-          <div><p class="text-xs text-gray-500 uppercase tracking-wider">Serie</p><p class="text-sm font-medium text-gray-800">{{ unidad.serie || '—' }}</p></div>
+          <div><p class="text-xs text-gray-500 uppercase tracking-wider">Estado Emplacado</p><p class="text-sm font-medium text-gray-800">{{ unidad.estado_emplacado || '—' }}</p></div>
           <div><p class="text-xs text-gray-500 uppercase tracking-wider">Oficina</p><p class="text-sm font-medium text-gray-800">{{ unidad.oficina?.nombre || '—' }}</p></div>
         </div>
       </div>

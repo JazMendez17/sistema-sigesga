@@ -25,7 +25,12 @@ function selectImage(event) {
 
 function submit() {
   const options = { forceFormData: true, onSuccess: () => form.reset('foto') }
-  editing.value ? form.put(route('panel.servicios-landing.update', props.servicio.id), options) : form.post(route('panel.servicios-landing.store'), options)
+  if (editing.value) {
+    form.transform((data) => ({ ...data, _method: 'put' }))
+      .post(route('panel.servicios-landing.update', props.servicio.id), options)
+  } else {
+    form.post(route('panel.servicios-landing.store'), options)
+  }
 }
 </script>
 
@@ -33,11 +38,11 @@ function submit() {
   <AppLayout>
     <div class="max-w-3xl space-y-6"><div><h1 class="text-2xl font-bold text-gray-800">{{ editing ? 'Editar servicio' : 'Agregar servicio' }}</h1><p class="mt-1 text-sm text-gray-500">Nombre, imagen y descripción son obligatorios.</p></div>
       <form class="neumorphic-card space-y-5 p-6" @submit.prevent="submit">
-        <div><label class="mb-1 block text-sm font-medium">Nombre del servicio</label><NeumorphicInput v-model="form.tipo" placeholder="Grúa ligera" /></div>
-        <div><label class="mb-1 block text-sm font-medium">Descripción</label><textarea v-model="form.descripcion" required rows="4" class="w-full rounded-2xl bg-[var(--color-surface)] p-4 shadow-inner" placeholder="Describe el servicio" /></div>
-        <div><label class="mb-1 block text-sm font-medium">Imagen del servicio</label><input type="file" accept="image/jpeg,image/png,image/webp" class="block w-full rounded-xl p-3 text-sm shadow-inner" @change="selectImage" /><img v-if="imagePreview" :src="imagePreview" alt="Vista previa" class="mt-4 h-40 w-full rounded-2xl object-cover" /><p class="mt-1 text-xs text-gray-500">JPG, PNG o WEBP. Máximo 5 MB.</p></div>
-        <div><label class="mb-2 block text-sm font-medium">Color del servicio</label><div class="grid gap-3 sm:grid-cols-2"><label v-for="color in coloresDisponibles" :key="color.valor" class="flex cursor-pointer items-center gap-3 rounded-xl p-3 shadow-md" :class="form.color === color.valor ? 'ring-2 ring-[var(--color-primary)]' : ''"><input v-model="form.color" type="radio" :value="color.valor" /><span class="h-7 w-7 rounded-full" :style="{ backgroundColor: color.valor }"></span><span class="text-sm">{{ color.nombre }}</span></label></div></div>
-        <div class="grid gap-5 sm:grid-cols-2"><div><label class="mb-1 block text-sm font-medium">Orden</label><NeumorphicInput v-model="form.orden" type="number" min="0" /></div><label class="flex items-center gap-2 pt-7 text-sm"><input v-model="form.activo" type="checkbox" /> Mostrar en la landing</label></div>
+        <div><label class="mb-1 block text-sm font-medium">Nombre del servicio</label><NeumorphicInput v-model="form.tipo" placeholder="Grúa ligera" :error="form.errors.tipo" /></div>
+        <div><label class="mb-1 block text-sm font-medium">Descripción</label><textarea v-model="form.descripcion" required rows="4" class="w-full rounded-2xl bg-[var(--color-surface)] p-4 shadow-inner" placeholder="Describe el servicio" /><p v-if="form.errors.descripcion" class="mt-1 text-sm text-red-500">{{ form.errors.descripcion }}</p></div>
+        <div><label class="mb-1 block text-sm font-medium">Imagen del servicio</label><input type="file" accept="image/jpeg,image/png,image/webp" class="block w-full rounded-xl p-3 text-sm shadow-inner" @change="selectImage" /><p v-if="form.errors.foto" class="mt-1 text-sm text-red-500">{{ form.errors.foto }}</p><img v-if="imagePreview" :src="imagePreview" alt="Vista previa" class="mt-4 h-40 w-full rounded-2xl object-cover" /><p class="mt-1 text-xs text-gray-500">JPG, PNG o WEBP. Máximo 5 MB.</p></div>
+        <div><label class="mb-2 block text-sm font-medium">Color del servicio</label><div class="grid gap-3 sm:grid-cols-2"><label v-for="color in coloresDisponibles" :key="color.valor" class="flex cursor-pointer items-center gap-3 rounded-xl p-3 shadow-md" :class="form.color === color.valor ? 'ring-2 ring-[var(--color-primary)]' : ''"><input v-model="form.color" type="radio" :value="color.valor" /><span class="h-7 w-7 rounded-full" :style="{ backgroundColor: color.valor }"></span><span class="text-sm">{{ color.nombre }}</span></label></div><p v-if="form.errors.color" class="mt-1 text-sm text-red-500">{{ form.errors.color }}</p></div>
+        <div class="grid gap-5 sm:grid-cols-2"><div><label class="mb-1 block text-sm font-medium">Orden</label><NeumorphicInput v-model="form.orden" type="number" min="0" :error="form.errors.orden" /></div><label class="flex items-center gap-2 pt-7 text-sm"><input v-model="form.activo" type="checkbox" /> Mostrar en la landing</label></div>
         <div class="flex gap-3"><NeumorphicButton type="submit" :loading="form.processing">{{ editing ? 'Guardar cambios' : 'Agregar servicio' }}</NeumorphicButton><NeumorphicButton type="button" variant="secondary" @click="router.visit(route('panel.servicios-landing.index'))">Cancelar</NeumorphicButton></div>
       </form>
     </div>

@@ -5,7 +5,7 @@ import AppLayout from '@/Pages/Panel/AppLayout.vue'
 import NeumorphicInput from '@/Components/NeumorphicInput.vue'
 import NeumorphicButton from '@/Components/NeumorphicButton.vue'
 import { useFormValidation } from '@/Composables/useFormValidation'
-import { showValidationErrors } from '@/stores/notification'
+import { showValidationErrors } from '@/Stores/notification'
 
 const page = usePage()
 const maniobra = page.props.maniobra
@@ -31,7 +31,7 @@ const val = useFormValidation(form, rules)
 function doSubmit() {
   submitted.value = true
   if (!val.validate()) {
-    const errors = Object.values(val.clientErrors).filter(Boolean)
+    const errors = Object.values(val.clientErrors.value).filter(Boolean)
     if (errors.length) showValidationErrors(errors)
     return
   }
@@ -79,7 +79,7 @@ function doSubmit() {
           </label>
           <div class="flex gap-3 pt-2">
             <NeumorphicButton type="submit" :loading="form.processing">{{ isEdit ? 'Actualizar' : 'Guardar' }}</NeumorphicButton>
-            <NeumorphicButton variant="secondary" @click="router.visit(route('panel.servicios-especiales.index'))">Cancelar</NeumorphicButton>
+            <NeumorphicButton type="button" variant="secondary" @click="router.visit(route('panel.servicios-especiales.index'))">Cancelar</NeumorphicButton>
           </div>
         </form>
       </div>

@@ -1,28 +1,27 @@
 <?php
 
-// Controlador para gestión de tarifas de convenio
+// Controlador para gestión de tarifas de convenio (multi-tenant estricto + borrado físico)
 
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
-use App\Support\Auditoria;
 use App\Http\Requests\Panel\StoreConvenioTarifaRequest;
-use App\Models\ConvenioTarifa;
-use App\Models\Convenio;
 use App\Models\CatalogoServicio;
+use App\Models\Convenio;
+use App\Models\ConvenioTarifa;
+use App\Support\Auditoria;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class ConvenioTarifaController extends Controller
 {
-    // Listado de tarifas de convenio
     public function index()
     {
-        $user = Auth::user();
-        $empresaId = $user->empresa_id;
+        $empresaId = Auth::user()->empresa_id;
 
         $tarifas = ConvenioTarifa::with(['convenio.aseguradora', 'tipoServicio'])
-            ->whereHas('convenio', fn($q) => $q->where('empresa_id', $empresaId))
+            ->whereHas('convenio', fn ($q) => $q->where('empresa_id', $empresaId))
             ->latest()
             ->get()
             ->map(fn ($t) => [
@@ -47,19 +46,16 @@ class ConvenioTarifaController extends Controller
         ]);
     }
 
-    // Formulario para crear tarifa
     public function create()
     {
-        $user = Auth::user();
-        $empresaId = $user->empresa_id;
+        $empresaId = Auth::user()->empresa_id;
 
         return Inertia::render('Panel/ConvenioTarifas/Create', [
             'convenios' => Convenio::where('empresa_id', $empresaId)->get(['id', 'nombre_convenio_poliza', 'aseguradora_id']),
-            'tiposServicio' => CatalogoServicio::where('activo', true)->get(['id', 'nombre']),
+            'tiposServicio' => CatalogoServicio::where('empresa_id', $empresaId)->where('activo', true)->get(['id', 'nombre']),
         ]);
     }
 
-    // Guardar tarifa en base de datos
     public function store(StoreConvenioTarifaRequest $request)
     {
         ConvenioTarifa::create($request->validated());
@@ -68,39 +64,46 @@ class ConvenioTarifaController extends Controller
             ->with('success', 'Tarifa de convenio creada correctamente');
     }
 
-    // Formulario para editar tarifa
     public function edit($id)
     {
-        $user = Auth::user();
-        $empresaId = $user->empresa_id;
+        $empresaId = Auth::user()->empresa_id;
+
+        $tarifa = ConvenioTarifa::whereHas('convenio', fn ($q) => $q->where('empresa_id', $empresaId))
+            ->findOrFail($id);
 
         return Inertia::render('Panel/ConvenioTarifas/Create', [
-            'tarifa' => ConvenioTarifa::findOrFail($id),
+            'tarifa' => $tarifa,
             'convenios' => Convenio::where('empresa_id', $empresaId)->get(['id', 'nombre_convenio_poliza', 'aseguradora_id']),
-            'tiposServicio' => CatalogoServicio::where('activo', true)->get(['id', 'nombre']),
+            'tiposServicio' => CatalogoServicio::where('empresa_id', $empresaId)->where('activo', true)->get(['id', 'nombre']),
         ]);
     }
 
-    // Actualizar datos de la tarifa
     public function update(StoreConvenioTarifaRequest $request, $id)
     {
-        $tarifa = ConvenioTarifa::findOrFail($id);
+        $empresaId = Auth::user()->empresa_id;
+
+        $tarifa = ConvenioTarifa::whereHas('convenio', fn ($q) => $q->where('empresa_id', $empresaId))
+            ->findOrFail($id);
+
         $tarifa->update($request->validated());
 
         return redirect()->route('panel.convenio-tarifas.index')
             ->with('success', 'Tarifa de convenio actualizada correctamente');
     }
 
-    // Eliminar tarifa
     public function destroy($id)
     {
-        $tarifa = ConvenioTarifa::findOrFail($id);
+        $empresaId = Auth::user()->empresa_id;
 
-        Auditoria::registrar($tarifa);
+        $tarifa = ConvenioTarifa::whereHas('convenio', fn ($q) => $q->where('empresa_id', $empresaId))
+            ->findOrFail($id);
 
-        $tarifa->eliminar();
+        DB::transaction(function () use ($tarifa) {
+            Auditoria::registrar($tarifa);
+            $tarifa->delete();
+        });
 
         return redirect()->route('panel.convenio-tarifas.index')
-            ->with('success', 'Tarifa de convenio eliminada correctamente');
+            ->with('success', 'Tarifa de convenio eliminada físicamente de forma correcta.');
     }
 }

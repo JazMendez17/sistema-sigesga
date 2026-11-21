@@ -24,6 +24,7 @@ class IntegracionesController extends Controller
             'whatsapp' => 'Envío de notificaciones y comprobantes por WhatsApp.',
             'gmail' => 'Envío de cotizaciones, facturas y correos del sistema.',
             'google_maps' => 'Cálculo de rutas, distancias y tiempos estimados.',
+            'stripe' => 'Cobros con tarjeta para cotizaciones sin convenio con aseguradora.',
         ];
         foreach ($base as $proveedor => $descripcion) {
             EmpresaIntegracione::firstOrCreate(
@@ -39,9 +40,10 @@ class IntegracionesController extends Controller
                 'titulo' => ucfirst($i->proveedor),
                 'descripcion' => $i->configuracion_json['descripcion'] ?? '',
                 'icono' => match ($i->proveedor) {
-                    'whatsapp' => 'message-circle',
+                    'whatsapp' => 'whatsapp',
                     'gmail' => 'mail',
                     'google_maps' => 'map',
+                    'stripe' => 'card',
                     default => 'puzzle',
                 },
                 'activo' => $i->activo ?? false,
@@ -64,6 +66,9 @@ class IntegracionesController extends Controller
         ]);
 
         $data['activo'] = $request->boolean('activo');
+        if (!$request->filled('api_key')) {
+            unset($data['api_key']);
+        }
         $integracion->update($data);
 
         return back()->with('success', 'Integración actualizada correctamente');

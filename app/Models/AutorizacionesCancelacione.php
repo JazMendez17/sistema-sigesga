@@ -22,9 +22,18 @@ class AutorizacionesCancelacione extends Model
         'motivo_cancelacion',
         'tipo_incidencia',
         'estatus',
+        'estado_previo',
         'fecha_solicitud',
         'fecha_resolucion',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'fecha_solicitud' => 'datetime',
+            'fecha_resolucion' => 'datetime',
+        ];
+    }
 
     // Relación con servicio
     public function servicio(): BelongsTo

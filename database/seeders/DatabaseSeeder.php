@@ -16,10 +16,14 @@ class DatabaseSeeder extends Seeder
             UsuarioSeeder::class,
             OperadoreSeeder::class,
             CatalogoServicioSeeder::class,
-            ClienteSeeder::class,
             AseguradoraSeeder::class,
+            ClienteSeeder::class,
             ConvenioSeeder::class,
             ConvenioTarifaSeeder::class,
+            ConvenioConceptoAdicionalSeeder::class,
+            ConvenioManiobraEspecialSeeder::class,
+            ConvenioSlaSeeder::class,
+            TarifaEmpresaSeeder::class,
             DemoSigesgaSeeder::class,
         ]);
     }

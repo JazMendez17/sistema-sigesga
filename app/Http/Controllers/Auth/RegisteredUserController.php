@@ -5,6 +5,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Empresa;
 use App\Models\Usuario;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -44,10 +45,17 @@ class RegisteredUserController extends Controller
             'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
         ]);
 
+        $empresaId = Empresa::query()->orderBy('id')->value('id');
+        if (!$empresaId) {
+            throw ValidationException::withMessages([
+                'email' => 'El sistema aún no tiene una empresa configurada.',
+            ]);
+        }
+
         RateLimiter::hit($this->registrationThrottleKey($request), 3600);
 
         $user = Usuario::create([
-            'empresa_id' => 1,
+            'empresa_id' => $empresaId,
             'name' => $request->name,
             'email' => $request->email,
             'password' => $request->password,

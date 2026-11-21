@@ -10,10 +10,20 @@ class UsuarioSeeder extends Seeder
 {
     public function run(): void
     {
-        $empresaId = DB::table('empresas')->first()->id;
+        $empresaId = DB::table('empresas')->value('id');
+        if (!$empresaId) {
+            return;
+        }
+
         $password = Hash::make('12345678');
 
         $usuarios = [
+            [
+                'empleado_puesto' => null,
+                'name' => 'Super Administrador SIGESGA',
+                'email' => 'superadmin@sigesga.com',
+                'rol' => 'superadmin',
+            ],
             [
                 'empleado_puesto' => 'admin',
                 'name' => 'Administrador Admin Admin',
@@ -46,24 +56,33 @@ class UsuarioSeeder extends Seeder
                 continue;
             }
 
-            $empleado = $data['empleado_puesto']
-                ? DB::table('empleados')
+            $empleadoId = null;
+            if ($data['empleado_puesto']) {
+                $empleado = DB::table('empleados')
                     ->where('empresa_id', $empresaId)
                     ->where('puesto', $data['empleado_puesto'])
-                    ->first()
-                : null;
+                    ->whereNotIn('id', function ($query) {
+                        $query->select('empleado_id')
+                            ->from('usuarios')
+                            ->whereNotNull('empleado_id');
+                    })
+                    ->first();
+                $empleadoId = $empleado?->id;
+            }
 
             DB::table('usuarios')->insert([
                 'empresa_id' => $empresaId,
-                'empleado_id' => $empleado?->id,
+                'empleado_id' => $empleadoId,
                 'name' => $data['name'],
                 'email' => $data['email'],
+                'email_verified_at' => now(),
                 'password' => $password,
                 'password_reset_token' => null,
                 'password_reset_expires_at' => null,
                 'rol' => $data['rol'],
                 'intentos_fallidos' => 0,
                 'cuenta_bloqueada' => false,
+                'bloqueo_administrativo' => false,
                 'bloqueada_en' => null,
                 'desbloqueada_por' => null,
                 'created_at' => now(),

@@ -17,7 +17,7 @@ return new class extends Migration
             $table->decimal('sueldo_base_semanal', 10, 2);
             $table->decimal('bonos_servicios', 10, 2)->default(0.00);
             $table->decimal('descuentos_prestamos', 10, 2)->default(0.00);
-            $table->decimal('total_neto_a_pagar', 14, 2)->virtualAs('sueldo_base_semanal + bonos_servicios - descuentos_prestamos')->stored();
+            $table->decimal('total_neto_a_pagar', 14, 2)->storedAs('sueldo_base_semanal + bonos_servicios - descuentos_prestamos');
             $table->enum('estatus', ['pendiente', 'pagado'])->default('pendiente');
             $table->timestamps();
         });

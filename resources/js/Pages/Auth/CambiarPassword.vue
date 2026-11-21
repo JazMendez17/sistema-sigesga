@@ -4,7 +4,8 @@ import { Head, useForm } from '@inertiajs/vue3'
 import { useTheme } from '@/Composables/useTheme'
 import { usePasswordStrength } from '@/Composables/usePasswordStrength'
 import PasswordStrengthIndicator from '@/Components/PasswordStrengthIndicator.vue'
-import { showValidationErrors } from '@/stores/notification'
+import Toast from '@/Components/Toast.vue'
+import { showValidationErrors } from '@/Stores/notification'
 
 useTheme()
 
@@ -49,6 +50,7 @@ const submit = () => {
             <label class="block text-sm font-medium text-[var(--color-text)] mb-2">Nueva Contraseña</label>
             <input v-model="form.password" type="password" placeholder="••••••••" required autocomplete="new-password"
               class="w-full bg-[var(--color-bg)] text-[var(--color-text)] rounded-2xl py-3 px-4 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]" />
+            <p v-if="form.errors.password" class="text-sm text-red-500 mt-1">{{ form.errors.password }}</p>
             <div v-if="form.password" class="mt-3">
               <PasswordStrengthIndicator :password="form.password" :resultados="resultados" :level="level" :errores="errores" :submitted="submitted" />
             </div>
@@ -57,6 +59,7 @@ const submit = () => {
             <label class="block text-sm font-medium text-[var(--color-text)] mb-2">Confirmar Contraseña</label>
             <input v-model="form.password_confirmation" type="password" placeholder="••••••••" required autocomplete="new-password"
               class="w-full bg-[var(--color-bg)] text-[var(--color-text)] rounded-2xl py-3 px-4 shadow-[inset_6px_6px_12px_#d0d5da,inset_-6px_-6px_12px_#ffffff] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]" />
+            <p v-if="form.errors.password_confirmation" class="text-sm text-red-500 mt-1">{{ form.errors.password_confirmation }}</p>
           </div>
           <button type="submit" :disabled="form.processing"
             class="w-full py-3 px-6 text-white font-medium rounded-2xl transition-all duration-200 disabled:opacity-50" :style="{ backgroundColor: 'var(--color-primary)' }">
@@ -67,6 +70,7 @@ const submit = () => {
       </div>
     </div>
   </div>
+  <Toast />
 </template>
 
 <style scoped>

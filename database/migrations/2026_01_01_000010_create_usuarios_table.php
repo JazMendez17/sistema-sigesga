@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('password', 255);
             $table->string('password_reset_token', 255)->nullable();
             $table->timestamp('password_reset_expires_at')->nullable();
-            $table->enum('rol', ['admin', 'cotizador', 'operador', 'cliente']);
+            $table->enum('rol', ['superadmin', 'admin', 'cotizador', 'operador', 'cliente']);
             $table->unsignedTinyInteger('intentos_fallidos')->default(0);
             $table->boolean('cuenta_bloqueada')->default(false);
             $table->timestamp('bloqueada_en')->nullable();

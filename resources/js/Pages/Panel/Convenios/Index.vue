@@ -33,7 +33,7 @@ const aseguradoras = computed(() => page.props.aseguradoras || [])
 const tiposServicio = computed(() => page.props.tiposServicio || [])
 const tiposCobertura = computed(() => page.props.tiposCobertura || [])
 const machote = computed(() => page.props.machote || { hojas: { Convenios: [] } })
-const esAdmin = computed(() => page.props.auth?.user?.rol === 'admin')
+const esAdmin = computed(() => ['superadmin', 'admin'].includes(page.props.auth?.user?.rol))
 
 function resetFiltros() {
   aseguradoraFiltro.value = ''

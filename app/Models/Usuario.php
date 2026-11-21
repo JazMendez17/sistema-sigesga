@@ -2,8 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\Ocultable;
-
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -12,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 // Modelo de Usuario
 class Usuario extends Authenticatable
 {
-    use HasApiTokens, Notifiable, HasFactory, Ocultable;
+    use HasApiTokens, Notifiable, HasFactory;
 
     protected $table = 'usuarios';
 
@@ -21,6 +19,7 @@ class Usuario extends Authenticatable
         'empleado_id',
         'name',
         'email',
+        'email_verified_at',
         'telefono',
         'password',
         'debe_cambiar_password',
@@ -30,6 +29,7 @@ class Usuario extends Authenticatable
         'rol',
         'intentos_fallidos',
         'cuenta_bloqueada',
+        'bloqueo_administrativo',
         'codigo_desbloqueo',
         'codigo_desbloqueo_expira',
         'bloqueada_en',
@@ -38,16 +38,24 @@ class Usuario extends Authenticatable
 
     protected $hidden = [
         'password',
+        'remember_token',
+        'codigo_desbloqueo',
+        'codigo_desbloqueo_expira',
+        'password_reset_token',
+        'password_reset_expires_at',
     ];
 
     protected function casts(): array
     {
         return [
             'password' => 'hashed',
+            'email_verified_at' => 'datetime',
             'password_reset_expires_at' => 'datetime',
             'bloqueada_en' => 'datetime',
             'codigo_desbloqueo_expira' => 'datetime',
             'cuenta_bloqueada' => 'boolean',
+            'bloqueo_administrativo' => 'boolean',
+            'debe_cambiar_password' => 'boolean',
         ];
     }
 
@@ -63,10 +71,10 @@ class Usuario extends Authenticatable
         return $this->belongsTo(Empleado::class, 'empleado_id');
     }
 
-    // RelaciÃ³n con usuario que desbloqueÃ³
+    // Relación con usuario que desbloqueó
     public function desbloqueadoPor()
     {
-        return $this->belongsTo(Usuario::class, 'desbloqueado_por');
+        return $this->belongsTo(Usuario::class, 'desbloqueada_por');
     }
 
     // RelaciÃ³n con cotizaciones
@@ -104,9 +112,19 @@ class Usuario extends Authenticatable
         return $this->rol === $role;
     }
 
+    public function isSuperAdmin(): bool
+    {
+        return $this->rol === 'superadmin';
+    }
+
     public function isAdmin(): bool
     {
         return $this->rol === 'admin';
+    }
+
+    public function isAdminOrSuperAdmin(): bool
+    {
+        return in_array($this->rol, ['superadmin', 'admin'], true);
     }
 
     public function isCotizador(): bool

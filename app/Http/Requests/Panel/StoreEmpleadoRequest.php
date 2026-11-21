@@ -42,9 +42,7 @@ class StoreEmpleadoRequest extends FormRequest
             'apellido_paterno' => 'required|string|max:100',
             'apellido_materno' => 'nullable|string|max:100',
             'sexo' => 'required|in:M,F',
-            'curp' => ['nullable', 'string', 'size:18', Rule::unique('empleados', 'curp')
-                ->where('empresa_id', $this->user()?->empresa_id)
-                ->ignore($id)],
+            'curp' => ['nullable', 'string', 'size:18', Rule::unique('empleados', 'curp')->ignore($id)],
             'fecha_nacimiento' => 'nullable|date|before:today',
             'telefono' => 'nullable|string|max:20',
             'telefono_local' => 'nullable|string|max:20',
@@ -53,17 +51,17 @@ class StoreEmpleadoRequest extends FormRequest
             'nacionalidad' => 'nullable|string|max:50',
             'puesto' => 'required|string|in:admin,cotizador,operador',
             'sueldo_diario' => 'nullable|numeric|min:0',
-            'oficina_id' => 'nullable|exists:oficinas,id',
+            'oficina_id' => ['nullable', Rule::exists('oficinas', 'id')->where('empresa_id', $this->user()?->empresa_id)],
             'direccion.calle' => 'nullable|string|max:150',
-            'direccion.numero_exterior' => 'nullable|string|max:50',
-            'direccion.numero_interior' => 'nullable|string|max:50',
+            'direccion.numero_exterior' => 'nullable|string|max:20',
+            'direccion.numero_interior' => 'nullable|string|max:20',
             'direccion.colonia' => 'nullable|string|max:100',
             'direccion.codigo_postal' => 'nullable|string|max:10',
             'direccion.municipio_alcaldia' => 'nullable|string|max:100',
             'direccion.ciudad' => 'nullable|string|max:100',
             'direccion.estado' => 'nullable|string|max:60',
             'direccion.pais' => 'nullable|string|max:60',
-            'direccion.referencias' => 'nullable|string|max:500',
+            'direccion.referencias' => 'nullable|string|max:255',
         ];
     }
 

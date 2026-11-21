@@ -2,16 +2,13 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\Ocultable;
-
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 // Modelo de Mantenimiento de Unidad
 class UnidadMantenimiento extends Model
 {
-        use Ocultable;
-use HasFactory;
+        use HasFactory;
 
     public $timestamps = false;
 
@@ -37,6 +34,12 @@ use HasFactory;
                 $model->created_at = now();
             }
         });
+    }
+
+    // Relación con empresa
+    public function empresa()
+    {
+        return $this->belongsTo(Empresa::class, 'empresa_id');
     }
 
     // Relación con unidad

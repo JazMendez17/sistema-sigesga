@@ -25,7 +25,7 @@ const direccion = () => props.oficina.direccion || {}
         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div><p class="label">Nombre</p><p class="value">{{ oficina.nombre || '—' }}</p></div>
           <div><p class="label">Teléfono</p><p class="value">{{ oficina.telefono || '—' }}</p></div>
-          <div><p class="label">Correo</p><p class="value">{{ oficina.correo || '—' }}</p></div>
+          <div><p class="label">Correo</p><p class="value">{{ oficina.email || '—' }}</p></div>
           <div class="md:col-span-3"><p class="label">Dirección</p><p class="value">{{ [direccion().calle, direccion().numero_exterior, direccion().colonia, direccion().municipio_alcaldia, direccion().estado, direccion().codigo_postal].filter(Boolean).join(', ') || '—' }}</p></div>
         </div>
       </div>

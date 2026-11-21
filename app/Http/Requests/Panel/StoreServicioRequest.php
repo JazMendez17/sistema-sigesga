@@ -1,23 +1,21 @@
 <?php
 
-// FormRequest para validar los datos de servicios
+// FormRequest para validar los datos de servicios (borrado físico, multi-tenant y unique en update)
 
 namespace App\Http\Requests\Panel;
 
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class StoreServicioRequest extends FormRequest
 {
-    // Autoriza la petición
     public function authorize(): bool
     {
         return true;
     }
 
-    // Limpia los campos antes de la validación
     protected function prepareForValidation(): void
     {
         $data = $this->all();
@@ -32,7 +30,6 @@ class StoreServicioRequest extends FormRequest
         }
     }
 
-    // Define las reglas de validación
     public function rules(): array
     {
         $id = $this->route('id');
@@ -43,12 +40,15 @@ class StoreServicioRequest extends FormRequest
         ];
 
         if ($id) {
-            // En edición los campos de asignación ya existen; solo se validan
-            // si vienen en la petición para permitir cambios parciales de estado.
-            $rules['cotizacion_id'] = ['sometimes', 'required', Rule::exists('cotizaciones', 'id')->where('empresa_id', $empresaId)->where('eliminado', false)];
-            $rules['operador_id'] = ['sometimes', 'required', Rule::exists('operadores', 'id')->where('empresa_id', $empresaId)->where('eliminado', false)];
-            $rules['unidad_id'] = ['sometimes', 'required', Rule::exists('unidades', 'id')->where('empresa_id', $empresaId)->where('eliminado', false)];
-            $rules['oficina_id'] = ['nullable', Rule::exists('oficinas', 'id')->where('empresa_id', $empresaId)->where('eliminado', false)];
+            $rules['cotizacion_id'] = [
+                'sometimes',
+                'required',
+                Rule::exists('cotizaciones', 'id')->where('empresa_id', $empresaId),
+                Rule::unique('servicios', 'cotizacion_id')->ignore($id),
+            ];
+            $rules['operador_id'] = ['sometimes', 'required', Rule::exists('operadores', 'id')->where('empresa_id', $empresaId)];
+            $rules['unidad_id'] = ['sometimes', 'required', Rule::exists('unidades', 'id')->where('empresa_id', $empresaId)];
+            $rules['oficina_id'] = ['nullable', Rule::exists('oficinas', 'id')->where('empresa_id', $empresaId)];
             $rules['estado'] = 'nullable|in:asignado,inicio_servicio,en_sitio_origen,salida_destino,en_destino,finalizado,solicitud_cancelacion,cancelado';
             $rules['kms_salida'] = 'nullable|integer|min:0';
             $rules['kms_llegada_cliente'] = 'nullable|integer|min:0';
@@ -58,16 +58,19 @@ class StoreServicioRequest extends FormRequest
             $rules['cargo_zona_especial'] = 'nullable|numeric|min:0';
             $rules['costo_final_real'] = 'nullable|numeric|min:0';
         } else {
-            $rules['cotizacion_id'] = ['required', Rule::exists('cotizaciones', 'id')->where('empresa_id', $empresaId)->where('eliminado', false), Rule::unique('servicios', 'cotizacion_id')->where('empresa_id', $empresaId)->where('eliminado', false)];
-            $rules['operador_id'] = ['required', Rule::exists('operadores', 'id')->where('empresa_id', $empresaId)->where('eliminado', false)];
-            $rules['unidad_id'] = ['required', Rule::exists('unidades', 'id')->where('empresa_id', $empresaId)->where('eliminado', false)];
-            $rules['oficina_id'] = ['nullable', Rule::exists('oficinas', 'id')->where('empresa_id', $empresaId)->where('eliminado', false)];
+            $rules['cotizacion_id'] = [
+                'required',
+                Rule::exists('cotizaciones', 'id')->where('empresa_id', $empresaId),
+                Rule::unique('servicios', 'cotizacion_id'),
+            ];
+            $rules['operador_id'] = ['required', Rule::exists('operadores', 'id')->where('empresa_id', $empresaId)];
+            $rules['unidad_id'] = ['required', Rule::exists('unidades', 'id')->where('empresa_id', $empresaId)];
+            $rules['oficina_id'] = ['nullable', Rule::exists('oficinas', 'id')->where('empresa_id', $empresaId)];
         }
 
         return $rules;
     }
 
-    // Mensajes de error personalizados en español
     public function messages(): array
     {
         return [
@@ -81,24 +84,9 @@ class StoreServicioRequest extends FormRequest
             'oficina_id.exists' => 'La oficina seleccionada no existe.',
             'observaciones.max' => 'Las observaciones no deben exceder los 1000 caracteres.',
             'estado.in' => 'El estado del servicio no es válido.',
-            'kms_salida.integer' => 'Los km de salida deben ser un número entero.',
-            'kms_salida.min' => 'Los km de salida deben ser mayor o igual a 0.',
-            'kms_llegada_cliente.integer' => 'Los km de llegada al cliente deben ser un número entero.',
-            'kms_llegada_cliente.min' => 'Los km de llegada al cliente deben ser mayor o igual a 0.',
-            'kms_termino_servicio.integer' => 'Los km de término de servicio deben ser un número entero.',
-            'kms_termino_servicio.min' => 'Los km de término de servicio deben ser mayor o igual a 0.',
-            'kms_regreso_base.integer' => 'Los km de regreso a base deben ser un número entero.',
-            'kms_regreso_base.min' => 'Los km de regreso a base deben ser mayor o igual a 0.',
-            'kms_cobrados_reales.integer' => 'Los km cobrados reales deben ser un número entero.',
-            'kms_cobrados_reales.min' => 'Los km cobrados reales deben ser mayor o igual a 0.',
-            'cargo_zona_especial.numeric' => 'El cargo por zona especial debe ser un valor numérico.',
-            'cargo_zona_especial.min' => 'El cargo por zona especial debe ser mayor o igual a 0.',
-            'costo_final_real.numeric' => 'El costo final real debe ser un valor numérico.',
-            'costo_final_real.min' => 'El costo final real debe ser mayor o igual a 0.',
         ];
     }
 
-    // Lanza excepción con los errores de validación
     protected function failedValidation(Validator $validator): void
     {
         throw ValidationException::withMessages($validator->errors()->toArray());

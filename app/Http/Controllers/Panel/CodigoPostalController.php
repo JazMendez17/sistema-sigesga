@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -15,24 +16,32 @@ class CodigoPostalController extends Controller
 
         if (!preg_match('/^\d{5}$/', $cp)) {
             return response()->json([
-                'success' => false,
-                'message' => 'Código postal inválido. Debe ser 5 dígitos.',
+                'message' => 'Código postal inválido. Debe ser de 5 dígitos.',
             ], 400);
         }
 
         $apiKey = config('services.postalia.api_key');
         if (!$apiKey) {
             Log::error('POSTALIA_API_KEY no está configurada.');
+
             return response()->json(['message' => 'El servicio de códigos postales no está configurado.'], 503);
+        }
+
+        $baseUrl = rtrim((string) (config('services.postalia.base_url') ?: 'https://postali.app/api/v1'), '/');
+        $caBundle = base_path('certs/cacert.pem');
+        $verify = file_exists($caBundle) ? $caBundle : true;
+
+        $cached = Cache::get("cp:{$cp}");
+        if (is_array($cached)) {
+            return response()->json($cached);
         }
 
         try {
             $response = Http::withToken($apiKey)
-                // Use the up-to-date Mozilla CA bundle instead of XAMPP's stale bundle.
-                ->withOptions(['verify' => base_path('certs/cacert.pem')])
+                ->withOptions(['verify' => $verify])
                 ->timeout(8)
                 ->acceptJson()
-                ->get(rtrim(config('services.postalia.base_url'), '/') . "/mx/cp/{$cp}");
+                ->get("{$baseUrl}/mx/cp/{$cp}");
 
             if ($response->failed()) {
                 if ($response->status() === 404) {
@@ -42,7 +51,6 @@ class CodigoPostalController extends Controller
                 Log::warning('postali.app API error', [
                     'cp' => $cp,
                     'status' => $response->status(),
-                    'body' => $response->body(),
                 ]);
 
                 return response()->json(['message' => 'Error al consultar el servicio de códigos postales.'], 502);
@@ -63,17 +71,22 @@ class CodigoPostalController extends Controller
                 return response()->json(['message' => 'Respuesta incompleta del servicio de códigos postales.'], 502);
             }
 
-            return response()->json([
+            $payload = [
                 'estado' => $estado,
                 'municipio' => $municipio,
                 'colonias' => $colonias,
-            ]);
+            ];
 
+            Cache::put("cp:{$cp}", $payload, now()->addHours(24));
+
+            return response()->json($payload);
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
             Log::error('postali.app connection error', ['cp' => $cp, 'error' => $e->getMessage()]);
+
             return response()->json(['message' => 'No se pudo conectar con el servicio de códigos postales.'], 503);
         } catch (\Throwable $e) {
             Log::error('postali.app unexpected error', ['cp' => $cp, 'error' => $e->getMessage()]);
+
             return response()->json(['message' => 'Error inesperado al consultar código postal.'], 500);
         }
     }

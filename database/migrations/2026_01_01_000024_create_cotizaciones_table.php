@@ -14,7 +14,7 @@ return new class extends Migration
             $table->foreignId('cliente_id')->nullable()->constrained('clientes')->onDelete('set null');
             $table->foreignId('convenio_aplicado_id')->nullable()->constrained('convenios')->onDelete('set null');
             $table->foreignId('tarifa_empresa_aplicada_id')->nullable()->constrained('tarifas_empresa')->onDelete('set null');
-            $table->foreignId('usuario_creador_id')->constrained('usuarios');
+            $table->foreignId('usuario_creador_id')->nullable()->constrained('usuarios')->onDelete('set null');
             $table->string('folio', 50)->unique();
             $table->foreignId('tipo_servicio_id')->constrained('catalogo_servicios');
             $table->text('origen_direccion');

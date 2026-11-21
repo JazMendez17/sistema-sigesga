@@ -4,17 +4,18 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 // Seeder para inyectar las 56 tarifas de convenio con precios exactos
 class ConvenioTarifaSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        Schema::disableForeignKeyConstraints();
 
         // Limpiar todas las tarifas existentes antes de insertar
         DB::table('convenio_tarifas')->truncate();
-        $this->command->info('Tarifas anteriores eliminadas.');
+        $this->command?->info('Tarifas anteriores eliminadas.');
 
         $tarifas = [
             // Quálitas (convenio 1)
@@ -105,8 +106,8 @@ class ConvenioTarifaSeeder extends Seeder
             );
         }
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        Schema::enableForeignKeyConstraints();
 
-        $this->command->info('ConvenioTarifaSeeder: 56 tarifas sincronizadas correctamente.');
+        $this->command?->info('ConvenioTarifaSeeder: 56 tarifas sincronizadas correctamente.');
     }
 }

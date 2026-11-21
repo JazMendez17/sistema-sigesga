@@ -39,8 +39,8 @@ class StoreAseguradoraRequest extends FormRequest
         $empresaId = $this->user()?->empresa_id;
 
         return [
-            'nombre' => 'required|string|max:255',
-            'nombre_comercial' => 'nullable|string|max:255',
+            'nombre' => 'required|string|max:150',
+            'nombre_comercial' => 'nullable|string|max:150',
             'rfc' => ['nullable', 'string', 'max:13', Rule::unique('aseguradoras', 'rfc')
                 ->where('empresa_id', $empresaId)
                 ->ignore($id)],

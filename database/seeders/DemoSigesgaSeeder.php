@@ -65,7 +65,6 @@ class DemoSigesgaSeeder extends Seeder
                 'seguro_vencimiento' => Carbon::now()->addMonths(8)->toDateString(),
                 'estado_emplacado' => 'Ciudad de México',
                 'activo' => true,
-                'eliminado' => false,
                 'updated_at' => now(),
                 'created_at' => now(),
             ]
@@ -83,7 +82,6 @@ class DemoSigesgaSeeder extends Seeder
                 'seguro_vencimiento' => Carbon::now()->addMonths(3)->toDateString(),
                 'estado_emplacado' => 'Estado de México',
                 'activo' => true,
-                'eliminado' => false,
                 'updated_at' => now(),
                 'created_at' => now(),
             ]
@@ -189,7 +187,7 @@ class DemoSigesgaSeeder extends Seeder
             unset($data['id']);
             DB::table('cotizaciones')->updateOrInsert(
                 ['id' => $id],
-                array_merge($base, $data, ['eliminado' => false, 'created_at' => now()->subDays(8 - $id), 'updated_at' => now()])
+                array_merge($base, $data, ['created_at' => now()->subDays(8 - $id), 'updated_at' => now()])
             );
         }
 
@@ -210,7 +208,6 @@ class DemoSigesgaSeeder extends Seeder
                 'cargo_zona_especial' => 0,
                 'costo_final_real' => 1063.60,
                 'observaciones' => 'Servicio concluido sin incidencias. Vehículo entregado en el destino.',
-                'eliminado' => false,
                 'created_at' => now()->subDays(5),
                 'updated_at' => now()->subDays(4),
             ]
@@ -233,7 +230,6 @@ class DemoSigesgaSeeder extends Seeder
                 'cargo_zona_especial' => 0,
                 'costo_final_real' => null,
                 'observaciones' => 'Unidad en el punto de origen, esperando confirmación del cliente.',
-                'eliminado' => false,
                 'created_at' => now()->subHours(3),
                 'updated_at' => now(),
             ]
@@ -280,7 +276,6 @@ class DemoSigesgaSeeder extends Seeder
                 'xml_url' => null,
                 'pdf_url' => null,
                 'estatus' => 'vigente',
-                'eliminado' => false,
                 'created_at' => now()->subDays(4),
                 'updated_at' => now()->subDays(4),
             ]
@@ -308,7 +303,6 @@ class DemoSigesgaSeeder extends Seeder
                 'proximo_mantenimiento_km' => 50000,
                 'observaciones' => 'Cambio de aceite, filtros y revisión de frenos.',
                 'created_at' => now()->subMonth(),
-                'eliminado' => false,
             ]
         );
 
@@ -323,13 +317,11 @@ class DemoSigesgaSeeder extends Seeder
                 'proximo_mantenimiento_km' => 15000,
                 'observaciones' => 'Reparación del sistema hidráulico del gancho.',
                 'created_at' => now()->subDays(20),
-                'eliminado' => false,
             ]
         );
 
         // Notificaciones del administrador
         if ($adminId) {
-            DB::table('notificaciones')->where('usuario_id', $adminId)->where('eliminado', true)->update(['eliminado' => false]);
             $existentes = DB::table('notificaciones')->where('usuario_id', $adminId)->count();
             if ($existentes === 0) {
                 DB::table('notificaciones')->insert([
@@ -340,7 +332,6 @@ class DemoSigesgaSeeder extends Seeder
                         'canal' => 'sistema_push',
                         'estado' => 'enviado',
                         'intentos_envio' => 0,
-                        'eliminado' => false,
                         'created_at' => now()->subHours(5),
                         'updated_at' => now()->subHours(5),
                     ],
@@ -351,7 +342,6 @@ class DemoSigesgaSeeder extends Seeder
                         'canal' => 'sistema_push',
                         'estado' => 'enviado',
                         'intentos_envio' => 0,
-                        'eliminado' => false,
                         'created_at' => now()->subHours(2),
                         'updated_at' => now()->subHours(2),
                     ],
@@ -362,7 +352,6 @@ class DemoSigesgaSeeder extends Seeder
                         'canal' => 'sistema_push',
                         'estado' => 'pendiente',
                         'intentos_envio' => 0,
-                        'eliminado' => false,
                         'created_at' => now()->subDay(),
                         'updated_at' => now()->subDay(),
                     ],
@@ -370,6 +359,6 @@ class DemoSigesgaSeeder extends Seeder
             }
         }
 
-        $this->command->info('DemoSigesgaSeeder: datos de demostración listos.');
+        $this->command?->info('DemoSigesgaSeeder: datos de demostración listos.');
     }
 }

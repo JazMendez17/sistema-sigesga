@@ -1,0 +1,495 @@
+== aseguradora_contactos
+  id bigint(20) unsigned NOT NULL
+  aseguradora_id bigint(20) unsigned NOT NULL
+  departamento varchar(150) NOT NULL
+  nombre_contacto varchar(150) NULL
+  telefono varchar(20) NULL
+  email varchar(150) NULL
+  activo tinyint(1) NOT NULL DEFAULT 1
+  red_social varchar(150) NULL
+  eliminado tinyint(1) NOT NULL DEFAULT 0
+== aseguradoras
+  id bigint(20) unsigned NOT NULL
+  empresa_id bigint(20) unsigned NOT NULL
+  nombre varchar(150) NOT NULL
+  nombre_comercial varchar(150) NULL
+  rfc varchar(13) NULL
+  telefono varchar(20) NULL
+  created_at timestamp NULL
+  updated_at timestamp NULL
+  eliminado tinyint(1) NOT NULL DEFAULT 0
+== auditoria_eliminaciones
+  id bigint(20) unsigned NOT NULL
+  modelo varchar(100) NOT NULL
+  registro_id bigint(20) unsigned NULL
+  datos longtext NOT NULL
+  usuario_id bigint(20) unsigned NULL
+  created_at timestamp NULL
+== autorizaciones_cancelacion
+  id bigint(20) unsigned NOT NULL
+  servicio_id bigint(20) unsigned NOT NULL
+  usuario_solicitante_id bigint(20) unsigned NOT NULL
+  usuario_resolutor_id bigint(20) unsigned NULL
+  motivo_cancelacion text NOT NULL
+  tipo_incidencia enum('cliente_cancela','operador_siniestro','falla_mecanica','unidad_ponchada','otro') NOT NULL
+  estatus enum('pendiente','aprobada','cancelado_por_cotizador','cancelado_por_admin','rechazada') NOT NULL DEFAULT pendiente
+  fecha_solicitud datetime NOT NULL
+  fecha_resolucion datetime NULL
+== bitacora_tiempos_servicio
+  id bigint(20) unsigned NOT NULL
+  servicio_id bigint(20) unsigned NOT NULL
+  hora_asignado datetime NULL
+  hora_inicio_servicio datetime NULL
+  hora_en_sitio_origen datetime NULL
+  hora_salida_destino datetime NULL
+  hora_en_destino datetime NULL
+  hora_finalizado datetime NULL
+== calificaciones_servicio
+  id bigint(20) unsigned NOT NULL
+  servicio_id bigint(20) unsigned NOT NULL
+  cliente_id bigint(20) unsigned NULL
+  estrellas tinyint(4) NOT NULL
+  comentario text NULL
+  created_at timestamp NULL
+== catalogo_servicios
+  id bigint(20) unsigned NOT NULL
+  empresa_id bigint(20) unsigned NOT NULL
+  nombre varchar(100) NOT NULL
+  requiere_maniobra tinyint(1) NOT NULL DEFAULT 0
+  activo tinyint(1) NOT NULL DEFAULT 1
+  created_at timestamp NULL
+  updated_at timestamp NULL
+  eliminado tinyint(1) NOT NULL DEFAULT 0
+== clientes
+  id bigint(20) unsigned NOT NULL
+  empresa_id bigint(20) unsigned NOT NULL
+  usuario_id bigint(20) unsigned NULL
+  aseguradora_id bigint(20) unsigned NULL
+  tipo_cliente enum('persona_fisica','persona_moral') NOT NULL DEFAULT persona_fisica
+  nombre varchar(150) NOT NULL
+  apellido_paterno varchar(100) NULL
+  apellido_materno varchar(100) NULL
+  sexo enum('M','F') NULL
+  curp char(18) NULL
+  fecha_nacimiento date NULL
+  direccion_id bigint(20) unsigned NULL
+  telefono varchar(20) NULL
+  telefono_local varchar(20) NULL
+  email varchar(100) NULL
+  folio_ine varchar(20) NULL
+  nacionalidad varchar(50) NOT NULL DEFAULT Mexicana
+  contacto_enlace varchar(150) NULL
+  numero_poliza varchar(50) NULL
+  tipo_cobertura_poliza varchar(100) NULL
+  created_at timestamp NULL
+  updated_at timestamp NULL
+  eliminado tinyint(1) NOT NULL DEFAULT 0
+== contactos
+  id bigint(20) unsigned NOT NULL
+  nombre varchar(150) NOT NULL
+  email varchar(150) NOT NULL
+  mensaje text NOT NULL
+  leido tinyint(1) NOT NULL DEFAULT 0
+  created_at timestamp NULL
+  updated_at timestamp NULL
+== control_nomina
+  id bigint(20) unsigned NOT NULL
+  empresa_id bigint(20) unsigned NOT NULL
+  operador_id bigint(20) unsigned NOT NULL
+  fecha_desde date NOT NULL
+  fecha_hasta date NOT NULL
+  sueldo_base_semanal decimal(10,2) NOT NULL
+  bonos_servicios decimal(10,2) NOT NULL DEFAULT 0.00
+  descuentos_prestamos decimal(10,2) NOT NULL DEFAULT 0.00
+  total_neto_a_pagar decimal(14,2) NULL
+  estatus enum('pendiente','pagado') NOT NULL DEFAULT pendiente
+  created_at timestamp NULL
+  updated_at timestamp NULL
+== convenio_coberturas
+  id bigint(20) unsigned NOT NULL
+  convenio_id bigint(20) unsigned NOT NULL
+  tipo_cobertura varchar(100) NOT NULL
+== convenio_conceptos_adicionales
+  id bigint(20) unsigned NOT NULL
+  convenio_id bigint(20) unsigned NOT NULL
+  cubre_casetas tinyint(1) NOT NULL DEFAULT 0
+  forma_pago_casetas varchar(100) NULL
+  costo_estadia_dia decimal(10,2) NOT NULL DEFAULT 0.00
+  dias_gracia_estadia int(11) NOT NULL DEFAULT 0
+  costo_resguardo_nocturno decimal(10,2) NOT NULL DEFAULT 0.00
+  genera_cargo_cliente_final tinyint(1) NOT NULL DEFAULT 0
+  eliminado tinyint(1) NOT NULL DEFAULT 0
+== convenio_documentos_requeridos
+  id bigint(20) unsigned NOT NULL
+  convenio_id bigint(20) unsigned NOT NULL
+  documento varchar(150) NOT NULL
+  obligatorio tinyint(1) NOT NULL DEFAULT 1
+== convenio_maniobras_especiales
+  id bigint(20) unsigned NOT NULL
+  convenio_id bigint(20) unsigned NOT NULL
+  concepto varchar(150) NOT NULL
+  aplica tinyint(1) NOT NULL DEFAULT 1
+  forma_cobro varchar(50) NULL
+  costo decimal(10,2) NOT NULL
+  eliminado tinyint(1) NOT NULL DEFAULT 0
+== convenio_sla
+  id bigint(20) unsigned NOT NULL
+  convenio_id bigint(20) unsigned NOT NULL
+  tiempo_max_respuesta_urbano_min int(11) NOT NULL
+  tiempo_max_respuesta_carretera_min int(11) NOT NULL
+  disponibilidad varchar(50) NOT NULL DEFAULT 24/7
+  penalizacion_incumplimiento text NULL
+  protocolo_asignacion varchar(150) NULL
+  eliminado tinyint(1) NOT NULL DEFAULT 0
+== convenio_tarifas
+  id bigint(20) unsigned NOT NULL
+  convenio_id bigint(20) unsigned NOT NULL
+  servicio_id bigint(20) unsigned NULL
+  servicio varchar(150) NULL
+  alcance varchar(100) NULL
+  banderazo decimal(10,2) NULL
+  km_incluidos int(11) NULL
+  costo_km_extra decimal(10,2) NULL
+  tarifa_nocturna_recargo_pct decimal(5,2) NULL
+  tarifa_domingo_festivo_recargo_pct decimal(5,2) NULL
+  minutos_espera_incluidos int(11) NULL
+  costo_espera_adicional_hora decimal(10,2) NULL
+  descuento_pct decimal(5,2) NULL
+  tipo_descuento varchar(50) NULL
+  created_at timestamp NULL
+  updated_at timestamp NULL
+  eliminado tinyint(1) NOT NULL DEFAULT 0
+== convenio_unidades_autorizadas
+  id bigint(20) unsigned NOT NULL
+  convenio_id bigint(20) unsigned NOT NULL
+  tipo_grua enum('A','B','C','D') NOT NULL
+  peso_maximo_kg decimal(10,2) NULL
+  equipamiento enum('plataforma_hidraulica','gancho_arrastre','ambos') NOT NULL
+== convenios
+  id bigint(20) unsigned NOT NULL
+  empresa_id bigint(20) unsigned NOT NULL
+  aseguradora_id bigint(20) unsigned NOT NULL
+  nombre_convenio_poliza varchar(150) NOT NULL
+  codigo_convenio varchar(50) NULL
+  fecha_inicio date NULL
+  fecha_fin date NULL
+  renovacion_automatica tinyint(1) NOT NULL DEFAULT 0
+  exclusivo tinyint(1) NOT NULL DEFAULT 0
+  tipo_servicio_id bigint(20) unsigned NULL
+  tipo_ruta varchar(50) NULL
+  tipo_cobertura varchar(100) NULL
+  alcance_geografico varchar(255) NULL
+  costo_banderazo decimal(10,2) NULL
+  costo_km decimal(10,2) NULL
+  km_seguros_incluidos decimal(10,2) NULL
+  km_maximo_amparado decimal(10,2) NULL
+  tope_presupuesto decimal(12,2) NULL
+  cubre_casetas_peaje tinyint(1) NOT NULL DEFAULT 0
+  dias_credito int(11) NULL
+  periodicidad_corte varchar(50) NULL
+  requiere_folio_cfdi tinyint(1) NOT NULL DEFAULT 0
+  iva_incluido tinyint(1) NOT NULL DEFAULT 0
+  tope_credito decimal(12,2) NULL
+  aviso_previo_terminacion_dias int(11) NULL
+  proceso_envio_facturas text NULL
+  estatus enum('vigente','vencido','en_negociacion','cancelado') NOT NULL DEFAULT vigente
+  created_at timestamp NULL
+  updated_at timestamp NULL
+  eliminado tinyint(1) NOT NULL DEFAULT 0
+== cotizaciones
+  id bigint(20) unsigned NOT NULL
+  empresa_id bigint(20) unsigned NOT NULL
+  cliente_id bigint(20) unsigned NULL
+  convenio_aplicado_id bigint(20) unsigned NULL
+  tarifa_empresa_aplicada_id bigint(20) unsigned NULL
+  usuario_creador_id bigint(20) unsigned NOT NULL
+  folio varchar(50) NOT NULL
+  tipo_servicio_id bigint(20) unsigned NOT NULL
+  origen_direccion text NOT NULL
+  origen_lat decimal(10,8) NULL
+  origen_lng decimal(11,8) NULL
+  destino_direccion text NOT NULL
+  destino_lat decimal(10,8) NULL
+  destino_lng decimal(11,8) NULL
+  ruta_polyline text NULL
+  distancia_km decimal(10,2) NOT NULL
+  tiempo_estimado_minutos int(11) NULL
+  incluye_peajes tinyint(1) NOT NULL DEFAULT 0
+  costo_aprox_casetas decimal(10,2) NOT NULL DEFAULT 0.00
+  cargo_zona_especial decimal(10,2) NOT NULL DEFAULT 0.00
+  costo_banderazo decimal(10,2) NOT NULL
+  costo_km decimal(10,2) NOT NULL
+  km_excedente decimal(10,2) NOT NULL DEFAULT 0.00
+  costo_total decimal(12,2) NOT NULL
+  subtotal decimal(12,2) NULL
+  monto_descuento decimal(12,2) NULL
+  monto_iva decimal(12,2) NULL
+  descuento_pct decimal(5,2) NULL
+  km_incluidos decimal(10,2) NULL
+  estatus enum('pendiente','aprobado','rechazado') NOT NULL DEFAULT pendiente
+  cliente_aprobada_at timestamp NULL
+  aprobada_internamente_at timestamp NULL
+  created_at timestamp NULL
+  updated_at timestamp NULL
+  eliminado tinyint(1) NOT NULL DEFAULT 0
+== direcciones
+  id bigint(20) unsigned NOT NULL
+  calle varchar(150) NOT NULL
+  numero_exterior varchar(20) NOT NULL
+  numero_interior varchar(20) NULL
+  colonia varchar(100) NOT NULL
+  codigo_postal varchar(10) NOT NULL
+  municipio_alcaldia varchar(100) NOT NULL
+  ciudad varchar(100) NOT NULL
+  estado varchar(60) NOT NULL
+  pais varchar(60) NOT NULL DEFAULT México
+  referencias varchar(255) NULL
+  created_at timestamp NULL
+  updated_at timestamp NULL
+== empleados
+  id bigint(20) unsigned NOT NULL
+  empresa_id bigint(20) unsigned NOT NULL
+  oficina_id bigint(20) unsigned NULL
+  nombre varchar(100) NOT NULL
+  apellido_paterno varchar(100) NOT NULL
+  apellido_materno varchar(100) NULL
+  sexo enum('M','F') NULL
+  curp char(18) NULL
+  fecha_nacimiento date NULL
+  direccion_id bigint(20) unsigned NULL
+  telefono varchar(20) NULL
+  telefono_local varchar(20) NULL
+  correo varchar(150) NULL
+  folio_ine varchar(20) NULL
+  nacionalidad varchar(50) NOT NULL DEFAULT Mexicana
+  puesto varchar(50) NULL
+  sueldo_diario decimal(10,2) NOT NULL DEFAULT 0.00
+  created_at timestamp NULL
+  updated_at timestamp NULL
+  eliminado tinyint(1) NOT NULL DEFAULT 0
+== empresa_accesos_rapidos
+  id bigint(20) unsigned NOT NULL
+  empresa_id bigint(20) unsigned NOT NULL
+  titulo varchar(100) NOT NULL
+  descripcion text NULL
+  icono varchar(100) NULL
+  imagen varchar(255) NULL
+  link varchar(255) NOT NULL
+  orden int(11) NOT NULL DEFAULT 0
+  activo tinyint(1) NOT NULL DEFAULT 1
+== empresa_integraciones
+  id bigint(20) unsigned NOT NULL
+  empresa_id bigint(20) unsigned NOT NULL
+  proveedor enum('whatsapp','gmail','google_maps') NOT NULL
+  api_key varchar(255) NULL
+  configuracion_json longtext NULL
+  activo tinyint(1) NOT NULL DEFAULT 1
+  created_at timestamp NULL
+  updated_at timestamp NULL
+== empresa_modulo_colores
+  id bigint(20) unsigned NOT NULL
+  empresa_id bigint(20) unsigned NOT NULL
+  modulo varchar(50) NOT NULL
+  color varchar(20) NOT NULL
+  created_at timestamp NULL
+  updated_at timestamp NULL
+== empresa_nosotros
+  id bigint(20) unsigned NOT NULL
+  empresa_id bigint(20) unsigned NOT NULL
+  quienes_somos text NULL
+  mision text NULL
+  vision text NULL
+  prioridad text NULL
+  created_at timestamp NULL
+  updated_at timestamp NULL
+== empresa_servicios
+  id bigint(20) unsigned NOT NULL
+  empresa_id bigint(20) unsigned NOT NULL
+  tipo varchar(100) NOT NULL
+  descripcion text NULL
+  foto varchar(255) NULL
+  orden int(11) NOT NULL DEFAULT 0
+  activo tinyint(1) NOT NULL DEFAULT 1
+  color varchar(20) NULL
+  eliminado tinyint(1) NOT NULL DEFAULT 0
+== empresa_valores
+  id bigint(20) unsigned NOT NULL
+  empresa_id bigint(20) unsigned NOT NULL
+  valor varchar(100) NOT NULL
+  descripcion varchar(255) NULL
+  orden int(11) NOT NULL DEFAULT 0
+  eliminado tinyint(1) NOT NULL DEFAULT 0
+== empresas
+  id bigint(20) unsigned NOT NULL
+  nombre varchar(150) NOT NULL
+  siglas varchar(20) NULL
+  slogan varchar(255) NULL
+  logo varchar(255) NULL
+  imagen_fondo varchar(255) NULL
+  texto_derechos varchar(255) NULL
+  color_primario varchar(20) NULL
+  color_secundario varchar(20) NULL
+  color_fondo varchar(20) NULL
+  color_texto varchar(20) NULL
+  tipografia varchar(50) NULL DEFAULT Roboto
+  modo_oscuro tinyint(1) NOT NULL DEFAULT 0
+  telefono_contacto varchar(20) NULL
+  email_contacto varchar(150) NULL
+  direccion varchar(255) NULL
+  created_at timestamp NULL
+  updated_at timestamp NULL
+  eliminado tinyint(1) NOT NULL DEFAULT 0
+== facturas
+  id bigint(20) unsigned NOT NULL
+  empresa_id bigint(20) unsigned NOT NULL
+  cliente_id bigint(20) unsigned NOT NULL
+  servicio_id bigint(20) unsigned NOT NULL
+  uuid_fiscal varchar(100) NULL
+  folio_factura varchar(50) NOT NULL
+  correo_envio_factura varchar(150) NOT NULL
+  subtotal decimal(12,2) NOT NULL
+  iva decimal(10,2) NOT NULL
+  total decimal(12,2) NOT NULL
+  xml_url varchar(255) NULL
+  pdf_url varchar(255) NULL
+  estatus enum('vigente','cancelada') NOT NULL DEFAULT vigente
+  created_at timestamp NULL
+  updated_at timestamp NULL
+  eliminado tinyint(1) NOT NULL DEFAULT 0
+== notificaciones
+  id bigint(20) unsigned NOT NULL
+  empresa_id bigint(20) unsigned NOT NULL
+  usuario_id bigint(20) unsigned NOT NULL
+  mensaje text NOT NULL
+  canal enum('whatsapp','sistema_push','sms','email') NOT NULL
+  estado enum('pendiente','enviado','fallido','leido') NOT NULL DEFAULT pendiente
+  proveedor_mensaje_id varchar(150) NULL
+  intentos_envio tinyint(3) unsigned NOT NULL DEFAULT 0
+  error_detalle text NULL
+  created_at timestamp NULL
+  updated_at timestamp NULL
+  eliminado tinyint(1) NOT NULL DEFAULT 0
+== oficinas
+  id bigint(20) unsigned NOT NULL
+  empresa_id bigint(20) unsigned NOT NULL
+  nombre varchar(100) NOT NULL
+  direccion_id bigint(20) unsigned NULL
+  telefono varchar(25) NULL
+  email varchar(150) NULL
+  encargado varchar(150) NULL
+  created_at timestamp NULL
+  updated_at timestamp NULL
+  eliminado tinyint(1) NOT NULL DEFAULT 0
+== operadores
+  id bigint(20) unsigned NOT NULL
+  empresa_id bigint(20) unsigned NOT NULL
+  empleado_id bigint(20) unsigned NOT NULL
+  tipo_licencia varchar(50) NOT NULL
+  numero_licencia varchar(50) NOT NULL
+  fecha_expedicion date NOT NULL
+  fecha_vigencia date NOT NULL
+  disponible tinyint(1) NOT NULL DEFAULT 1
+  created_at timestamp NULL
+  updated_at timestamp NULL
+  eliminado tinyint(1) NOT NULL DEFAULT 0
+== servicios
+  id bigint(20) unsigned NOT NULL
+  empresa_id bigint(20) unsigned NOT NULL
+  cotizacion_id bigint(20) unsigned NOT NULL
+  operador_id bigint(20) unsigned NOT NULL
+  unidad_id bigint(20) unsigned NOT NULL
+  oficina_id bigint(20) unsigned NULL
+  estado enum('asignado','inicio_servicio','en_sitio_origen','salida_destino','en_destino','finalizado','solicitud_cancelacion','cancelado') NOT NULL DEFAULT asignado
+  kms_salida int(11) NULL
+  kms_llegada_cliente int(11) NULL
+  kms_termino_servicio int(11) NULL
+  kms_regreso_base int(11) NULL
+  kms_cobrados_reales int(11) NULL
+  cargo_zona_especial decimal(10,2) NOT NULL DEFAULT 0.00
+  costo_final_real decimal(12,2) NULL
+  observaciones text NULL
+  created_at timestamp NULL
+  updated_at timestamp NULL
+  eliminado tinyint(1) NOT NULL DEFAULT 0
+== tarifas_empresa
+  id bigint(20) unsigned NOT NULL
+  empresa_id bigint(20) unsigned NOT NULL
+  tipo_servicio_id bigint(20) unsigned NULL
+  nombre_tarifa varchar(150) NOT NULL
+  servicio varchar(150) NULL
+  alcance varchar(100) NULL
+  tipo_ruta varchar(50) NULL
+  costo_banderazo decimal(10,2) NULL
+  costo_km decimal(10,2) NULL
+  km_incluidos decimal(10,2) NOT NULL DEFAULT 0.00
+  costo_km_extra decimal(10,2) NULL
+  tarifa_nocturna_recargo_pct decimal(5,2) NULL
+  tarifa_domingo_festivo_recargo_pct decimal(5,2) NULL
+  minutos_espera_incluidos int(11) NULL
+  costo_espera_adicional_hora decimal(10,2) NULL
+  descuento_pct decimal(5,2) NULL
+  tipo_descuento varchar(50) NULL
+  cubre_casetas_peaje tinyint(1) NOT NULL DEFAULT 0
+  activo tinyint(1) NOT NULL DEFAULT 1
+  created_at timestamp NULL
+  updated_at timestamp NULL
+  eliminado tinyint(1) NOT NULL DEFAULT 0
+== unidad_mantenimientos
+  id bigint(20) unsigned NOT NULL
+  empresa_id bigint(20) unsigned NOT NULL
+  unidad_id bigint(20) unsigned NOT NULL
+  tipo varchar(100) NOT NULL
+  fecha date NOT NULL
+  kilometraje int(11) NULL
+  costo decimal(10,2) NOT NULL DEFAULT 0.00
+  proximo_mantenimiento_fecha date NULL
+  proximo_mantenimiento_km int(11) NULL
+  observaciones text NULL
+  created_at timestamp NULL
+  eliminado tinyint(1) NOT NULL DEFAULT 0
+== unidades
+  id bigint(20) unsigned NOT NULL
+  empresa_id bigint(20) unsigned NOT NULL
+  oficina_id bigint(20) unsigned NULL
+  operador_asignado_id bigint(20) unsigned NULL
+  marca varchar(50) NOT NULL
+  tipo varchar(50) NOT NULL
+  modelo varchar(45) NULL
+  placas varchar(20) NOT NULL
+  numero_economico varchar(50) NOT NULL
+  seguro_vencimiento date NULL
+  estado_emplacado varchar(50) NULL
+  activo tinyint(1) NOT NULL DEFAULT 1
+  created_at timestamp NULL
+  updated_at timestamp NULL
+  eliminado tinyint(1) NOT NULL DEFAULT 0
+== unidades_ubicaciones
+  id bigint(20) unsigned NOT NULL
+  unidad_id bigint(20) unsigned NOT NULL
+  servicio_id bigint(20) unsigned NULL
+  lat decimal(10,8) NOT NULL
+  lng decimal(11,8) NOT NULL
+  registrado_en timestamp NOT NULL DEFAULT current_timestamp()
+== usuarios
+  id bigint(20) unsigned NOT NULL
+  empresa_id bigint(20) unsigned NOT NULL
+  empleado_id bigint(20) unsigned NULL
+  name varchar(150) NOT NULL
+  email varchar(150) NOT NULL
+  telefono varchar(20) NULL
+  password varchar(255) NOT NULL
+  debe_cambiar_password tinyint(1) NOT NULL DEFAULT 0
+  foto varchar(255) NULL
+  password_reset_token varchar(255) NULL
+  password_reset_expires_at timestamp NULL
+  rol enum('admin','cotizador','operador','cliente') NOT NULL
+  intentos_fallidos tinyint(3) unsigned NOT NULL DEFAULT 0
+  cuenta_bloqueada tinyint(1) NOT NULL DEFAULT 0
+  codigo_desbloqueo varchar(6) NULL
+  codigo_desbloqueo_expira timestamp NULL
+  bloqueada_en timestamp NULL
+  desbloqueada_por bigint(20) unsigned NULL
+  created_at timestamp NULL
+  updated_at timestamp NULL
+  remember_token varchar(100) NULL
+  eliminado tinyint(1) NOT NULL DEFAULT 0

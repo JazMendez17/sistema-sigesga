@@ -2,16 +2,13 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\Ocultable;
-
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 // Modelo de Servicio de Empresa
 class EmpresaServicio extends Model
 {
-        use Ocultable;
-use HasFactory;
+        use HasFactory;
 
     public $timestamps = false;
 
