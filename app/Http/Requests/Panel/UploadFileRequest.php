@@ -16,16 +16,12 @@ class UploadFileRequest extends FormRequest
         return true;
     }
 
-    // Limpia los campos antes de la validación
+    // Limpia los campos de texto antes de la validación (sin alterar el archivo subido)
     protected function prepareForValidation(): void
     {
-        $data = $this->all();
-        array_walk_recursive($data, function (&$value) {
-            if (is_string($value)) {
-                $value = trim($value);
-            }
-        });
-        $this->merge($data);
+        if (is_string($this->input('type'))) {
+            $this->merge(['type' => trim($this->input('type'))]);
+        }
     }
 
     // Define las reglas de validación

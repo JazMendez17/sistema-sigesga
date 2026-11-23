@@ -16,6 +16,8 @@ const props = defineProps({
 
 const activeTab = ref('general')
 const fontOpen = ref(false)
+const uploadError = ref('')
+const uploadingTarget = ref('')
 
 const form = useForm({
   nombre: empresaData.nombre || '',
@@ -63,13 +65,25 @@ function uploadServicioFoto(index) {
   input.onchange = (e) => {
     const file = e.target.files[0]
     if (!file) return
+    uploadError.value = ''
+    uploadingTarget.value = `servicio-${index}`
     const data = new FormData()
     data.append('file', file)
     data.append('type', 'servicio')
     router.post(route('panel.upload.store'), data, {
+      forceFormData: true,
       preserveScroll: true,
-      onSuccess: (page) => {
-        serviciosLanding[index].foto = page.props.flash?.uploaded_path || file.name
+      preserveState: true,
+      onSuccess: (respPage) => {
+        if (respPage.props.flash?.uploaded_path) {
+          serviciosLanding[index].foto = respPage.props.flash.uploaded_path
+        }
+      },
+      onError: (errors) => {
+        uploadError.value = Object.values(errors)[0] || 'No se pudo subir la imagen.'
+      },
+      onFinish: () => {
+        uploadingTarget.value = ''
       },
     })
   }
@@ -77,11 +91,12 @@ function uploadServicioFoto(index) {
 }
 
 function guardarCambios() {
+  uploadError.value = ''
   const payload = {
     ...form.data(),
     nosotros: { ...nosotros },
     valores: valores.map(v => ({ valor: v.valor, descripcion: v.descripcion })),
-    servicios_landing: serviciosLanding.map(s => ({ tipo: s.tipo, descripcion: s.descripcion, foto: s.foto })),
+    servicios_landing: serviciosLanding.map(s => ({ id: s.id ?? null, tipo: s.tipo, descripcion: s.descripcion, foto: s.foto })),
     modulo_colores: { ...moduloColores },
   }
   form.transform(() => payload).post(route('panel.configuracion.update'), {
@@ -114,13 +129,25 @@ function uploadFile(type) {
   input.onchange = (e) => {
     const file = e.target.files[0]
     if (!file) return
+    uploadError.value = ''
+    uploadingTarget.value = type
     const data = new FormData()
     data.append('file', file)
     data.append('type', type)
     router.post(route('panel.upload.store'), data, {
+      forceFormData: true,
       preserveScroll: true,
-      onSuccess: (page) => {
-        form[type] = page.props.flash?.uploaded_path || file.name
+      preserveState: true,
+      onSuccess: (respPage) => {
+        if (respPage.props.flash?.uploaded_path) {
+          form[type] = respPage.props.flash.uploaded_path
+        }
+      },
+      onError: (errors) => {
+        uploadError.value = Object.values(errors)[0] || 'No se pudo subir la imagen.'
+      },
+      onFinish: () => {
+        uploadingTarget.value = ''
       },
     })
   }
@@ -166,7 +193,14 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
     <div class="space-y-6">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 class="text-2xl font-bold text-gray-800">Configuración de la Empresa</h1>
-        <NeumorphicButton variant="primary" @click="guardarCambios" :disabled="form.processing">Guardar Cambios</NeumorphicButton>
+        <NeumorphicButton variant="primary" @click="guardarCambios" :disabled="form.processing || !!uploadingTarget">
+          {{ form.processing ? 'Guardando...' : 'Guardar Cambios' }}
+        </NeumorphicButton>
+      </div>
+
+      <div v-if="uploadError || Object.keys(form.errors).length" class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 space-y-1">
+        <p v-if="uploadError">{{ uploadError }}</p>
+        <p v-for="(msg, field) in form.errors" :key="field">{{ msg }}</p>
       </div>
 
       <!-- Tabs -->
@@ -192,21 +226,25 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
         <div>
           <label class="block text-sm font-medium text-[var(--color-text)] mb-2">Logo</label>
           <div class="flex items-center gap-4">
-            <div class="flex h-20 w-20 items-center justify-center rounded-2xl bg-[var(--color-bg)] shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]">
-              <img v-if="form.logo" :src="'/storage/' + form.logo" class="h-full w-full rounded-2xl object-cover" @error="$event.target.style.display='none'" />
+            <div class="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-[var(--color-bg)] shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]">
+              <img v-if="form.logo" :key="form.logo" :src="'/storage/' + form.logo" class="h-full w-full rounded-2xl object-cover" />
               <svg v-else class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
             </div>
-            <button @click="uploadFile('logo')" class="rounded-xl bg-[var(--color-bg)] px-4 py-2 text-sm text-gray-600 shadow-[4px_4px_8px_var(--neumorphic-dark),-4px_-4px_8px_var(--neumorphic-light)] transition-all hover:text-gray-800">Seleccionar archivo</button>
+            <button type="button" @click="uploadFile('logo')" :disabled="uploadingTarget === 'logo'" class="rounded-xl bg-[var(--color-bg)] px-4 py-2 text-sm text-gray-600 shadow-[4px_4px_8px_var(--neumorphic-dark),-4px_-4px_8px_var(--neumorphic-light)] transition-all hover:text-gray-800 disabled:opacity-50">
+              {{ uploadingTarget === 'logo' ? 'Subiendo...' : 'Seleccionar archivo' }}
+            </button>
           </div>
         </div>
         <div>
           <label class="block text-sm font-medium text-[var(--color-text)] mb-2">Imagen de Fondo</label>
           <div class="flex items-center gap-4">
-            <div class="flex h-20 w-20 items-center justify-center rounded-2xl bg-[var(--color-bg)] shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]">
-              <img v-if="form.imagen_fondo" :src="'/storage/' + form.imagen_fondo" class="h-full w-full rounded-2xl object-cover" />
+            <div class="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-[var(--color-bg)] shadow-[inset_4px_4px_8px_var(--neumorphic-dark),inset_-4px_-4px_8px_var(--neumorphic-light)]">
+              <img v-if="form.imagen_fondo" :key="form.imagen_fondo" :src="'/storage/' + form.imagen_fondo" class="h-full w-full rounded-2xl object-cover" />
               <svg v-else class="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
             </div>
-            <button @click="uploadFile('imagen_fondo')" class="rounded-xl bg-[var(--color-bg)] px-4 py-2 text-sm text-gray-600 shadow-[4px_4px_8px_var(--neumorphic-dark),-4px_-4px_8px_var(--neumorphic-light)] transition-all hover:text-gray-800">Seleccionar archivo</button>
+            <button type="button" @click="uploadFile('imagen_fondo')" :disabled="uploadingTarget === 'imagen_fondo'" class="rounded-xl bg-[var(--color-bg)] px-4 py-2 text-sm text-gray-600 shadow-[4px_4px_8px_var(--neumorphic-dark),-4px_-4px_8px_var(--neumorphic-light)] transition-all hover:text-gray-800 disabled:opacity-50">
+              {{ uploadingTarget === 'imagen_fondo' ? 'Subiendo...' : 'Seleccionar archivo' }}
+            </button>
           </div>
         </div>
         <NeumorphicInput v-model="form.texto_derechos" label="Texto de Derechos" icon="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -342,8 +380,11 @@ onUnmounted(() => document.removeEventListener('mousedown', onClickOutside))
             <input v-model="item.tipo" placeholder="Tipo de servicio" class="rounded-xl bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text)] shadow-[inset_3px_3px_6px_var(--neumorphic-dark),inset_-3px_-3px_6px_var(--neumorphic-light)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]" />
             <input v-model="item.descripcion" placeholder="Descripción" class="rounded-xl bg-[var(--color-surface)] px-3 py-1.5 text-sm text-[var(--color-text)] shadow-[inset_3px_3px_6px_var(--neumorphic-dark),inset_-3px_-3px_6px_var(--neumorphic-light)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] sm:col-span-1" />
             <div class="flex items-center gap-2">
-              <button @click="uploadServicioFoto(i)" class="rounded-xl bg-[var(--color-surface)] px-3 py-1.5 text-xs text-gray-600 shadow-[3px_3px_6px_var(--neumorphic-dark),-3px_-3px_6px_var(--neumorphic-light)]">{{ item.foto ? 'Cambiar' : 'Foto' }}</button>
-              <button @click="eliminarServicio(i)" class="rounded-lg p-1.5 text-gray-400 hover:text-red-500 transition-colors">
+              <img v-if="item.foto" :key="item.foto" :src="'/storage/' + item.foto" class="h-10 w-10 rounded-xl object-cover border border-gray-200 shrink-0" />
+              <button type="button" @click="uploadServicioFoto(i)" :disabled="uploadingTarget === `servicio-${i}`" class="rounded-xl bg-[var(--color-surface)] px-3 py-1.5 text-xs text-gray-600 shadow-[3px_3px_6px_var(--neumorphic-dark),-3px_-3px_6px_var(--neumorphic-light)] hover:text-gray-800 disabled:opacity-50">
+                {{ uploadingTarget === `servicio-${i}` ? 'Subiendo...' : (item.foto ? 'Cambiar foto' : 'Subir foto') }}
+              </button>
+              <button type="button" @click="eliminarServicio(i)" class="rounded-lg p-1.5 text-gray-400 hover:text-red-500 transition-colors">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
               </button>
             </div>

@@ -113,11 +113,13 @@ class ConfiguracionController extends Controller
                 }
             }
 
-            $serviciosData = $request->input('servicios_landing', []);
-            if (!empty($serviciosData)) {
+            if ($request->has('servicios_landing')) {
+                $serviciosData = $request->input('servicios_landing', []);
                 $existentes = $empresa->empresaServicios()->get()->keyBy('id');
+                $idsConservados = [];
+
                 foreach ($serviciosData as $i => $s) {
-                    $existente = isset($s['id']) ? $existentes->get($s['id']) : null;
+                    $existente = !empty($s['id']) ? $existentes->get((int) $s['id']) : null;
                     // Solo se permite conservar la foto propia existente o una subida a servicios/empresa
                     $foto = $existente?->foto;
                     if (!empty($s['foto']) && (str_starts_with($s['foto'], 'empresa/') || str_starts_with($s['foto'], 'servicios/'))) {
@@ -131,14 +133,23 @@ class ConfiguracionController extends Controller
                             'foto' => $foto,
                             'orden' => $i,
                         ]);
+                        $idsConservados[] = $existente->id;
                     } elseif (filled($s['tipo'] ?? null)) {
-                        $empresa->empresaServicios()->create([
+                        $creado = $empresa->empresaServicios()->create([
                             'tipo' => $s['tipo'],
                             'descripcion' => $s['descripcion'] ?? '',
                             'foto' => $foto,
                             'orden' => $i,
                             'activo' => true,
                         ]);
+                        $idsConservados[] = $creado->id;
+                    }
+                }
+
+                foreach ($existentes as $idExistente => $servicioEliminado) {
+                    if (!in_array($idExistente, $idsConservados, true)) {
+                        Auditoria::registrar($servicioEliminado);
+                        $servicioEliminado->delete();
                     }
                 }
             }
