@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
 use App\Models\EmpresaServicio;
+use App\Services\ImageOptimizerService;
 use App\Support\Auditoria;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -30,11 +31,11 @@ class ServiciosLandingController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, ImageOptimizerService $optimizer)
     {
         $data = $this->validated($request, true);
         $data['empresa_id'] = Auth::user()->empresa_id;
-        $data['foto'] = $request->file('foto')->store('servicios', 'public');
+        $data['foto'] = $optimizer->guardarOptimizada($request->file('foto'), 'servicios', 1200);
         EmpresaServicio::create($data);
 
         return redirect()->route('panel.servicios-landing.index')->with('success', 'Servicio agregado correctamente.');
@@ -50,14 +51,14 @@ class ServiciosLandingController extends Controller
         ]);
     }
 
-    public function update(Request $request, EmpresaServicio $servicioLanding)
+    public function update(Request $request, EmpresaServicio $servicioLanding, ImageOptimizerService $optimizer)
     {
         $this->authorizeAccess($servicioLanding);
         $data = $this->validated($request, false);
 
         if ($request->hasFile('foto')) {
             $this->borrarFotoSegura($servicioLanding->foto);
-            $data['foto'] = $request->file('foto')->store('servicios', 'public');
+            $data['foto'] = $optimizer->guardarOptimizada($request->file('foto'), 'servicios', 1200);
         } else {
             unset($data['foto']);
         }

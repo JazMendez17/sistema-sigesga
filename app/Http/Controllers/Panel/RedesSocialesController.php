@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
 use App\Models\EmpresaAccesosRapido;
+use App\Services\ImageOptimizerService;
 use App\Support\Auditoria;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -99,7 +100,7 @@ class RedesSocialesController extends Controller
 
     private function guardarImagen(Request $request): string
     {
-        $path = $request->file('imagen')->store('accesos-rapidos', 'public');
+        $path = app(ImageOptimizerService::class)->guardarOptimizada($request->file('imagen'), 'accesos-rapidos', 512);
 
         return '/storage/' . $path;
     }
