@@ -260,7 +260,10 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
         Route::resource('/servicios-landing', ServiciosLandingController::class)
             ->parameters(['servicios-landing' => 'servicioLanding'])
             ->except(['show']);
+    });
 
+    // === Módulos exclusivos para Super Administrador (llaves API / integraciones) ===
+    Route::middleware('role:superadmin')->group(function () {
         Route::get('/integraciones', [IntegracionesController::class, 'index'])->name('integraciones.index');
         Route::put('/integraciones/{id}', [IntegracionesController::class, 'update'])->whereNumber('id')->name('integraciones.update');
     });

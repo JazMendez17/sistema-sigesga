@@ -59,7 +59,6 @@ class PanelSmokeTest extends TestCase
             'panel/usuarios',
             'panel/usuarios/create',
             'panel/configuracion',
-            'panel/integraciones',
             'panel/reportes',
             'panel/notificaciones',
             'panel/facturacion',
@@ -70,6 +69,11 @@ class PanelSmokeTest extends TestCase
             $response = $this->actingAs($this->user)->get($url);
             $response->assertStatus(200);
         }
+
+        // Integraciones (API keys) es exclusivo de Super Administrador
+        $this->actingAs($this->user)->get('panel/integraciones')->assertForbidden();
+        $superAdmin = Usuario::factory()->superadmin()->create(['empresa_id' => $this->user->empresa_id]);
+        $this->actingAs($superAdmin)->get('panel/integraciones')->assertOk();
     }
 
     public function test_employee_crud(): void
