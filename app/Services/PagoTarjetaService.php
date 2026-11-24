@@ -18,35 +18,24 @@ use Illuminate\Validation\ValidationException;
 
 class PagoTarjetaService
 {
-    /** Obtiene las credenciales activas de Mercado Pago (prioridad: Integraciones de empresa, luego .env). */
+    /** Obtiene las credenciales activas de Mercado Pago desde Integraciones (empresa_integraciones). */
     public static function obtenerConfigMercadoPago(int $empresaId): array
     {
         $integracion = EmpresaIntegracione::where('empresa_id', $empresaId)
             ->where('proveedor', 'mercadopago')
             ->first();
 
-        $envPublicKey = trim((string) config('services.mercadopago.public_key', ''));
-        $envAccessToken = trim((string) config('services.mercadopago.access_token', ''));
-
-        if ($integracion) {
-            if (!$integracion->activo) {
-                return ['activo' => false, 'public_key' => null, 'access_token' => null];
-            }
-
-            $publicKey = trim((string) ($integracion->configuracion_json['public_key'] ?? '')) ?: $envPublicKey;
-            $accessToken = trim((string) ($integracion->api_key ?? '')) ?: $envAccessToken;
-
-            return [
-                'activo' => $publicKey !== '' && $accessToken !== '',
-                'public_key' => $publicKey !== '' ? $publicKey : null,
-                'access_token' => $accessToken !== '' ? $accessToken : null,
-            ];
+        if (!$integracion || !$integracion->activo) {
+            return ['activo' => false, 'public_key' => null, 'access_token' => null];
         }
 
+        $publicKey = trim((string) ($integracion->configuracion_json['public_key'] ?? ''));
+        $accessToken = trim((string) ($integracion->api_key ?? ''));
+
         return [
-            'activo' => $envPublicKey !== '' && $envAccessToken !== '',
-            'public_key' => $envPublicKey !== '' ? $envPublicKey : null,
-            'access_token' => $envAccessToken !== '' ? $envAccessToken : null,
+            'activo' => $publicKey !== '' && $accessToken !== '',
+            'public_key' => $publicKey !== '' ? $publicKey : null,
+            'access_token' => $accessToken !== '' ? $accessToken : null,
         ];
     }
 

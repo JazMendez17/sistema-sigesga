@@ -58,9 +58,4 @@ return [
         'base_url' => env('POSTALIA_BASE_URL', 'https://postali.app/api/v1'),
     ],
 
-    'mercadopago' => [
-        'public_key' => env('MERCADOPAGO_PUBLIC_KEY'),
-        'access_token' => env('MERCADOPAGO_ACCESS_TOKEN'),
-    ],
-
 ];

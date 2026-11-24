@@ -24,7 +24,6 @@ class IntegracionesController extends Controller
             'mercadopago' => 'Cobros con tarjeta mediante Mercado Pago Checkout API (Orders).',
             'whatsapp' => 'Envío de notificaciones y comprobantes por WhatsApp.',
             'gmail' => 'Envío de cotizaciones, facturas y correos del sistema.',
-            'google_maps' => 'Cálculo de rutas, distancias y tiempos estimados.',
         ];
         foreach ($base as $proveedor => $descripcion) {
             EmpresaIntegracione::firstOrCreate(
@@ -37,11 +36,10 @@ class IntegracionesController extends Controller
             'mercadopago' => 'Mercado Pago',
             'whatsapp' => 'WhatsApp',
             'gmail' => 'Gmail',
-            'google_maps' => 'Google Maps',
-            'stripe' => 'Stripe',
         ];
 
         $integraciones = EmpresaIntegracione::where('empresa_id', $empresaId)
+            ->whereIn('proveedor', array_keys($base))
             ->orderByRaw("CASE WHEN proveedor = 'mercadopago' THEN 0 ELSE 1 END")
             ->get()
             ->map(fn ($i) => [
@@ -51,14 +49,13 @@ class IntegracionesController extends Controller
                 'descripcion' => $i->configuracion_json['descripcion'] ?? '',
                 'public_key' => $i->configuracion_json['public_key'] ?? '',
                 'icono' => match ($i->proveedor) {
-                    'mercadopago', 'stripe' => 'card',
+                    'mercadopago' => 'card',
                     'whatsapp' => 'whatsapp',
                     'gmail' => 'mail',
-                    'google_maps' => 'map',
                     default => 'puzzle',
                 },
                 'activo' => (bool) ($i->activo ?? false),
-                'configurado' => !empty($i->api_key) || ($i->proveedor === 'mercadopago' && !empty(config('services.mercadopago.access_token'))),
+                'configurado' => !empty($i->api_key),
             ]);
 
         return Inertia::render('Panel/Integraciones/Index', [
