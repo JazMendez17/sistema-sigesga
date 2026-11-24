@@ -173,7 +173,7 @@ async function procesarPagoTarjeta() {
       return
     } catch (err) {
       tokenizandoMp.value = false
-      errorMp.value = err?.message || 'Mercado Pago no pudo validar los datos de la tarjeta. Revisa número, vigencia y CVV.'
+      errorMp.value = 'No se pudieron validar los datos de tu tarjeta. Verifica el número, fecha de vencimiento y código de seguridad (CVV).'
       return
     }
   }

@@ -340,24 +340,17 @@ class PagoTarjetaService
             && ($paymentStatus === '' || in_array($paymentStatus, ['processed', 'approved', 'accredited'], true));
 
         if (!$aprobado) {
-            $detalleApi = $body['errors'][0]['details'][0] ?? null;
-            $mensajeApi = $body['errors'][0]['message']
-                ?? $body['message']
-                ?? $this->traducirRechazoMp($statusDetail);
-            if ($detalleApi && is_string($detalleApi)) {
-                $mensajeApi .= " ({$detalleApi})";
-            }
-
             Log::warning('Pago rechazado por Mercado Pago Orders API', [
                 'http_status' => $response->status(),
                 'order_status' => $orderStatus,
                 'payment_status' => $paymentStatus,
                 'status_detail' => $statusDetail,
                 'errors' => $body['errors'] ?? null,
+                'message' => $body['message'] ?? null,
             ]);
 
             throw ValidationException::withMessages([
-                'tarjeta' => 'Mercado Pago rechazó el cobro: ' . $mensajeApi,
+                'tarjeta' => $this->traducirErrorMercadoPago($body, $statusDetail),
             ]);
         }
 
@@ -369,16 +362,46 @@ class PagoTarjetaService
         ];
     }
 
-    private function traducirRechazoMp(string $detail): string
+    private function traducirErrorMercadoPago(array $body, string $detail): string
     {
-        return match (strtolower($detail)) {
-            'cc_rejected_insufficient_amount', 'insufficient_amount' => 'Fondos insuficientes en la tarjeta.',
-            'cc_rejected_bad_filled_security_code', 'bad_filled_security_code' => 'Código de seguridad (CVV) incorrecto.',
-            'cc_rejected_bad_filled_date', 'bad_filled_date' => 'Fecha de vencimiento incorrecta.',
-            'cc_rejected_bad_filled_card_number', 'bad_filled_card_number' => 'Número de tarjeta incorrecto.',
-            'cc_rejected_call_for_authorize' => 'Debes autorizar el pago con tu banco.',
-            'cc_rejected_card_disabled' => 'La tarjeta no está habilitada para pagos en línea.',
-            default => 'Verifica los datos de tu tarjeta o intenta con otra tarjeta.',
+        $porDetalle = match (strtolower($detail)) {
+            'cc_rejected_insufficient_amount', 'insufficient_amount' => 'Tu tarjeta no cuenta con fondos suficientes para realizar este pago.',
+            'cc_rejected_bad_filled_security_code', 'bad_filled_security_code' => 'El código de seguridad (CVV) es incorrecto. Verifícalo e intenta de nuevo.',
+            'cc_rejected_bad_filled_date', 'bad_filled_date' => 'La fecha de vencimiento de tu tarjeta es incorrecta.',
+            'cc_rejected_bad_filled_card_number', 'bad_filled_card_number' => 'El número de tarjeta es incorrecto. Revísalo e intenta nuevamente.',
+            'cc_rejected_call_for_authorize', 'call_for_authorize' => 'Tu banco requiere que autorices esta compra. Comunícate con tu banco o intenta con otra tarjeta.',
+            'cc_rejected_card_disabled', 'card_disabled' => 'Tu tarjeta no está habilitada para pagos en línea. Actívala desde tu app bancaria o usa otra tarjeta.',
+            'cc_rejected_high_risk', 'high_risk' => 'El pago fue rechazado por validación de seguridad. Intenta con otra tarjeta.',
+            'cc_rejected_max_attempts', 'max_attempts' => 'Superaste el límite de intentos con esta tarjeta. Intenta con otra tarjeta.',
+            'cc_rejected_duplicated_payment', 'duplicated_payment' => 'Ya se registró un pago igual hace unos momentos.',
+            'cc_rejected_invalid_installments', 'invalid_installments' => 'Tu tarjeta no permite este esquema de pago. Intenta con otra tarjeta.',
+            default => null,
         };
+
+        if ($porDetalle !== null) {
+            return $porDetalle;
+        }
+
+        $textoCrudo = strtolower(implode(' ', array_filter([
+            (string) ($body['errors'][0]['code'] ?? ''),
+            (string) ($body['errors'][0]['message'] ?? ''),
+            (string) ($body['errors'][0]['details'][0] ?? ''),
+            (string) ($body['message'] ?? ''),
+        ])));
+
+        if (str_contains($textoCrudo, 'outside the valid range') || str_contains($textoCrudo, 'amount')) {
+            return 'El monto de la cotización está fuera del rango permitido para pago con tarjeta (el mínimo es de $10.00 MXN).';
+        }
+        if (str_contains($textoCrudo, 'token') || str_contains($textoCrudo, 'card')) {
+            return 'No se pudieron validar los datos de tu tarjeta. Verifica el número, la vigencia y el CVV.';
+        }
+        if (str_contains($textoCrudo, 'unauthorized') || str_contains($textoCrudo, 'credential') || str_contains($textoCrudo, 'access_token')) {
+            return 'El servicio de cobro con tarjeta no está disponible temporalmente. Contacta a soporte.';
+        }
+        if (str_contains($textoCrudo, 'payer') || str_contains($textoCrudo, 'email')) {
+            return 'Verifica que el correo electrónico del cliente sea válido para procesar el pago.';
+        }
+
+        return 'No se pudo completar el pago con tu tarjeta. Verifica los datos ingresados o intenta con otra tarjeta.';
     }
 }
