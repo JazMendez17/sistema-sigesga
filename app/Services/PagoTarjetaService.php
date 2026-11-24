@@ -202,9 +202,9 @@ class PagoTarjetaService
                 ->lockForUpdate()
                 ->findOrFail($cotizacion->id);
 
-            if ($cotBloqueada->estatus !== 'pendiente') {
+            if ($cotBloqueada->estatus === 'rechazado') {
                 throw ValidationException::withMessages([
-                    'tarjeta' => 'Esta cotización ya no se encuentra pendiente de pago.',
+                    'tarjeta' => 'No se puede procesar un pago para una cotización rechazada.',
                 ]);
             }
 

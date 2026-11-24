@@ -9,6 +9,7 @@ use App\Http\Requests\Panel\BuscarRutasCotizacionRequest;
 use App\Http\Requests\Panel\PagarCotizacionTarjetaRequest;
 use App\Http\Requests\Panel\StoreCotizacionRequest;
 use App\Mail\CotizacionMail;
+use App\Mail\PagoConfirmadoMail;
 use App\Models\BitacoraTiemposServicio;
 use App\Models\CatalogoServicio;
 use App\Models\Cliente;
@@ -24,6 +25,7 @@ use App\Models\Unidade;
 use App\Models\Usuario;
 use App\Services\GoogleMapsService;
 use App\Services\PagoTarjetaService;
+use App\Services\WhatsAppService;
 use App\Support\Auditoria;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -193,6 +195,16 @@ class CotizacionesController extends Controller
             }
         }
 
+        $telefonoCliente = $cliente?->telefono ?: $cliente?->usuario?->telefono;
+        if ($telefonoCliente) {
+            $totalFmt = number_format((float) $cotizacion->costo_total, 2);
+            app(WhatsAppService::class)->enviarTexto(
+                (int) $cotizacion->empresa_id,
+                $telefonoCliente,
+                "SIGESGA: Tu cotización {$cotizacion->folio} por \${$totalFmt} MXN está lista para revisión y aprobación en tu portal."
+            );
+        }
+
         return redirect()->route('panel.cotizaciones.index')
             ->with('success', $enviado
                 ? 'Cotización creada correctamente.'
@@ -282,7 +294,7 @@ class CotizacionesController extends Controller
                     && !$cotizacion->cliente_aprobada_at
                     && $cotizacion->estatus === 'pendiente',
                 'puede_pagar_tarjeta' => $estatusPago !== 'pagado'
-                    && $cotizacion->estatus === 'pendiente',
+                    && $cotizacion->estatus !== 'rechazado',
                 'es_cliente' => $user->rol === 'cliente',
             ],
             'operadores' => $user->rol === 'cliente' ? [] : Operadore::with('empleado')
@@ -451,31 +463,70 @@ class CotizacionesController extends Controller
         $cotizacion = $query->findOrFail($id);
 
         $pago = $pagoService->cobrar($cotizacion, $request->validated(), $usuario->id);
+        $cotizacion->load(['cliente.usuario', 'cliente.aseguradora', 'tipoServicio']);
 
-        $ids = Usuario::where('empresa_id', $cotizacion->empresa_id)
-            ->whereIn('rol', self::ROLES_GESTION)
-            ->pluck('id')
-            ->when($cotizacion->usuario_creador_id, fn ($col) => $col->push($cotizacion->usuario_creador_id))
-            ->unique();
+        // Notificar a superadmin, admin y cotizador (notificación en sistema + correo)
+        $usuariosGestion = Usuario::where(function ($q) use ($cotizacion) {
+            $q->where('rol', 'superadmin')
+                ->orWhere(function ($q2) use ($cotizacion) {
+                    $q2->where('empresa_id', $cotizacion->empresa_id)
+                        ->whereIn('rol', ['admin', 'cotizador']);
+                });
+            if ($cotizacion->usuario_creador_id) {
+                $q->orWhere('id', $cotizacion->usuario_creador_id);
+            }
+        })->get()->unique('id');
 
         $montoFmt = number_format((float) $pago->monto, 2);
-        foreach ($ids as $uid) {
+        $rastreo = $pago->pasarela_transaccion_id ?: $pago->referencia;
+
+        foreach ($usuariosGestion as $dest) {
             $this->crearNotificacion(
                 $cotizacion->empresa_id,
-                $uid,
-                "Pago con tarjeta confirmado (\${$montoFmt} MXN · {$pago->tarjeta_marca} •••• {$pago->tarjeta_ultimos4} · Ref: {$pago->referencia}) para la cotización {$cotizacion->folio}. Lista para asignar servicio."
+                $dest->id,
+                "Pago con tarjeta confirmado (\${$montoFmt} MXN · {$pago->tarjeta_marca} •••• {$pago->tarjeta_ultimos4} · Rastreo: {$rastreo}) para la cotización {$cotizacion->folio}."
             );
+
+            if (!empty($dest->email)) {
+                try {
+                    Mail::to($dest->email)->send(new PagoConfirmadoMail($cotizacion, $pago, paraEquipo: true));
+                } catch (\Throwable $e) {
+                    Log::error('Error al enviar correo de pago al equipo', ['usuario_id' => $dest->id, 'error' => $e->getMessage()]);
+                }
+            }
         }
 
-        if ($cotizacion->cliente?->usuario_id && $cotizacion->cliente->usuario_id !== $usuario->id) {
+        // Notificar al cliente (notificación en sistema + correo de confirmación + WhatsApp)
+        if ($cotizacion->cliente?->usuario_id) {
             $this->crearNotificacion(
                 $cotizacion->empresa_id,
                 $cotizacion->cliente->usuario_id,
-                "Se confirmó tu pago con tarjeta por \${$montoFmt} MXN (Ref: {$pago->referencia}) para la cotización {$cotizacion->folio}."
+                "Se confirmó tu pago con tarjeta por \${$montoFmt} MXN ({$pago->tarjeta_marca} •••• {$pago->tarjeta_ultimos4} · Rastreo: {$rastreo}) para la cotización {$cotizacion->folio}."
             );
         }
 
-        return back()->with('success', "Pago con tarjeta aprobado (Ref: {$pago->referencia}). Cotización lista para asignación de servicio.");
+        $correoCliente = $cotizacion->cliente?->email ?: $cotizacion->cliente?->usuario?->email;
+        if ($correoCliente) {
+            try {
+                Mail::to($correoCliente)->send(new PagoConfirmadoMail($cotizacion, $pago, paraEquipo: false));
+            } catch (\Throwable $e) {
+                Log::error('Error al enviar correo de confirmación de pago al cliente', [
+                    'cotizacion_id' => $cotizacion->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $telefonoCliente = $cotizacion->cliente?->telefono ?: $cotizacion->cliente?->usuario?->telefono;
+        if ($telefonoCliente) {
+            app(WhatsAppService::class)->enviarTexto(
+                (int) $cotizacion->empresa_id,
+                $telefonoCliente,
+                "SIGESGA: Confirmamos tu pago con tarjeta por \${$montoFmt} MXN ({$pago->tarjeta_marca} •••• {$pago->tarjeta_ultimos4}) para la cotización {$cotizacion->folio}. Clave de rastreo: {$rastreo}."
+            );
+        }
+
+        return back()->with('success', "Pago con tarjeta aprobado (Ref: {$pago->referencia}). Se envió la confirmación por correo.");
     }
 
     protected function crearNotificacion(int $empresaId, int $usuarioId, string $mensaje): void
@@ -541,8 +592,41 @@ class CotizacionesController extends Controller
 
         $cotizacion->update($data);
 
+        // Notificar al cliente sobre la actualización de su cotización (sistema + correo + WhatsApp)
+        $clienteActualizado = Cliente::with(['usuario', 'aseguradora'])->find($cotizacion->cliente_id);
+        $totalFmt = number_format((float) $cotizacion->costo_total, 2);
+
+        if ($clienteActualizado?->usuario_id) {
+            $this->crearNotificacion(
+                $cotizacion->empresa_id,
+                $clienteActualizado->usuario_id,
+                "Tu cotización {$cotizacion->folio} fue modificada. Nuevo total estimado: \${$totalFmt} MXN. Revísala en tu portal."
+            );
+        }
+
+        $correo = $clienteActualizado?->email ?: $clienteActualizado?->usuario?->email;
+        if ($correo) {
+            try {
+                Mail::to($correo)->send(new CotizacionMail($cotizacion->load('cliente.aseguradora', 'tipoServicio')));
+            } catch (\Throwable $e) {
+                Log::error('Error al enviar correo de cotización actualizada', [
+                    'cotizacion_id' => $cotizacion->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $telefono = $clienteActualizado?->telefono ?: $clienteActualizado?->usuario?->telefono;
+        if ($telefono) {
+            app(WhatsAppService::class)->enviarTexto(
+                (int) $cotizacion->empresa_id,
+                $telefono,
+                "SIGESGA: Tu cotización {$cotizacion->folio} fue actualizada. Nuevo total: \${$totalFmt} MXN. Revísala en tu portal."
+            );
+        }
+
         return redirect()->route('panel.cotizaciones.index')
-            ->with('success', 'Cotización actualizada correctamente');
+            ->with('success', 'Cotización actualizada correctamente y notificada al cliente.');
     }
 
     // Borrado físico real de la cotización
@@ -594,7 +678,7 @@ class CotizacionesController extends Controller
                     'estatus' => $c->estatus,
                     'estatus_pago' => $estatusPago,
                     'requiere_pago_tarjeta' => $requierePago,
-                    'puede_pagar_tarjeta' => $estatusPago !== 'pagado' && $c->estatus === 'pendiente',
+                    'puede_pagar_tarjeta' => $estatusPago !== 'pagado' && $c->estatus !== 'rechazado',
                     'fecha' => $c->created_at?->format('d/m/Y'),
                     'total' => '$' . number_format($c->costo_total ?? 0, 2),
                 ];

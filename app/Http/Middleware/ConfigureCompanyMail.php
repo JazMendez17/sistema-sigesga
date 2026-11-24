@@ -31,6 +31,7 @@ class ConfigureCompanyMail
 
                     config([
                         'mail.default' => 'smtp',
+                        'mail.mailers.smtp.scheme' => null,
                         'mail.mailers.smtp.host' => 'smtp.gmail.com',
                         'mail.mailers.smtp.port' => 587,
                         'mail.mailers.smtp.username' => $correo,
@@ -39,6 +40,11 @@ class ConfigureCompanyMail
                         'mail.from.address' => $correo,
                         'mail.from.name' => $nombre,
                     ]);
+
+                    // Limpia mailers cacheados para asegurar que Laravel use inmediatamente Gmail de Integraciones
+                    if (app()->bound('mail.manager')) {
+                        app('mail.manager')->forgetMailers();
+                    }
                 }
             }
         } catch (\Throwable) {
