@@ -230,8 +230,10 @@ class CotizacionesController extends Controller
         $requierePagoTarjeta = $cotizacion->necesitaPagoTarjeta();
         $estatusPago = $cotizacion->estatus_pago ?: ($requierePagoTarjeta ? 'pendiente' : 'no_requerido');
         $ultimoPago = $cotizacion->ultimoPago;
+        $mpConfig = PagoTarjetaService::obtenerConfigMercadoPago((int) $cotizacion->empresa_id);
 
         return Inertia::render('Panel/Cotizaciones/Show', [
+            'mercadoPagoPublicKey' => $mpConfig['activo'] ? $mpConfig['public_key'] : null,
             'cotizacion' => [
                 'id' => $cotizacion->id,
                 'folio' => $cotizacion->folio ?? 'COT-' . str_pad((string) $cotizacion->id, 5, '0', STR_PAD_LEFT),
@@ -244,6 +246,8 @@ class CotizacionesController extends Controller
                 'pagada_at' => $cotizacion->pagada_at?->format('d/m/Y H:i'),
                 'pago' => $ultimoPago ? [
                     'referencia' => $ultimoPago->referencia,
+                    'clave_rastreo' => $ultimoPago->pasarela_transaccion_id,
+                    'pasarela' => $ultimoPago->pasarela,
                     'monto' => (float) $ultimoPago->monto,
                     'moneda' => $ultimoPago->moneda,
                     'tarjeta_marca' => $ultimoPago->tarjeta_marca,

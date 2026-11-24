@@ -8,11 +8,13 @@ use App\Models\Cliente;
 use App\Models\Cotizacione;
 use App\Models\Empleado;
 use App\Models\Empresa;
+use App\Models\EmpresaIntegracione;
 use App\Models\Operadore;
 use App\Models\PagoCotizacion;
 use App\Models\Unidade;
 use App\Models\Usuario;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class PagoTarjetaCotizacionTest extends TestCase
@@ -242,5 +244,103 @@ class PagoTarjetaCotizacionTest extends TestCase
             ->assertSessionHas('success');
 
         $this->assertSame('pagado', $cotizacion->fresh()->estatus_pago);
+    }
+
+    public function test_cobro_con_mercadopago_orders_api_y_consulta_por_roles(): void
+    {
+        EmpresaIntegracione::create([
+            'empresa_id' => $this->empresa->id,
+            'proveedor' => 'mercadopago',
+            'api_key' => 'TEST-ACCESS-TOKEN-123',
+            'configuracion_json' => [
+                'public_key' => 'TEST-PUBLIC-KEY-456',
+                'descripcion' => 'Mercado Pago',
+            ],
+            'activo' => true,
+        ]);
+
+        Http::fake([
+            'https://api.mercadopago.com/v1/orders' => Http::response([
+                'id' => 'ORD01MP999888',
+                'status' => 'processed',
+                'transactions' => [
+                    'payments' => [
+                        [
+                            'id' => 'PAY01MP777666',
+                            'status' => 'processed',
+                            'status_detail' => 'accredited',
+                        ],
+                    ],
+                ],
+            ], 201),
+        ]);
+
+        $clienteUser = Usuario::factory()->create(['empresa_id' => $this->empresa->id, 'rol' => 'cliente']);
+        $cliente = Cliente::create([
+            'empresa_id' => $this->empresa->id,
+            'usuario_id' => $clienteUser->id,
+            'nombre' => 'Lucia MP',
+            'email' => 'lucia@cliente.test',
+            'tipo_cliente' => 'persona_fisica',
+            'nacionalidad' => 'Mexicana',
+        ]);
+
+        $cot = Cotizacione::create([
+            'empresa_id' => $this->empresa->id,
+            'cliente_id' => $cliente->id,
+            'tipo_servicio_id' => $this->servicioCat->id,
+            'usuario_creador_id' => $this->admin->id,
+            'folio' => 'COT-00777',
+            'origen_direccion' => 'Origen MP',
+            'destino_direccion' => 'Destino MP',
+            'distancia_km' => 12,
+            'costo_banderazo' => 500,
+            'costo_km' => 25,
+            'costo_total' => 638.00,
+            'estatus' => 'pendiente',
+            'requiere_pago_tarjeta' => true,
+            'estatus_pago' => 'pendiente',
+        ]);
+
+        $this->actingAs($clienteUser)
+            ->post("/panel/cliente/cotizaciones/{$cot->id}/pagar-tarjeta", [
+                'tarjeta_titular' => 'Lucia MP',
+                'tarjeta_exp_mes' => 11,
+                'tarjeta_exp_anio' => now()->year + 2,
+                'tarjeta_ultimos4' => '3704',
+                'tarjeta_marca' => 'Mastercard',
+                'mp_token' => 'tok_mp_1234567890abcdef',
+                'mp_payment_method_id' => 'master',
+                'mp_payment_type_id' => 'credit_card',
+                'mp_installments' => 1,
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('success');
+
+        Http::assertSent(function ($request) {
+            return $request->url() === 'https://api.mercadopago.com/v1/orders'
+                && $request->hasHeader('X-Idempotency-Key')
+                && $request->hasHeader('Authorization', 'Bearer TEST-ACCESS-TOKEN-123')
+                && ($request['type'] ?? null) === 'online'
+                && ($request['processing_mode'] ?? null) === 'automatic'
+                && ($request['transactions']['payments'][0]['payment_method']['token'] ?? null) === 'tok_mp_1234567890abcdef';
+        });
+
+        $pago = PagoCotizacion::where('cotizacion_id', $cot->id)->firstOrFail();
+        $this->assertSame('mercadopago_orders', $pago->pasarela);
+        $this->assertSame('PAY01MP777666', $pago->pasarela_transaccion_id);
+        $this->assertSame('3704', $pago->tarjeta_ultimos4);
+        $this->assertSame('Mastercard', $pago->tarjeta_marca);
+
+        // Superadmin, admin y cotizador pueden consultar /panel/pagos; operador y cliente reciben 403
+        $superadmin = Usuario::factory()->superadmin()->create(['empresa_id' => $this->empresa->id]);
+        $cotizador = Usuario::factory()->create(['empresa_id' => $this->empresa->id, 'rol' => 'cotizador']);
+        $operador = Usuario::factory()->create(['empresa_id' => $this->empresa->id, 'rol' => 'operador']);
+
+        $this->actingAs($superadmin)->get('/panel/pagos')->assertOk();
+        $this->actingAs($this->admin)->get('/panel/pagos')->assertOk();
+        $this->actingAs($cotizador)->get('/panel/pagos')->assertOk();
+        $this->actingAs($operador)->get('/panel/pagos')->assertForbidden();
+        $this->actingAs($clienteUser)->get('/panel/pagos')->assertForbidden();
     }
 }

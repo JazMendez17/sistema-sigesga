@@ -16,6 +16,7 @@ class PagarCotizacionTarjetaRequest extends FormRequest
     {
         $numero = preg_replace('/\D+/', '', (string) $this->input('tarjeta_numero', '')) ?? '';
         $cvv = preg_replace('/\D+/', '', (string) $this->input('tarjeta_cvv', '')) ?? '';
+        $ultimos4 = preg_replace('/\D+/', '', (string) $this->input('tarjeta_ultimos4', '')) ?? '';
         $titular = trim((string) $this->input('tarjeta_titular', ''));
 
         $anio = $this->input('tarjeta_exp_anio');
@@ -24,8 +25,14 @@ class PagarCotizacionTarjetaRequest extends FormRequest
         }
 
         $this->merge([
+            'mp_token' => is_string($this->input('mp_token')) ? trim($this->input('mp_token')) : null,
+            'mp_payment_method_id' => is_string($this->input('mp_payment_method_id')) ? strtolower(trim($this->input('mp_payment_method_id'))) : null,
+            'mp_payment_type_id' => is_string($this->input('mp_payment_type_id')) ? strtolower(trim($this->input('mp_payment_type_id'))) : null,
+            'mp_installments' => $this->input('mp_installments') !== null ? (int) $this->input('mp_installments') : 1,
             'tarjeta_titular' => $titular,
             'tarjeta_numero' => $numero,
+            'tarjeta_ultimos4' => $ultimos4,
+            'tarjeta_marca' => is_string($this->input('tarjeta_marca')) ? trim($this->input('tarjeta_marca')) : null,
             'tarjeta_exp_mes' => $this->input('tarjeta_exp_mes') !== null ? (int) $this->input('tarjeta_exp_mes') : null,
             'tarjeta_exp_anio' => $anio !== null ? (int) $anio : null,
             'tarjeta_cvv' => $cvv,
@@ -34,17 +41,10 @@ class PagarCotizacionTarjetaRequest extends FormRequest
 
     public function rules(): array
     {
-        return [
+        $usaTokenMp = filled($this->input('mp_token'));
+
+        $rules = [
             'tarjeta_titular' => ['required', 'string', 'min:3', 'max:150'],
-            'tarjeta_numero' => [
-                'required',
-                'digits_between:13,19',
-                function (string $attribute, mixed $value, \Closure $fail): void {
-                    if (!PagoTarjetaService::validarLuhn((string) $value)) {
-                        $fail('El número de tarjeta no es válido.');
-                    }
-                },
-            ],
             'tarjeta_exp_mes' => ['required', 'integer', 'between:1,12'],
             'tarjeta_exp_anio' => [
                 'required',
@@ -56,8 +56,31 @@ class PagarCotizacionTarjetaRequest extends FormRequest
                     }
                 },
             ],
-            'tarjeta_cvv' => ['required', 'digits_between:3,4'],
         ];
+
+        if ($usaTokenMp) {
+            // Modo Mercado Pago (Checkout API / Orders): la tarjeta se tokenizó en el navegador (PCI-safe)
+            $rules['mp_token'] = ['required', 'string', 'min:10', 'max:128'];
+            $rules['mp_payment_method_id'] = ['required', 'string', 'max:40'];
+            $rules['mp_payment_type_id'] = ['nullable', 'string', 'in:credit_card,debit_card,prepaid_card'];
+            $rules['mp_installments'] = ['nullable', 'integer', 'between:1,12'];
+            $rules['tarjeta_ultimos4'] = ['required', 'digits:4'];
+            $rules['tarjeta_marca'] = ['nullable', 'string', 'max:40'];
+        } else {
+            // Modo pasarela interna (fallback cuando Mercado Pago aún no está configurado)
+            $rules['tarjeta_numero'] = [
+                'required',
+                'digits_between:13,19',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (!PagoTarjetaService::validarLuhn((string) $value)) {
+                        $fail('El número de tarjeta no es válido.');
+                    }
+                },
+            ];
+            $rules['tarjeta_cvv'] = ['required', 'digits_between:3,4'];
+        }
+
+        return $rules;
     }
 
     public function messages(): array
@@ -72,6 +95,9 @@ class PagarCotizacionTarjetaRequest extends FormRequest
             'tarjeta_exp_anio.required' => 'El año de vencimiento es obligatorio.',
             'tarjeta_cvv.required' => 'El código de seguridad (CVV) es obligatorio.',
             'tarjeta_cvv.digits_between' => 'El CVV debe tener 3 o 4 dígitos.',
+            'mp_token.required' => 'No se pudo generar el token seguro de Mercado Pago. Verifica los datos de tu tarjeta.',
+            'mp_payment_method_id.required' => 'No se pudo identificar el tipo de tarjeta en Mercado Pago.',
+            'tarjeta_ultimos4.required' => 'No se pudieron leer los últimos 4 dígitos de la tarjeta.',
         ];
     }
 }

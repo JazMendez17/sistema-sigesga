@@ -7,12 +7,15 @@ import NeumorphicButton from '@/Components/NeumorphicButton.vue'
 
 const props = defineProps({
   cotizacion: Object,
+  mercadoPagoPublicKey: { type: String, default: null },
 })
 
 const page = usePage()
 const operadores = computed(() => page.props.operadores ?? [])
 const unidades = computed(() => page.props.unidades ?? [])
 const mostrarModal = ref(false)
+const tokenizandoMp = ref(false)
+const errorMp = ref('')
 
 const form = useForm({
   operador_id: '',
@@ -32,6 +35,12 @@ const pagoForm = useForm({
   tarjeta_exp_mes: '',
   tarjeta_exp_anio: '',
   tarjeta_cvv: '',
+  mp_token: '',
+  mp_payment_method_id: '',
+  mp_payment_type_id: 'credit_card',
+  mp_installments: 1,
+  tarjeta_ultimos4: '',
+  tarjeta_marca: '',
 })
 
 const numeroFormateado = computed({
@@ -80,12 +89,102 @@ function aprobarCliente() {
   }
 }
 
-function procesarPagoTarjeta() {
+function cargarSdkMercadoPago() {
+  if (typeof window === 'undefined') return Promise.reject(new Error('Navegador no disponible'))
+  if (window.MercadoPago) return Promise.resolve(window.MercadoPago)
+
+  return new Promise((resolve, reject) => {
+    const existing = document.getElementById('mp-sdk-v2')
+    if (existing) {
+      existing.addEventListener('load', () => resolve(window.MercadoPago))
+      existing.addEventListener('error', () => reject(new Error('No se pudo cargar el SDK de Mercado Pago.')))
+      return
+    }
+    const script = document.createElement('script')
+    script.id = 'mp-sdk-v2'
+    script.src = 'https://sdk.mercadopago.com/js/v2'
+    script.async = true
+    script.onload = () => resolve(window.MercadoPago)
+    script.onerror = () => reject(new Error('No se pudo cargar el SDK de Mercado Pago.'))
+    document.head.appendChild(script)
+  })
+}
+
+async function procesarPagoTarjeta() {
+  errorMp.value = ''
   const ruta = props.cotizacion?.es_cliente
     ? route('panel.cotizaciones.pagar.cliente', { id: props.cotizacion.id })
     : route('panel.cotizaciones.pagar', { id: props.cotizacion.id })
 
-  pagoForm.post(ruta, {
+  if (props.mercadoPagoPublicKey) {
+    tokenizandoMp.value = true
+    try {
+      const MercadoPago = await cargarSdkMercadoPago()
+      const mp = new MercadoPago(props.mercadoPagoPublicKey, { locale: 'es-MX' })
+      const soloDigitos = (pagoForm.tarjeta_numero || '').replace(/\D/g, '')
+      const mes = String(pagoForm.tarjeta_exp_mes || '').padStart(2, '0')
+      const anio = String(pagoForm.tarjeta_exp_anio || '')
+
+      let paymentMethodId = marcaTarjeta.value === 'Mastercard' ? 'master' : marcaTarjeta.value === 'American Express' ? 'amex' : 'visa'
+      let paymentTypeId = 'credit_card'
+
+      try {
+        const pmRes = await mp.getPaymentMethods({ bin: soloDigitos.slice(0, 6) })
+        const firstMethod = pmRes?.results?.[0]
+        if (firstMethod?.id) {
+          paymentMethodId = firstMethod.id
+          paymentTypeId = firstMethod.payment_type_id || 'credit_card'
+        }
+      } catch (e) {
+        // Usa detección local por BIN si falla la consulta previa
+      }
+
+      const tokenRes = await mp.createCardToken({
+        cardNumber: soloDigitos,
+        cardholderName: pagoForm.tarjeta_titular,
+        cardExpirationMonth: mes,
+        cardExpirationYear: anio,
+        securityCode: (pagoForm.tarjeta_cvv || '').replace(/\D/g, ''),
+      })
+
+      if (!tokenRes?.id) {
+        throw new Error('No se pudo tokenizar la tarjeta con Mercado Pago. Revisa los datos ingresados.')
+      }
+
+      pagoForm.transform((data) => ({
+        tarjeta_titular: data.tarjeta_titular,
+        tarjeta_exp_mes: data.tarjeta_exp_mes,
+        tarjeta_exp_anio: data.tarjeta_exp_anio,
+        tarjeta_ultimos4: soloDigitos.slice(-4),
+        tarjeta_marca: marcaTarjeta.value || '',
+        mp_token: tokenRes.id,
+        mp_payment_method_id: paymentMethodId,
+        mp_payment_type_id: paymentTypeId,
+        mp_installments: 1,
+      })).post(ruta, {
+        preserveScroll: true,
+        onSuccess: () => pagoForm.reset(),
+        onFinish: () => {
+          pagoForm.tarjeta_numero = ''
+          pagoForm.tarjeta_cvv = ''
+          tokenizandoMp.value = false
+        },
+      })
+      return
+    } catch (err) {
+      tokenizandoMp.value = false
+      errorMp.value = err?.message || 'Mercado Pago no pudo validar los datos de la tarjeta. Revisa número, vigencia y CVV.'
+      return
+    }
+  }
+
+  pagoForm.transform((data) => ({
+    tarjeta_titular: data.tarjeta_titular,
+    tarjeta_numero: data.tarjeta_numero,
+    tarjeta_exp_mes: data.tarjeta_exp_mes,
+    tarjeta_exp_anio: data.tarjeta_exp_anio,
+    tarjeta_cvv: data.tarjeta_cvv,
+  })).post(ruta, {
     preserveScroll: true,
     onSuccess: () => pagoForm.reset(),
     onFinish: () => {
@@ -183,11 +282,13 @@ function moneda(val) { return Number(val || 0).toFixed(2) }
               <Badge variant="success">Pagado</Badge>
             </div>
             <div class="rounded-2xl bg-emerald-50 border border-emerald-200 p-4 space-y-2 text-sm">
-              <div class="flex justify-between"><span class="text-emerald-700">Referencia:</span><strong class="text-emerald-900">{{ cotizacion.pago.referencia }}</strong></div>
-              <div class="flex justify-between"><span class="text-emerald-700">Tarjeta:</span><strong class="text-emerald-900">{{ cotizacion.pago.tarjeta_marca }} •••• {{ cotizacion.pago.tarjeta_ultimos4 }}</strong></div>
-              <div class="flex justify-between"><span class="text-emerald-700">Titular:</span><span class="font-medium text-emerald-900">{{ cotizacion.pago.tarjeta_titular }}</span></div>
-              <div class="flex justify-between"><span class="text-emerald-700">Monto:</span><strong class="text-emerald-900">${{ moneda(cotizacion.pago.monto) }} {{ cotizacion.pago.moneda }}</strong></div>
-              <div class="flex justify-between"><span class="text-emerald-700">Fecha:</span><span class="text-emerald-900">{{ cotizacion.pago.pagado_en }}</span></div>
+              <div class="flex justify-between gap-2"><span class="text-emerald-700">Referencia:</span><strong class="text-emerald-900 font-mono text-xs">{{ cotizacion.pago.referencia }}</strong></div>
+              <div v-if="cotizacion.pago.clave_rastreo" class="flex justify-between gap-2"><span class="text-emerald-700">Clave de rastreo:</span><strong class="text-emerald-900 font-mono text-xs break-all text-right">{{ cotizacion.pago.clave_rastreo }}</strong></div>
+              <div class="flex justify-between gap-2"><span class="text-emerald-700">Tarjeta:</span><strong class="text-emerald-900">{{ cotizacion.pago.tarjeta_marca }} •••• {{ cotizacion.pago.tarjeta_ultimos4 }}</strong></div>
+              <div class="flex justify-between gap-2"><span class="text-emerald-700">Titular:</span><span class="font-medium text-emerald-900">{{ cotizacion.pago.tarjeta_titular }}</span></div>
+              <div class="flex justify-between gap-2"><span class="text-emerald-700">Monto:</span><strong class="text-emerald-900">${{ moneda(cotizacion.pago.monto) }} {{ cotizacion.pago.moneda }}</strong></div>
+              <div class="flex justify-between gap-2"><span class="text-emerald-700">Pasarela:</span><span class="text-emerald-900">{{ cotizacion.pago.pasarela === 'mercadopago_orders' ? 'Mercado Pago' : 'Pasarela interna' }}</span></div>
+              <div class="flex justify-between gap-2"><span class="text-emerald-700">Fecha:</span><span class="text-emerald-900">{{ cotizacion.pago.pagado_en }}</span></div>
             </div>
           </div>
 
@@ -288,13 +389,19 @@ function moneda(val) { return Number(val || 0).toFixed(2) }
               </p>
               <p v-if="pagoForm.errors.tarjeta_cvv" class="text-xs text-red-500">{{ pagoForm.errors.tarjeta_cvv }}</p>
               <p v-if="pagoForm.errors.tarjeta" class="text-xs text-red-500">{{ pagoForm.errors.tarjeta }}</p>
+              <p v-if="errorMp" class="text-xs text-red-500">{{ errorMp }}</p>
 
-              <NeumorphicButton type="submit" :loading="pagoForm.processing" class="w-full">
+              <NeumorphicButton type="submit" :loading="pagoForm.processing || tokenizandoMp" class="w-full">
                 Pagar ${{ moneda(cotizacion?.total_estimado) }} MXN y Aprobar
               </NeumorphicButton>
 
               <p class="text-[11px] text-gray-500 leading-relaxed text-center">
-                Protección de datos PCI: nunca almacenamos el número completo de tu tarjeta ni el CVV; solo guardamos los últimos 4 dígitos y la referencia de pago.
+                <template v-if="mercadoPagoPublicKey">
+                  Procesado de forma segura con <strong>Mercado Pago</strong>: los datos de tu tarjeta se tokenizan en tu navegador y nunca se almacenan en nuestros servidores.
+                </template>
+                <template v-else>
+                  Protección de datos PCI: nunca almacenamos el número completo de tu tarjeta ni el CVV; solo guardamos los últimos 4 dígitos y la referencia de pago.
+                </template>
               </p>
             </form>
           </div>

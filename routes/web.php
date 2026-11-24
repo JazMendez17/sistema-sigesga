@@ -24,6 +24,7 @@ use App\Http\Controllers\Panel\MantenimientosController;
 use App\Http\Controllers\Panel\NotificacionesController;
 use App\Http\Controllers\Panel\OficinasController;
 use App\Http\Controllers\Panel\OperadoresController;
+use App\Http\Controllers\Panel\PagosController;
 use App\Http\Controllers\Panel\PenalizacionController;
 use App\Http\Controllers\Panel\PerfilController;
 use App\Http\Controllers\Panel\RedesSocialesController;
@@ -86,6 +87,8 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
         Route::post('/facturacion', [FacturacionController::class, 'store'])->name('facturacion.store');
         Route::get('/facturacion/{id}', [FacturacionController::class, 'show'])->whereNumber('id')->name('facturacion.show');
         Route::post('/facturacion/{id}/enviar', [FacturacionController::class, 'enviarEmail'])->whereNumber('id')->name('facturacion.enviar');
+
+        Route::get('/pagos', [PagosController::class, 'index'])->name('pagos.index');
 
         // Machotes e importación Excel: solo administradores y superadmin.
         Route::middleware('role:admin')->group(function () {
