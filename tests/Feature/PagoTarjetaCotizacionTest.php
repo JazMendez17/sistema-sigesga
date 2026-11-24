@@ -323,7 +323,8 @@ class PagoTarjetaCotizacionTest extends TestCase
                 && $request->hasHeader('Authorization', 'Bearer TEST-ACCESS-TOKEN-123')
                 && ($request['type'] ?? null) === 'online'
                 && ($request['processing_mode'] ?? null) === 'automatic'
-                && ($request['transactions']['payments'][0]['payment_method']['token'] ?? null) === 'tok_mp_1234567890abcdef';
+                && ($request['transactions']['payments'][0]['payment_method']['token'] ?? null) === 'tok_mp_1234567890abcdef'
+                && ($request['transactions']['payments'][0]['payment_method']['installments'] ?? null) === 1;
         });
 
         $pago = PagoCotizacion::where('cotizacion_id', $cot->id)->firstOrFail();

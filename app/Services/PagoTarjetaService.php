@@ -307,8 +307,8 @@ class PagoTarjetaService
                             'id' => $paymentMethodId,
                             'type' => $paymentTypeId,
                             'token' => $token,
+                            'installments' => $installments,
                         ],
-                        'installments' => $installments,
                     ],
                 ],
             ],
@@ -340,15 +340,20 @@ class PagoTarjetaService
             && ($paymentStatus === '' || in_array($paymentStatus, ['processed', 'approved', 'accredited'], true));
 
         if (!$aprobado) {
+            $detalleApi = $body['errors'][0]['details'][0] ?? null;
             $mensajeApi = $body['errors'][0]['message']
                 ?? $body['message']
                 ?? $this->traducirRechazoMp($statusDetail);
+            if ($detalleApi && is_string($detalleApi)) {
+                $mensajeApi .= " ({$detalleApi})";
+            }
 
             Log::warning('Pago rechazado por Mercado Pago Orders API', [
                 'http_status' => $response->status(),
                 'order_status' => $orderStatus,
                 'payment_status' => $paymentStatus,
                 'status_detail' => $statusDetail,
+                'errors' => $body['errors'] ?? null,
             ]);
 
             throw ValidationException::withMessages([
