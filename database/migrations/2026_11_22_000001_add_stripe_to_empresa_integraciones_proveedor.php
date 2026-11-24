@@ -16,13 +16,14 @@ return new class extends Migration
         $driver = DB::getDriverName();
 
         if (in_array($driver, ['mysql', 'mariadb'], true)) {
-            DB::statement("ALTER TABLE empresa_integraciones MODIFY COLUMN proveedor VARCHAR(50) NOT NULL");
+            DB::statement("ALTER TABLE empresa_integraciones MODIFY COLUMN proveedor VARCHAR(50) NOT NULL, MODIFY COLUMN api_key TEXT NULL");
             return;
         }
 
         // En SQLite se cambia la columna a string para eliminar la restricción CHECK del enum antiguo.
         Schema::table('empresa_integraciones', function (Blueprint $table) {
             $table->string('proveedor', 50)->change();
+            $table->text('api_key')->nullable()->change();
         });
     }
 
