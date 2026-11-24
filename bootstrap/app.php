@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -32,4 +33,13 @@ return Application::configure(basePath: dirname(__DIR__))
             'tarjeta_numero',
             'tarjeta_cvv',
         ]);
+
+        // Evita el modal negro "419 PAGE EXPIRED" en Inertia: regenera la sesión y redirige con aviso amigable
+        $exceptions->respond(function (Response $response) {
+            if ($response->getStatusCode() === 419) {
+                return back()->with('error', 'La página expiró por inactividad. Por favor intenta iniciar sesión nuevamente.');
+            }
+
+            return $response;
+        });
     })->create();

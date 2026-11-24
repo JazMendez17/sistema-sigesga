@@ -5,6 +5,12 @@
 
     RewriteEngine On
 
+    # Unificar dominio de producción a https://www.sigesga.com para evitar conflictos de cookies/CSRF (419)
+    RewriteCond %{HTTP_HOST} ^sigesga\.com$ [NC,OR]
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP_HOST} ^(www\.)?sigesga\.com$ [NC]
+    RewriteRule ^ https://www.sigesga.com%{REQUEST_URI} [L,R=301]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
