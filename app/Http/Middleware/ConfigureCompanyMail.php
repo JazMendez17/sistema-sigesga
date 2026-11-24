@@ -27,17 +27,15 @@ class ConfigureCompanyMail
                 $correo = trim((string) ($cfg['correo'] ?? ''));
 
                 if ($correo !== '') {
-                    $servidor = trim((string) ($cfg['servidor'] ?? 'smtp.gmail.com')) ?: 'smtp.gmail.com';
-                    $puerto = (int) ($cfg['puerto'] ?? 587) ?: 587;
                     $nombre = trim((string) ($cfg['nombre_remitente'] ?? config('app.name', 'SIGESGA')));
 
                     config([
                         'mail.default' => 'smtp',
-                        'mail.mailers.smtp.host' => $servidor,
-                        'mail.mailers.smtp.port' => $puerto,
+                        'mail.mailers.smtp.host' => 'smtp.gmail.com',
+                        'mail.mailers.smtp.port' => 587,
                         'mail.mailers.smtp.username' => $correo,
                         'mail.mailers.smtp.password' => $gmail->api_key,
-                        'mail.mailers.smtp.encryption' => $puerto === 465 ? 'ssl' : 'tls',
+                        'mail.mailers.smtp.encryption' => 'tls',
                         'mail.from.address' => $correo,
                         'mail.from.name' => $nombre,
                     ]);

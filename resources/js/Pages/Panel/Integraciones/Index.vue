@@ -18,8 +18,6 @@ const form = useForm({
   // Gmail
   correo: '',
   nombre_remitente: '',
-  servidor: 'smtp.gmail.com',
-  puerto: 587,
   // WhatsApp
   telefono: '',
   phone_number_id: '',
@@ -64,8 +62,6 @@ function abrirConfig(item) {
   form.modo = c.modo || 'pruebas'
   form.correo = c.correo || ''
   form.nombre_remitente = c.nombre_remitente || ''
-  form.servidor = c.servidor || 'smtp.gmail.com'
-  form.puerto = c.puerto || 587
   form.telefono = c.telefono || ''
   form.phone_number_id = c.phone_number_id || ''
 }
@@ -84,8 +80,6 @@ function guardarConfig() {
       ...payload,
       correo: form.correo,
       nombre_remitente: form.nombre_remitente,
-      servidor: form.servidor || 'smtp.gmail.com',
-      puerto: form.puerto || 587,
     }
   } else if (proveedor === 'whatsapp') {
     payload = {
@@ -230,27 +224,6 @@ function guardarConfig() {
                 class="w-full bg-[#E8EDF2] text-gray-800 rounded-2xl px-4 py-2.5 text-sm shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
               />
               <p class="text-[11px] text-gray-500 mt-1">No es tu contraseña normal de Gmail; se genera en Cuenta de Google → Seguridad → Contraseñas de aplicaciones.</p>
-            </div>
-
-            <div class="grid grid-cols-3 gap-3">
-              <div class="col-span-2">
-                <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Servidor de correo</label>
-                <input
-                  v-model="form.servidor"
-                  type="text"
-                  placeholder="smtp.gmail.com"
-                  class="w-full bg-[#E8EDF2] text-gray-800 rounded-2xl px-4 py-2.5 text-sm shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                />
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Puerto</label>
-                <input
-                  v-model.number="form.puerto"
-                  type="number"
-                  placeholder="587"
-                  class="w-full bg-[#E8EDF2] text-gray-800 rounded-2xl px-4 py-2.5 text-sm shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                />
-              </div>
             </div>
           </template>
 

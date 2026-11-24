@@ -33,7 +33,7 @@ class IntegracionesController extends Controller
 
         $titulos = [
             'mercadopago' => 'Mercado Pago',
-            'gmail' => 'Correo electrónico (Gmail)',
+            'gmail' => 'Gmail',
             'whatsapp' => 'WhatsApp Business',
         ];
 
@@ -61,11 +61,9 @@ class IntegracionesController extends Controller
                         // Mercado Pago
                         'public_key' => $cfg['public_key'] ?? '',
                         'modo' => $cfg['modo'] ?? 'pruebas',
-                        // Gmail / SMTP
+                        // Gmail
                         'correo' => $cfg['correo'] ?? '',
                         'nombre_remitente' => $cfg['nombre_remitente'] ?? (Auth::user()->empresa?->siglas ?: 'SIGESGA'),
-                        'servidor' => $cfg['servidor'] ?? 'smtp.gmail.com',
-                        'puerto' => (int) ($cfg['puerto'] ?? 587),
                         // WhatsApp
                         'telefono' => $cfg['telefono'] ?? '',
                         'phone_number_id' => $cfg['phone_number_id'] ?? '',
@@ -114,7 +112,7 @@ class IntegracionesController extends Controller
 
         $camposOpcionales = match ($integracion->proveedor) {
             'mercadopago' => ['public_key', 'modo'],
-            'gmail' => ['correo', 'nombre_remitente', 'servidor', 'puerto'],
+            'gmail' => ['correo', 'nombre_remitente'],
             'whatsapp' => ['telefono', 'phone_number_id'],
             default => [],
         };
