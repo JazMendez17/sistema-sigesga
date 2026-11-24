@@ -340,7 +340,7 @@ class PagoTarjetaService
             && ($paymentStatus === '' || in_array($paymentStatus, ['processed', 'approved', 'accredited'], true));
 
         if (!$aprobado) {
-            Log::warning('Pago rechazado por Mercado Pago Orders API', [
+            Log::error('Pago rechazado por Mercado Pago Orders API', [
                 'http_status' => $response->status(),
                 'order_status' => $orderStatus,
                 'payment_status' => $paymentStatus,
