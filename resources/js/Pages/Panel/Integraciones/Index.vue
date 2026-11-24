@@ -11,19 +11,43 @@ const editando = ref(null)
 
 const form = useForm({
   activo: true,
-  public_key: '',
   api_key: '',
+  // Mercado Pago
+  public_key: '',
+  modo: 'pruebas',
+  // Gmail
+  correo: '',
+  nombre_remitente: '',
+  servidor: 'smtp.gmail.com',
+  puerto: 587,
+  // WhatsApp
+  telefono: '',
+  phone_number_id: '',
 })
 
 const iconos = {
   card: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z',
   whatsapp: 'M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z',
   mail: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
-  map: 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7',
 }
 
 function iconPath(item) {
   return iconos[item.icono] || 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4'
+}
+
+function resumenItem(item) {
+  const c = item.config || {}
+  if (item.proveedor === 'mercadopago') {
+    if (!item.configurado) return 'Aún sin llaves guardadas.'
+    return `Modo: ${c.modo === 'produccion' ? 'Producción (cobros reales)' : 'Pruebas (Sandbox)'}`
+  }
+  if (item.proveedor === 'gmail') {
+    return c.correo ? `Remitente: ${c.nombre_remitente || 'SIGESGA'} (${c.correo})` : 'Aún sin correo configurado.'
+  }
+  if (item.proveedor === 'whatsapp') {
+    return c.telefono ? `Número: ${c.telefono}` : 'Aún sin número configurado.'
+  }
+  return ''
 }
 
 function toggleActivo(id, current) {
@@ -32,14 +56,46 @@ function toggleActivo(id, current) {
 
 function abrirConfig(item) {
   editando.value = item
+  const c = item.config || {}
+  form.clearErrors()
   form.activo = Boolean(item.activo)
-  form.public_key = item.public_key || ''
   form.api_key = ''
+  form.public_key = c.public_key || ''
+  form.modo = c.modo || 'pruebas'
+  form.correo = c.correo || ''
+  form.nombre_remitente = c.nombre_remitente || ''
+  form.servidor = c.servidor || 'smtp.gmail.com'
+  form.puerto = c.puerto || 587
+  form.telefono = c.telefono || ''
+  form.phone_number_id = c.phone_number_id || ''
 }
 
 function guardarConfig() {
   if (!editando.value) return
-  form.put(route('panel.integraciones.update', { id: editando.value.id }), {
+
+  const proveedor = editando.value.proveedor
+  let payload = { activo: form.activo }
+  if (form.api_key) payload.api_key = form.api_key
+
+  if (proveedor === 'mercadopago') {
+    payload = { ...payload, public_key: form.public_key, modo: form.modo }
+  } else if (proveedor === 'gmail') {
+    payload = {
+      ...payload,
+      correo: form.correo,
+      nombre_remitente: form.nombre_remitente,
+      servidor: form.servidor || 'smtp.gmail.com',
+      puerto: form.puerto || 587,
+    }
+  } else if (proveedor === 'whatsapp') {
+    payload = {
+      ...payload,
+      telefono: form.telefono,
+      phone_number_id: form.phone_number_id,
+    }
+  }
+
+  form.transform(() => payload).put(route('panel.integraciones.update', { id: editando.value.id }), {
     preserveScroll: true,
     onSuccess: () => {
       editando.value = null
@@ -50,12 +106,14 @@ function guardarConfig() {
 </script>
 
 <template>
-  <!-- Panel exclusivo de Super Administrador para administrar API keys e integraciones -->
+  <!-- Panel exclusivo de Super Administrador para configurar integraciones externas -->
   <AppLayout>
     <div class="space-y-6">
       <div>
-        <h1 class="text-2xl font-bold text-gray-800">Integraciones y Llaves API</h1>
-        <p class="text-sm text-gray-500 mt-1">Sección exclusiva del Super Administrador para conectar pasarelas de pago y servicios externos.</p>
+        <h1 class="text-2xl font-bold text-gray-800">Integraciones y Credenciales</h1>
+        <p class="text-sm text-gray-500 mt-1">
+          Configura aquí tu pasarela de pagos, correo de envío y WhatsApp. Las llaves fijas de Google Maps y Postalia se mantienen en el servidor.
+        </p>
       </div>
 
       <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -75,9 +133,10 @@ function guardarConfig() {
           </div>
 
           <p class="min-h-[2.5rem] text-sm text-gray-500">{{ item.descripcion || 'Integración con servicio externo.' }}</p>
+          <p class="text-xs text-gray-600 font-medium">{{ resumenItem(item) }}</p>
 
           <div class="flex items-center justify-between">
-            <span class="text-sm text-gray-600">Activo</span>
+            <span class="text-sm text-gray-600">Estado activo</span>
             <button
               type="button"
               @click="toggleActivo(item.id, item.activo)"
@@ -92,46 +151,150 @@ function guardarConfig() {
           </div>
 
           <NeumorphicButton type="button" variant="secondary" class="w-full" @click="abrirConfig(item)">
-            Configurar credenciales
+            Configurar
           </NeumorphicButton>
         </div>
       </div>
 
-      <!-- Modal de credenciales -->
+      <!-- Modal de configuración amigable por proveedor -->
       <div v-if="editando" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="editando = null">
-        <div class="bg-[#EEF2F7] rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4">
+        <div class="bg-[#EEF2F7] rounded-3xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl space-y-4">
           <h2 class="text-lg font-bold text-gray-800">Configurar {{ editando.titulo }}</h2>
 
-          <div v-if="editando.proveedor === 'mercadopago'">
-            <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Public Key (Mercado Pago)</label>
-            <input
-              v-model="form.public_key"
-              type="text"
-              placeholder="APP_USR-... o TEST-..."
-              class="w-full bg-[#E8EDF2] text-gray-800 rounded-2xl px-4 py-2.5 text-sm shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
-            />
-          </div>
+          <!-- Campos Mercado Pago -->
+          <template v-if="editando.proveedor === 'mercadopago'">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Entorno de cobro</label>
+              <select
+                v-model="form.modo"
+                class="w-full bg-[#E8EDF2] text-gray-800 rounded-2xl px-4 py-2.5 text-sm shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              >
+                <option value="pruebas">Pruebas (Sandbox — sin dinero real)</option>
+                <option value="produccion">Producción (cobros reales)</option>
+              </select>
+            </div>
 
-          <div>
-            <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">
-              {{ editando.proveedor === 'mercadopago' ? 'Access Token (privado)' : 'API Key' }}
-            </label>
-            <input
-              v-model="form.api_key"
-              type="password"
-              :placeholder="editando.configurado ? 'Dejar vacío para mantener la actual' : 'Pega aquí tu llave privada'"
-              class="w-full bg-[#E8EDF2] text-gray-800 rounded-2xl px-4 py-2.5 text-sm shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
-            />
-            <p class="text-[11px] text-gray-500 mt-1">La llave privada nunca se vuelve a mostrar por seguridad.</p>
-          </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Llave pública (Public Key)</label>
+              <input
+                v-model="form.public_key"
+                type="text"
+                placeholder="APP_USR-... o TEST-..."
+                class="w-full bg-[#E8EDF2] text-gray-800 rounded-2xl px-4 py-2.5 text-sm shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              />
+              <p class="text-[11px] text-gray-500 mt-1">Se copia desde Mercado Pago Developers → Credenciales.</p>
+            </div>
 
-          <label class="flex items-center gap-2 text-sm text-gray-700">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Token privado (Access Token)</label>
+              <input
+                v-model="form.api_key"
+                type="password"
+                :placeholder="editando.configurado ? 'Dejar vacío para conservar el token actual' : 'Pega aquí tu Access Token privado'"
+                class="w-full bg-[#E8EDF2] text-gray-800 rounded-2xl px-4 py-2.5 text-sm shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              />
+              <p class="text-[11px] text-gray-500 mt-1">Se guarda cifrado y nunca se vuelve a mostrar por seguridad.</p>
+            </div>
+          </template>
+
+          <!-- Campos Gmail / Correo -->
+          <template v-else-if="editando.proveedor === 'gmail'">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Correo electrónico de envío</label>
+              <input
+                v-model="form.correo"
+                type="email"
+                placeholder="gruas.sigesga@gmail.com"
+                class="w-full bg-[#E8EDF2] text-gray-800 rounded-2xl px-4 py-2.5 text-sm shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              />
+              <p v-if="form.errors.correo" class="text-xs text-red-500 mt-1">{{ form.errors.correo }}</p>
+              <p class="text-[11px] text-gray-500 mt-1">Cuenta de Gmail desde la cual saldrán cotizaciones, facturas y avisos.</p>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Nombre que verán tus clientes</label>
+              <input
+                v-model="form.nombre_remitente"
+                type="text"
+                placeholder="Ej. Grúas SIGESGA"
+                class="w-full bg-[#E8EDF2] text-gray-800 rounded-2xl px-4 py-2.5 text-sm shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              />
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Contraseña de aplicación de Google</label>
+              <input
+                v-model="form.api_key"
+                type="password"
+                :placeholder="editando.configurado ? 'Dejar vacío para conservar la contraseña actual' : 'Clave de 16 letras de Google'"
+                class="w-full bg-[#E8EDF2] text-gray-800 rounded-2xl px-4 py-2.5 text-sm shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              />
+              <p class="text-[11px] text-gray-500 mt-1">No es tu contraseña normal de Gmail; se genera en Cuenta de Google → Seguridad → Contraseñas de aplicaciones.</p>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3">
+              <div class="col-span-2">
+                <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Servidor de correo</label>
+                <input
+                  v-model="form.servidor"
+                  type="text"
+                  placeholder="smtp.gmail.com"
+                  class="w-full bg-[#E8EDF2] text-gray-800 rounded-2xl px-4 py-2.5 text-sm shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Puerto</label>
+                <input
+                  v-model.number="form.puerto"
+                  type="number"
+                  placeholder="587"
+                  class="w-full bg-[#E8EDF2] text-gray-800 rounded-2xl px-4 py-2.5 text-sm shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                />
+              </div>
+            </div>
+          </template>
+
+          <!-- Campos WhatsApp -->
+          <template v-else-if="editando.proveedor === 'whatsapp'">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Número de WhatsApp (con lada)</label>
+              <input
+                v-model="form.telefono"
+                type="text"
+                placeholder="Ej. 525512345678"
+                class="w-full bg-[#E8EDF2] text-gray-800 rounded-2xl px-4 py-2.5 text-sm shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              />
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">ID del número de teléfono (Meta)</label>
+              <input
+                v-model="form.phone_number_id"
+                type="text"
+                placeholder="Identificador de WhatsApp Cloud API"
+                class="w-full bg-[#E8EDF2] text-gray-800 rounded-2xl px-4 py-2.5 text-sm shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              />
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Token de acceso de WhatsApp</label>
+              <input
+                v-model="form.api_key"
+                type="password"
+                :placeholder="editando.configurado ? 'Dejar vacío para conservar el token actual' : 'Pega aquí tu token de Meta'"
+                class="w-full bg-[#E8EDF2] text-gray-800 rounded-2xl px-4 py-2.5 text-sm shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              />
+              <p class="text-[11px] text-gray-500 mt-1">Se guarda cifrado y nunca se vuelve a mostrar.</p>
+            </div>
+          </template>
+
+          <label class="flex items-center gap-2 text-sm text-gray-700 pt-1">
             <input type="checkbox" v-model="form.activo" class="rounded border-gray-300 text-indigo-600" />
-            Activar integración
+            Activar esta integración
           </label>
 
           <div class="flex gap-3 pt-2">
-            <NeumorphicButton type="button" :loading="form.processing" @click="guardarConfig" class="flex-1">Guardar</NeumorphicButton>
+            <NeumorphicButton type="button" :loading="form.processing" @click="guardarConfig" class="flex-1">Guardar cambios</NeumorphicButton>
             <NeumorphicButton type="button" variant="secondary" @click="editando = null">Cancelar</NeumorphicButton>
           </div>
         </div>
