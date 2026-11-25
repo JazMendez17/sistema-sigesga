@@ -154,6 +154,7 @@ class PagoTarjetaService
             $methodId = strtolower(trim((string) ($datosTarjeta['mp_payment_method_id'] ?? 'visa')));
             $paymentType = strtolower(trim((string) ($datosTarjeta['mp_payment_type_id'] ?? 'credit_card'))) ?: 'credit_card';
             $installments = max(1, min(12, (int) ($datosTarjeta['mp_installments'] ?? 1)));
+            $deviceId = trim((string) ($datosTarjeta['mp_device_id'] ?? ''));
             $marca = self::marcaDesdeMetodoMp($methodId, $datosTarjeta['tarjeta_marca'] ?? null);
         } else {
             $digitos = preg_replace('/\D+/', '', (string) ($datosTarjeta['tarjeta_numero'] ?? '')) ?? '';
@@ -176,6 +177,7 @@ class PagoTarjetaService
             $methodId = null;
             $paymentType = null;
             $installments = 1;
+            $deviceId = '';
             unset($digitos, $cvv);
         }
 
@@ -195,7 +197,8 @@ class PagoTarjetaService
             $mpToken,
             $methodId,
             $paymentType,
-            $installments
+            $installments,
+            $deviceId
         ) {
             $cotBloqueada = Cotizacione::with(['cliente.usuario'])
                 ->where('empresa_id', $cotizacion->empresa_id)
@@ -229,15 +232,23 @@ class PagoTarjetaService
                     ?: Usuario::whereKey($usuarioId)->value('email')
                     ?: 'pagos@sigesga.com';
 
+                $partesNombre = preg_split('/\s+/', trim($titular)) ?: [];
+                $firstName = $cotBloqueada->cliente?->nombre ?: ($partesNombre[0] ?? 'Cliente');
+                $lastName = $cotBloqueada->cliente?->apellido_paterno ?: (count($partesNombre) > 1 ? implode(' ', array_slice($partesNombre, 1)) : 'SIGESGA');
+
                 $resultadoMp = $this->cobrarConMercadoPagoOrders(
                     accessToken: $mpConfig['access_token'],
                     referencia: $referencia,
+                    descripcion: 'Cotizacion ' . ($cotBloqueada->folio ?? $cotBloqueada->id) . ' - SIGESGA',
                     monto: $monto,
                     payerEmail: $payerEmail,
+                    firstName: $firstName,
+                    lastName: $lastName,
                     token: $mpToken,
                     paymentMethodId: $methodId,
                     paymentTypeId: $paymentType,
                     installments: $installments,
+                    deviceId: $deviceId,
                 );
 
                 $pasarela = 'mercadopago_orders';
@@ -282,12 +293,16 @@ class PagoTarjetaService
     private function cobrarConMercadoPagoOrders(
         string $accessToken,
         string $referencia,
+        string $descripcion,
         float $monto,
         string $payerEmail,
+        string $firstName,
+        string $lastName,
         string $token,
         string $paymentMethodId,
         string $paymentTypeId,
-        int $installments
+        int $installments,
+        string $deviceId = ''
     ): array {
         $montoStr = number_format($monto, 2, '.', '');
 
@@ -295,9 +310,12 @@ class PagoTarjetaService
             'type' => 'online',
             'processing_mode' => 'automatic',
             'external_reference' => $referencia,
+            'description' => $descripcion,
             'total_amount' => $montoStr,
             'payer' => [
                 'email' => $payerEmail,
+                'first_name' => $firstName,
+                'last_name' => $lastName,
             ],
             'transactions' => [
                 'payments' => [
@@ -308,18 +326,24 @@ class PagoTarjetaService
                             'type' => $paymentTypeId,
                             'token' => $token,
                             'installments' => $installments,
+                            'statement_descriptor' => 'SIGESGA',
                         ],
                     ],
                 ],
             ],
         ];
 
+        $headers = [
+            'X-Idempotency-Key' => (string) Str::uuid(),
+            'Content-Type' => 'application/json',
+        ];
+        if ($deviceId !== '') {
+            $headers['X-meli-session-id'] = $deviceId;
+        }
+
         try {
             $response = Http::withToken($accessToken)
-                ->withHeaders([
-                    'X-Idempotency-Key' => (string) Str::uuid(),
-                    'Content-Type' => 'application/json',
-                ])
+                ->withHeaders($headers)
                 ->timeout(25)
                 ->post('https://api.mercadopago.com/v1/orders', $payload);
         } catch (\Throwable $e) {
@@ -389,6 +413,15 @@ class PagoTarjetaService
             (string) ($body['message'] ?? ''),
         ])));
 
+        if (str_contains($textoCrudo, 'high_risk')) {
+            return 'Mercado Pago detuvo el pago por prevención de fraude. Intenta con otra tarjeta, desde otro dispositivo o con una tarjeta digital.';
+        }
+        if (str_contains($textoCrudo, 'rejected_by_issuer')) {
+            return 'Tu banco rechazó el cobro. Verifica que tu tarjeta esté habilitada para compras en línea (o usa tu tarjeta digital) e intenta de nuevo.';
+        }
+        if (str_contains($textoCrudo, 'insufficient_amount')) {
+            return 'Tu tarjeta no cuenta con fondos suficientes para realizar este pago.';
+        }
         if (str_contains($textoCrudo, 'outside the valid range') || str_contains($textoCrudo, 'amount')) {
             return 'El monto de la cotización está fuera del rango permitido para pago con tarjeta (el mínimo es de $10.00 MXN).';
         }

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { router, useForm, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Pages/Panel/AppLayout.vue'
 import Badge from '@/Components/Badge.vue'
@@ -89,6 +89,21 @@ function aprobarCliente() {
   }
 }
 
+function cargarSeguridadMercadoPago() {
+  if (typeof window === 'undefined' || !props.mercadoPagoPublicKey) return
+  if (document.getElementById('mp-security-js')) return
+  const script = document.createElement('script')
+  script.id = 'mp-security-js'
+  script.src = 'https://www.mercadopago.com/v2/security.js'
+  script.setAttribute('view', 'checkout')
+  script.async = true
+  document.head.appendChild(script)
+}
+
+onMounted(() => {
+  cargarSeguridadMercadoPago()
+})
+
 function cargarSdkMercadoPago() {
   if (typeof window === 'undefined') return Promise.reject(new Error('Navegador no disponible'))
   if (window.MercadoPago) return Promise.resolve(window.MercadoPago)
@@ -161,6 +176,7 @@ async function procesarPagoTarjeta() {
         mp_payment_method_id: paymentMethodId,
         mp_payment_type_id: paymentTypeId,
         mp_installments: 1,
+        mp_device_id: window.MP_DEVICE_SESSION_ID || '',
       })).post(ruta, {
         preserveScroll: true,
         onSuccess: () => pagoForm.reset(),

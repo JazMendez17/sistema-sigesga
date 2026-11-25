@@ -64,6 +64,7 @@ class PagarCotizacionTarjetaRequest extends FormRequest
             $rules['mp_payment_method_id'] = ['required', 'string', 'max:40'];
             $rules['mp_payment_type_id'] = ['nullable', 'string', 'in:credit_card,debit_card,prepaid_card'];
             $rules['mp_installments'] = ['nullable', 'integer', 'between:1,12'];
+            $rules['mp_device_id'] = ['nullable', 'string', 'max:255'];
             $rules['tarjeta_ultimos4'] = ['required', 'digits:4'];
             $rules['tarjeta_marca'] = ['nullable', 'string', 'max:40'];
         } else {
