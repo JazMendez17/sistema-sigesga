@@ -358,16 +358,12 @@ class PagoTarjetaCotizacionTest extends TestCase
         $this->crearIntegracionMercadoPago();
         Http::fake([
             'https://api.mercadopago.com/v1/orders' => Http::response([
-                'id' => 'ORD-RECHAZADA',
-                'status' => 'rejected',
-                'transactions' => [
-                    'payments' => [[
-                        'id' => 'PAY-RECHAZADO',
-                        'status' => 'rejected',
-                        'status_detail' => 'cc_rejected_insufficient_amount',
-                    ]],
-                ],
-            ], 201),
+                'errors' => [[
+                    'code' => 'failed',
+                    'message' => 'The following transactions failed',
+                    'details' => ['PAY-RECHAZADO: rejected_by_issuer'],
+                ]],
+            ], 402),
         ]);
 
         [$clienteUser, $cotizacion] = $this->crearCotizacionDeCliente('COT-RECHAZO');
@@ -381,7 +377,9 @@ class PagoTarjetaCotizacionTest extends TestCase
 
         $this->actingAs($clienteUser)
             ->post("/panel/cliente/cotizaciones/{$cotizacion->id}/pagar-tarjeta", $datos)
-            ->assertSessionHasErrors('tarjeta');
+            ->assertSessionHasErrors([
+                'tarjeta' => 'El emisor no autorizó este intento de pago. El resultado puede variar según la operación o el comercio, aunque la tarjeta funcione en otros sitios. Consulta con tu banco; si no reconoce este rechazo, contacta a Mercado Pago.',
+            ]);
 
         $this->assertDatabaseCount('notificaciones', 1);
         $this->assertDatabaseHas('notificaciones', [
@@ -400,6 +398,31 @@ class PagoTarjetaCotizacionTest extends TestCase
 
         $this->assertDatabaseCount('notificaciones', 1);
         Http::assertSentCount(1);
+    }
+
+    public function test_rechazo_por_riesgo_de_mercado_pago_no_sugiere_evitar_sus_controles(): void
+    {
+        $this->crearIntegracionMercadoPago();
+        Http::fake([
+            'https://api.mercadopago.com/v1/orders' => Http::response([
+                'errors' => [[
+                    'code' => 'failed',
+                    'message' => 'The following transactions failed',
+                    'details' => ['PAY-ALTO-RIESGO: high_risk'],
+                ]],
+            ], 402),
+        ]);
+
+        [$clienteUser, $cotizacion] = $this->crearCotizacionDeCliente('COT-ALTO-RIESGO');
+        $this->actingAs($clienteUser)
+            ->post("/panel/cliente/cotizaciones/{$cotizacion->id}/pagar-tarjeta", [
+                ...$this->datosTarjetaTokenizada('Cliente Alto Riesgo'),
+                'tarjeta_exp_mes' => 12,
+                'tarjeta_exp_anio' => now()->year + 2,
+            ])
+            ->assertSessionHasErrors([
+                'tarjeta' => 'Mercado Pago rechazó este intento por sus controles de seguridad. No repitas el cobro de inmediato; contacta a soporte de Mercado Pago o utiliza otro medio de pago.',
+            ]);
     }
 
     public function test_estado_failed_de_orders_api_se_registra_como_rechazo_final(): void

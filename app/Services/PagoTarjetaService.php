@@ -440,6 +440,24 @@ class PagoTarjetaService
         $payment = $body['transactions']['payments'][0] ?? [];
         $paymentStatus = strtolower((string) ($payment['status'] ?? ''));
         $statusDetail = (string) ($payment['status_detail'] ?? $body['status_detail'] ?? '');
+        if ($statusDetail === '') {
+            foreach ($body['errors'] ?? [] as $error) {
+                foreach ($error['details'] ?? [] as $errorDetail) {
+                    if (!is_string($errorDetail)) {
+                        continue;
+                    }
+
+                    $separator = strrpos($errorDetail, ':');
+                    $candidate = trim($separator === false
+                        ? $errorDetail
+                        : substr($errorDetail, $separator + 1));
+                    if (preg_match('/^[a-z][a-z0-9_]*$/i', $candidate)) {
+                        $statusDetail = strtolower($candidate);
+                        break 2;
+                    }
+                }
+            }
+        }
 
         $aprobado = $response->successful()
             && in_array($orderStatus, ['processed', 'paid', 'approved'], true)
@@ -508,13 +526,13 @@ class PagoTarjetaService
     {
         $porDetalle = match (strtolower($detail)) {
             'cc_rejected_insufficient_amount', 'insufficient_amount' => 'Tu tarjeta no cuenta con fondos suficientes para realizar este pago.',
-            'rejected_by_issuer' => 'Tu banco rechazó el cobro. Verifica que tu tarjeta esté habilitada para compras en línea (o usa tu tarjeta digital) e intenta de nuevo.',
+            'rejected_by_issuer' => 'El emisor no autorizó este intento de pago. El resultado puede variar según la operación o el comercio, aunque la tarjeta funcione en otros sitios. Consulta con tu banco; si no reconoce este rechazo, contacta a Mercado Pago.',
             'cc_rejected_bad_filled_security_code', 'bad_filled_security_code' => 'El código de seguridad (CVV) es incorrecto. Verifícalo e intenta de nuevo.',
             'cc_rejected_bad_filled_date', 'bad_filled_date' => 'La fecha de vencimiento de tu tarjeta es incorrecta.',
             'cc_rejected_bad_filled_card_number', 'bad_filled_card_number' => 'El número de tarjeta es incorrecto. Revísalo e intenta nuevamente.',
             'cc_rejected_call_for_authorize', 'call_for_authorize' => 'Tu banco requiere que autorices esta compra. Comunícate con tu banco o intenta con otra tarjeta.',
             'cc_rejected_card_disabled', 'card_disabled' => 'Tu tarjeta no está habilitada para pagos en línea. Actívala desde tu app bancaria o usa otra tarjeta.',
-            'cc_rejected_high_risk', 'high_risk' => 'El pago fue rechazado por validación de seguridad. Intenta con otra tarjeta.',
+            'cc_rejected_high_risk', 'high_risk' => 'Mercado Pago rechazó este intento por sus controles de seguridad. No repitas el cobro de inmediato; contacta a soporte de Mercado Pago o utiliza otro medio de pago.',
             'cc_rejected_max_attempts', 'max_attempts' => 'Superaste el límite de intentos con esta tarjeta. Intenta con otra tarjeta.',
             'cc_rejected_duplicated_payment', 'duplicated_payment' => 'Ya se registró un pago igual hace unos momentos.',
             'cc_rejected_invalid_installments', 'invalid_installments' => 'Tu tarjeta no permite este esquema de pago. Intenta con otra tarjeta.',
@@ -537,7 +555,7 @@ class PagoTarjetaService
             return 'Mercado Pago detuvo el pago por prevención de fraude. Intenta con otra tarjeta, desde otro dispositivo o con una tarjeta digital.';
         }
         if (str_contains($textoCrudo, 'rejected_by_issuer')) {
-            return 'Tu banco rechazó el cobro. Verifica que tu tarjeta esté habilitada para compras en línea (o usa tu tarjeta digital) e intenta de nuevo.';
+            return 'El emisor no autorizó este intento de pago. El resultado puede variar según la operación o el comercio, aunque la tarjeta funcione en otros sitios. Consulta con tu banco; si no reconoce este rechazo, contacta a Mercado Pago.';
         }
         if (str_contains($textoCrudo, 'insufficient_amount')) {
             return 'Tu tarjeta no cuenta con fondos suficientes para realizar este pago.';
