@@ -57,6 +57,9 @@ Route::get('/soporte', [LandingController::class, 'soporte'])->name('soporte');
 Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/pagos/{id}/comprobante', [PagosController::class, 'comprobante'])
+        ->whereNumber('id')
+        ->name('pagos.comprobante');
 
     // === Módulos accesibles para superadmin, admin y cotizador ===
     Route::middleware('role:admin,cotizador')->group(function () {

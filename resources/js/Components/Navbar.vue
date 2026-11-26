@@ -12,21 +12,41 @@ const userMenuOpen = ref(false)
 const activeMega = ref(null)
 let megaTimeout = null
 let pollInterval = null
+let lastNotifiedId = Number(page.props.latestNotificationId || 0)
 
 watch(
   () => page.props.unreadNotifications,
   (val) => { unreadCount.value = val || 0 }
 )
 
-onMounted(() => {
-  pollInterval = setInterval(async () => {
-    try {
-      const { data } = await axios.get(route('panel.notificaciones.no-leidas'))
-      unreadCount.value = data.count
-    } catch (e) {
-      // ignorar silenciosamente
+async function actualizarNotificaciones() {
+  try {
+    const { data } = await axios.get(route('panel.notificaciones.no-leidas'), {
+      params: { after: lastNotifiedId },
+    })
+    unreadCount.value = data.count
+
+    for (const notification of data.notifications || []) {
+      lastNotifiedId = Math.max(lastNotifiedId, Number(notification.id))
+      if (typeof window !== 'undefined' && 'Notification' in window && window.Notification.permission === 'granted') {
+        const push = new window.Notification('SIGESGA', {
+          body: notification.mensaje,
+          tag: `sigesga-notificacion-${notification.id}`,
+        })
+        push.onclick = () => {
+          window.focus()
+          window.location.href = route('panel.notificaciones.index')
+        }
+      }
     }
-  }, 30000)
+  } catch (error) {
+    console.error('No se pudieron actualizar las notificaciones.', error)
+  }
+}
+
+onMounted(() => {
+  actualizarNotificaciones()
+  pollInterval = setInterval(actualizarNotificaciones, 30000)
 })
 
 onUnmounted(() => {

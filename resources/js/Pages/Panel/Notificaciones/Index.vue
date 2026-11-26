@@ -8,6 +8,9 @@ import Swal from 'sweetalert2'
 
 const filtroActivo = ref('todos')
 const filtros = ['todos', 'pendiente', 'leido']
+const permisoPush = ref(typeof window !== 'undefined' && 'Notification' in window
+  ? window.Notification.permission
+  : 'unsupported')
 
 const page = usePage()
 const paginacion = computed(() => page.props.notificaciones || {})
@@ -26,6 +29,19 @@ function marcarLeida(id) {
 
 function marcarTodas() {
   router.post(route('panel.notificaciones.marcar-todas'))
+}
+
+async function activarAvisosPush() {
+  if (typeof window === 'undefined' || !('Notification' in window)) {
+    permisoPush.value = 'unsupported'
+    return
+  }
+
+  try {
+    permisoPush.value = await window.Notification.requestPermission()
+  } catch (error) {
+    console.error('No se pudo solicitar permiso para avisos del navegador.', error)
+  }
 }
 
 function eliminar(id) {
@@ -59,9 +75,21 @@ function getBadgeVariant(estado) {
           <h1 class="text-2xl font-bold text-gray-800">Notificaciones</h1>
           <p class="text-sm text-gray-500 mt-1">Eventos operativos de servicios y cotizaciones</p>
         </div>
-        <NeumorphicButton type="button" @click="marcarTodas" :disabled="!(page.props.noLeidas > 0)">
-          Marcar todas como leídas
-        </NeumorphicButton>
+        <div class="flex flex-wrap gap-2">
+          <NeumorphicButton
+            v-if="permisoPush !== 'granted'"
+            type="button"
+            variant="secondary"
+            @click="activarAvisosPush"
+            :disabled="permisoPush === 'unsupported'"
+          >
+            {{ permisoPush === 'denied' ? 'Permite avisos en tu navegador' : 'Activar avisos del navegador' }}
+          </NeumorphicButton>
+          <span v-else class="self-center text-sm text-emerald-700">Avisos del navegador activados</span>
+          <NeumorphicButton type="button" @click="marcarTodas" :disabled="!(page.props.noLeidas > 0)">
+            Marcar todas como leídas
+          </NeumorphicButton>
+        </div>
       </div>
 
       <div class="flex flex-wrap gap-2">

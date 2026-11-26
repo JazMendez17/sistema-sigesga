@@ -36,6 +36,7 @@ function iconPath(item) {
 function resumenItem(item) {
   const c = item.config || {}
   if (item.proveedor === 'mercadopago') {
+    if (c.ambiente_valido === false) return 'Las llaves no corresponden al entorno seleccionado.'
     if (!item.configurado) return 'Aún sin llaves guardadas.'
     return `Modo: ${c.modo === 'produccion' ? 'Producción (cobros reales)' : 'Pruebas (Sandbox)'}`
   }
@@ -166,6 +167,7 @@ function guardarConfig() {
                 <option value="pruebas">Pruebas (Sandbox — sin dinero real)</option>
                 <option value="produccion">Producción (cobros reales)</option>
               </select>
+              <p v-if="form.errors.modo" class="text-xs text-red-500 mt-1">{{ form.errors.modo }}</p>
             </div>
 
             <div>

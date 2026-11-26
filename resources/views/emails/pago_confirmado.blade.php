@@ -20,6 +20,7 @@
 
         <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 16px; margin: 20px 0; font-size: 14px;">
             <p style="margin: 6px 0;"><strong>Folio de cotización:</strong> {{ $cotizacion->folio }}</p>
+            <p style="margin: 6px 0;"><strong>Concepto:</strong> Pago de cotización {{ $cotizacion->folio }}</p>
             <p style="margin: 6px 0;"><strong>Monto pagado:</strong> ${{ number_format((float) $pago->monto, 2) }} {{ $pago->moneda ?? 'MXN' }}</p>
             <p style="margin: 6px 0;"><strong>Tarjeta:</strong> {{ $pago->tarjeta_marca }} •••• {{ $pago->tarjeta_ultimos4 }}</p>
             <p style="margin: 6px 0;"><strong>Titular:</strong> {{ $pago->tarjeta_titular }}</p>
@@ -31,7 +32,7 @@
         </div>
 
         <p style="font-size: 13px; color: #6b7280; margin-bottom: 0;">
-            Este es un comprobante automático generado por SIGESGA.
+            Se adjunta el comprobante PDF de este pago. Este mensaje fue generado automáticamente por SIGESGA.
         </p>
     </div>
 </body>

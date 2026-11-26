@@ -29,6 +29,31 @@ const meses = Array.from({ length: 12 }, (_, i) => ({
 }))
 const anios = Array.from({ length: 15 }, (_, i) => anioActual + i)
 
+const idempotencyStorageKey = `sigesga-payment:${props.cotizacion?.id}`
+
+function nuevaClaveIdempotencia() {
+  return typeof window !== 'undefined' && window.crypto?.randomUUID
+    ? window.crypto.randomUUID()
+    : ''
+}
+
+function obtenerClaveIdempotencia() {
+  if (typeof window === 'undefined') return ''
+  const guardada = window.localStorage.getItem(idempotencyStorageKey)
+  if (guardada && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(guardada)) {
+    return guardada
+  }
+  const nueva = nuevaClaveIdempotencia()
+  if (nueva) window.localStorage.setItem(idempotencyStorageKey, nueva)
+  return nueva
+}
+
+function renovarClaveIdempotencia() {
+  const nueva = nuevaClaveIdempotencia()
+  pagoForm.mp_idempotency_key = nueva
+  if (nueva) window.localStorage.setItem(idempotencyStorageKey, nueva)
+}
+
 const pagoForm = useForm({
   tarjeta_titular: '',
   tarjeta_numero: '',
@@ -41,6 +66,7 @@ const pagoForm = useForm({
   mp_installments: 1,
   tarjeta_ultimos4: '',
   tarjeta_marca: '',
+  mp_idempotency_key: obtenerClaveIdempotencia(),
 })
 
 const numeroFormateado = computed({
@@ -132,6 +158,10 @@ async function procesarPagoTarjeta() {
     : route('panel.cotizaciones.pagar', { id: props.cotizacion.id })
 
   if (props.mercadoPagoPublicKey) {
+    if (!pagoForm.mp_idempotency_key) {
+      errorMp.value = 'Tu navegador no puede crear una clave segura para el pago. Actualiza el navegador e intenta de nuevo.'
+      return
+    }
     tokenizandoMp.value = true
     try {
       const MercadoPago = await cargarSdkMercadoPago()
@@ -140,18 +170,16 @@ async function procesarPagoTarjeta() {
       const mes = String(pagoForm.tarjeta_exp_mes || '').padStart(2, '0')
       const anio = String(pagoForm.tarjeta_exp_anio || '')
 
-      let paymentMethodId = marcaTarjeta.value === 'Mastercard' ? 'master' : marcaTarjeta.value === 'American Express' ? 'amex' : 'visa'
-      let paymentTypeId = 'credit_card'
+      if (soloDigitos.length < 6) {
+        throw new Error('Ingresa un número de tarjeta válido.')
+      }
 
-      try {
-        const pmRes = await mp.getPaymentMethods({ bin: soloDigitos.slice(0, 6) })
-        const firstMethod = pmRes?.results?.[0]
-        if (firstMethod?.id) {
-          paymentMethodId = firstMethod.id
-          paymentTypeId = firstMethod.payment_type_id || 'credit_card'
-        }
-      } catch (e) {
-        // Usa detección local por BIN si falla la consulta previa
+      const pmRes = await mp.getPaymentMethods({ bin: soloDigitos.slice(0, 6) })
+      const paymentMethod = pmRes?.results?.find((method) =>
+        ['credit_card', 'debit_card', 'prepaid_card'].includes(method.payment_type_id),
+      )
+      if (!paymentMethod?.id || !paymentMethod.payment_type_id) {
+        throw new Error('Mercado Pago no reconoce esta tarjeta. Verifica los datos o intenta con otra tarjeta.')
       }
 
       const tokenRes = await mp.createCardToken({
@@ -170,16 +198,23 @@ async function procesarPagoTarjeta() {
         tarjeta_titular: data.tarjeta_titular,
         tarjeta_exp_mes: data.tarjeta_exp_mes,
         tarjeta_exp_anio: data.tarjeta_exp_anio,
-        tarjeta_ultimos4: soloDigitos.slice(-4),
+        tarjeta_ultimos4: tokenRes.last_four_digits || soloDigitos.slice(-4),
         tarjeta_marca: marcaTarjeta.value || '',
         mp_token: tokenRes.id,
-        mp_payment_method_id: paymentMethodId,
-        mp_payment_type_id: paymentTypeId,
+        mp_idempotency_key: data.mp_idempotency_key,
+        mp_payment_method_id: paymentMethod.id,
+        mp_payment_type_id: paymentMethod.payment_type_id,
         mp_installments: 1,
         mp_device_id: window.MP_DEVICE_SESSION_ID || '',
       })).post(ruta, {
         preserveScroll: true,
-        onSuccess: () => pagoForm.reset(),
+        onSuccess: () => {
+          pagoForm.reset()
+          renovarClaveIdempotencia()
+        },
+        onError: (errors) => {
+          if (errors.mp_attempt_status === 'rejected') renovarClaveIdempotencia()
+        },
         onFinish: () => {
           pagoForm.tarjeta_numero = ''
           pagoForm.tarjeta_cvv = ''
@@ -189,25 +224,12 @@ async function procesarPagoTarjeta() {
       return
     } catch (err) {
       tokenizandoMp.value = false
-      errorMp.value = 'No se pudieron validar los datos de tu tarjeta. Verifica el número, fecha de vencimiento y código de seguridad (CVV).'
+      errorMp.value = err?.message || 'No se pudieron validar los datos de tu tarjeta. Verifica el número, fecha de vencimiento y código de seguridad (CVV).'
       return
     }
   }
 
-  pagoForm.transform((data) => ({
-    tarjeta_titular: data.tarjeta_titular,
-    tarjeta_numero: data.tarjeta_numero,
-    tarjeta_exp_mes: data.tarjeta_exp_mes,
-    tarjeta_exp_anio: data.tarjeta_exp_anio,
-    tarjeta_cvv: data.tarjeta_cvv,
-  })).post(ruta, {
-    preserveScroll: true,
-    onSuccess: () => pagoForm.reset(),
-    onFinish: () => {
-      pagoForm.tarjeta_numero = ''
-      pagoForm.tarjeta_cvv = ''
-    },
-  })
+  errorMp.value = 'El cobro con tarjeta no está disponible. Contacta al administrador para configurar Mercado Pago.'
 }
 
 function formato(val) { return val || '—' }
@@ -306,6 +328,12 @@ function moneda(val) { return Number(val || 0).toFixed(2) }
               <div class="flex justify-between gap-2"><span class="text-emerald-700">Pasarela:</span><span class="text-emerald-900">{{ cotizacion.pago.pasarela === 'mercadopago_orders' ? 'Mercado Pago' : 'Pasarela interna' }}</span></div>
               <div class="flex justify-between gap-2"><span class="text-emerald-700">Fecha:</span><span class="text-emerald-900">{{ cotizacion.pago.pagado_en }}</span></div>
             </div>
+            <a
+              :href="route('panel.pagos.comprobante', { id: cotizacion.pago.id })"
+              class="inline-flex rounded-xl bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+            >
+              Descargar comprobante PDF
+            </a>
           </div>
 
           <!-- Formulario de cobro con tarjeta (siempre visible mientras la cotización esté pendiente y sin pagar) -->
@@ -332,7 +360,7 @@ function moneda(val) { return Number(val || 0).toFixed(2) }
               </div>
             </div>
 
-            <form @submit.prevent="procesarPagoTarjeta" class="space-y-3.5">
+            <form v-if="mercadoPagoPublicKey" @submit.prevent="procesarPagoTarjeta" class="space-y-3.5">
               <div>
                 <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Titular de la tarjeta</label>
                 <input
@@ -420,6 +448,9 @@ function moneda(val) { return Number(val || 0).toFixed(2) }
                 </template>
               </p>
             </form>
+            <p v-else class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              El cobro con tarjeta no está disponible en este momento. Contacta al administrador para configurar Mercado Pago.
+            </p>
           </div>
         </div>
       </div>

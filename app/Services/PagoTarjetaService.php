@@ -1,14 +1,14 @@
 <?php
 
 // Procesador de cobros con tarjeta para cotizaciones con soporte de Mercado Pago Checkout API (API de Orders).
-// Cumple buenas prácticas PCI: con Mercado Pago el navegador tokeniza la tarjeta y el servidor
-// jamás recibe PAN completo ni CVV; en modo interno solo guarda últimos 4 dígitos y referencia.
+// Con Mercado Pago el navegador tokeniza la tarjeta y el servidor nunca recibe ni almacena el PAN completo o CVV.
 
 namespace App\Services;
 
 use App\Models\Cotizacione;
 use App\Models\EmpresaIntegracione;
 use App\Models\PagoCotizacion;
+use App\Models\PagoCotizacionIntento;
 use App\Models\Usuario;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -26,65 +26,34 @@ class PagoTarjetaService
             ->first();
 
         if (!$integracion || !$integracion->activo) {
-            return ['activo' => false, 'public_key' => null, 'access_token' => null];
+            return ['activo' => false, 'public_key' => null, 'access_token' => null, 'ambiente_valido' => true];
         }
 
         $publicKey = trim((string) ($integracion->configuracion_json['public_key'] ?? ''));
         $accessToken = trim((string) ($integracion->api_key ?? ''));
+        $modo = (string) ($integracion->configuracion_json['modo'] ?? 'pruebas');
+        $credencialesPresentes = $publicKey !== '' && $accessToken !== '';
+        $ambienteValido = !$credencialesPresentes || self::credencialesCoincidenConModo($publicKey, $accessToken, $modo);
 
         return [
-            'activo' => $publicKey !== '' && $accessToken !== '',
-            'public_key' => $publicKey !== '' ? $publicKey : null,
-            'access_token' => $accessToken !== '' ? $accessToken : null,
+            'activo' => $credencialesPresentes && $ambienteValido,
+            'public_key' => $publicKey !== '' && $ambienteValido ? $publicKey : null,
+            'access_token' => $accessToken !== '' && $ambienteValido ? $accessToken : null,
+            'ambiente_valido' => $ambienteValido,
         ];
     }
 
-    /** Valida el número de tarjeta con el algoritmo de Luhn. */
-    public static function validarLuhn(string $numero): bool
+    public static function credencialesCoincidenConModo(string $publicKey, string $accessToken, string $modo): bool
     {
-        $digitos = preg_replace('/\D+/', '', $numero) ?? '';
-        $len = strlen($digitos);
-        if ($len < 13 || $len > 19) {
-            return false;
-        }
+        $prefijoEsperado = match ($modo) {
+            'pruebas' => 'TEST-',
+            'produccion' => 'APP_USR-',
+            default => null,
+        };
 
-        $suma = 0;
-        $doble = false;
-
-        for ($i = $len - 1; $i >= 0; $i--) {
-            $n = (int) $digitos[$i];
-            if ($doble) {
-                $n *= 2;
-                if ($n > 9) {
-                    $n -= 9;
-                }
-            }
-            $suma += $n;
-            $doble = !$doble;
-        }
-
-        return $suma % 10 === 0;
-    }
-
-    /** Detecta la marca de la tarjeta a partir del BIN inicial. */
-    public static function detectarMarca(string $numero): string
-    {
-        $d = preg_replace('/\D+/', '', $numero) ?? '';
-
-        if (preg_match('/^4/', $d)) {
-            return 'Visa';
-        }
-        if (preg_match('/^(5[1-5]|222[1-9]|22[3-9]\d|2[3-6]\d{2}|27[01]\d|2720)/', $d)) {
-            return 'Mastercard';
-        }
-        if (preg_match('/^3[47]/', $d)) {
-            return 'American Express';
-        }
-        if (preg_match('/^6(?:011|5)/', $d)) {
-            return 'Discover';
-        }
-
-        return 'Tarjeta';
+        return $prefijoEsperado !== null
+            && str_starts_with($publicKey, $prefijoEsperado)
+            && str_starts_with($accessToken, $prefijoEsperado);
     }
 
     /** Mapea el payment_method_id de Mercado Pago a una marca legible. */
@@ -124,16 +93,14 @@ class PagoTarjetaService
         return true;
     }
 
-    /**
-     * Procesa el cobro con tarjeta sobre una cotización pendiente.
-     * Usa Mercado Pago API de Orders cuando se recibe un token de MercadoPago.js y la pasarela está activa.
-     */
+    /** Procesa un pago de forma idempotente y conserva el payload cifrado para reintentos seguros. */
     public function cobrar(Cotizacione $cotizacion, array $datosTarjeta, ?int $usuarioId = null): PagoCotizacion
     {
         $titular = trim((string) ($datosTarjeta['tarjeta_titular'] ?? ''));
         $expMes = (int) ($datosTarjeta['tarjeta_exp_mes'] ?? 0);
         $expAnio = (int) ($datosTarjeta['tarjeta_exp_anio'] ?? 0);
         $mpToken = trim((string) ($datosTarjeta['mp_token'] ?? ''));
+        $idempotencyKey = trim((string) ($datosTarjeta['mp_idempotency_key'] ?? ''));
 
         if (!self::validarVigencia($expMes, $expAnio)) {
             throw ValidationException::withMessages([
@@ -142,72 +109,90 @@ class PagoTarjetaService
         }
 
         $mpConfig = self::obtenerConfigMercadoPago((int) $cotizacion->empresa_id);
-        $usarMercadoPago = $mpToken !== '' && $mpConfig['activo'] && !empty($mpConfig['access_token']);
-
-        if ($usarMercadoPago) {
-            $ultimos4 = preg_replace('/\D+/', '', (string) ($datosTarjeta['tarjeta_ultimos4'] ?? '')) ?? '';
-            if (strlen($ultimos4) !== 4) {
-                throw ValidationException::withMessages([
-                    'tarjeta_numero' => 'No se pudieron verificar los últimos 4 dígitos de la tarjeta.',
-                ]);
-            }
-            $methodId = strtolower(trim((string) ($datosTarjeta['mp_payment_method_id'] ?? 'visa')));
-            $paymentType = strtolower(trim((string) ($datosTarjeta['mp_payment_type_id'] ?? 'credit_card'))) ?: 'credit_card';
-            $installments = max(1, min(12, (int) ($datosTarjeta['mp_installments'] ?? 1)));
-            $deviceId = trim((string) ($datosTarjeta['mp_device_id'] ?? ''));
-            $marca = self::marcaDesdeMetodoMp($methodId, $datosTarjeta['tarjeta_marca'] ?? null);
-        } else {
-            $digitos = preg_replace('/\D+/', '', (string) ($datosTarjeta['tarjeta_numero'] ?? '')) ?? '';
-            $cvv = preg_replace('/\D+/', '', (string) ($datosTarjeta['tarjeta_cvv'] ?? '')) ?? '';
-
-            if (!self::validarLuhn($digitos)) {
-                throw ValidationException::withMessages([
-                    'tarjeta_numero' => 'El número de tarjeta no es válido.',
-                ]);
-            }
-
-            $marca = self::detectarMarca($digitos);
-            $ultimos4 = substr($digitos, -4);
-            $cvvEsperado = $marca === 'American Express' ? 4 : 3;
-            if (strlen($cvv) !== $cvvEsperado) {
-                throw ValidationException::withMessages([
-                    'tarjeta_cvv' => "El código de seguridad (CVV) debe tener {$cvvEsperado} dígitos.",
-                ]);
-            }
-            $methodId = null;
-            $paymentType = null;
-            $installments = 1;
-            $deviceId = '';
-            unset($digitos, $cvv);
+        if (!$mpConfig['activo'] || empty($mpConfig['access_token'])) {
+            throw ValidationException::withMessages([
+                'tarjeta' => $mpConfig['ambiente_valido']
+                    ? 'El cobro con tarjeta no está disponible. Contacta al administrador para configurar Mercado Pago.'
+                    : 'Las llaves de Mercado Pago no corresponden al entorno seleccionado. Contacta al administrador.',
+            ]);
+        }
+        if ($mpToken === '') {
+            throw ValidationException::withMessages([
+                'mp_token' => 'No se recibió el token seguro de Mercado Pago. Verifica los datos de tu tarjeta.',
+            ]);
+        }
+        if (!Str::isUuid($idempotencyKey)) {
+            throw ValidationException::withMessages([
+                'mp_idempotency_key' => 'No se pudo identificar este intento de pago. Actualiza la página e intenta de nuevo.',
+            ]);
         }
 
-        // Limpiar cualquier dato sensible en memoria de inmediato
-        unset($datosTarjeta['tarjeta_numero'], $datosTarjeta['tarjeta_cvv']);
+        $ultimos4 = preg_replace('/\D+/', '', (string) ($datosTarjeta['tarjeta_ultimos4'] ?? '')) ?? '';
+        if (strlen($ultimos4) !== 4) {
+            throw ValidationException::withMessages([
+                'tarjeta_ultimos4' => 'No se pudieron verificar los últimos 4 dígitos de la tarjeta.',
+            ]);
+        }
+        $methodId = strtolower(trim((string) ($datosTarjeta['mp_payment_method_id'] ?? '')));
+        $paymentType = strtolower(trim((string) ($datosTarjeta['mp_payment_type_id'] ?? '')));
+        $installments = max(1, min(12, (int) ($datosTarjeta['mp_installments'] ?? 1)));
+        $deviceId = trim((string) ($datosTarjeta['mp_device_id'] ?? ''));
+        $marca = self::marcaDesdeMetodoMp($methodId, $datosTarjeta['tarjeta_marca'] ?? null);
 
-        return DB::transaction(function () use (
-            $cotizacion,
-            $titular,
-            $marca,
-            $ultimos4,
-            $expMes,
-            $expAnio,
-            $usuarioId,
-            $usarMercadoPago,
-            $mpConfig,
-            $mpToken,
-            $methodId,
-            $paymentType,
-            $installments,
-            $deviceId
-        ) {
+        $reserva = DB::transaction(function () use (
+            $cotizacion, $datosTarjeta, $idempotencyKey, $mpToken, $methodId, $paymentType, $usuarioId,
+            $installments, $deviceId, $titular, $marca, $ultimos4, $expMes, $expAnio
+        ): array {
             $cotBloqueada = Cotizacione::with(['cliente.usuario'])
                 ->where('empresa_id', $cotizacion->empresa_id)
                 ->lockForUpdate()
                 ->findOrFail($cotizacion->id);
 
+            $intento = PagoCotizacionIntento::where('idempotency_key', $idempotencyKey)
+                ->lockForUpdate()
+                ->first();
+
+            if ($intento) {
+                if ((int) $intento->cotizacion_id !== (int) $cotBloqueada->id) {
+                    throw ValidationException::withMessages([
+                        'mp_idempotency_key' => 'La clave de este intento ya fue utilizada para otra cotización.',
+                    ]);
+                }
+                if ($intento->estado === 'aprobado' && $intento->pago) {
+                    return ['pago' => $intento->pago, 'intento' => null];
+                }
+                if ($intento->estado === 'rechazado') {
+                    throw ValidationException::withMessages([
+                        'tarjeta' => $intento->mensaje_error ?: 'El pago fue rechazado. Verifica los datos o intenta con otra tarjeta.',
+                        'mp_attempt_status' => 'rejected',
+                    ]);
+                }
+                if (!$intento->request_payload) {
+                    throw ValidationException::withMessages([
+                        'tarjeta' => 'No fue posible recuperar el intento de pago. Contacta a soporte antes de volver a pagar.',
+                        'mp_attempt_status' => 'uncertain',
+                    ]);
+                }
+
+                $intento->update(['estado' => 'procesando']);
+
+                return ['pago' => null, 'intento' => $intento->fresh()];
+            }
+
             if ($cotBloqueada->estatus === 'rechazado') {
                 throw ValidationException::withMessages([
                     'tarjeta' => 'No se puede procesar un pago para una cotización rechazada.',
+                ]);
+            }
+
+            $ultimoIntento = PagoCotizacionIntento::where('cotizacion_id', $cotBloqueada->id)
+                ->latest('id')
+                ->lockForUpdate()
+                ->first();
+            if ($ultimoIntento && in_array($ultimoIntento->estado, ['procesando', 'incierto'], true)) {
+                throw ValidationException::withMessages([
+                    'tarjeta' => 'El resultado del intento anterior aún no está confirmado. Reintenta este mismo pago antes de iniciar otro.',
+                    'mp_attempt_status' => 'uncertain',
                 ]);
             }
 
@@ -224,56 +209,149 @@ class PagoTarjetaService
                 ]);
             }
 
+            $payerEmail = $cotBloqueada->cliente?->email
+                ?: $cotBloqueada->cliente?->usuario?->email
+                ?: Usuario::whereKey($usuarioId)->value('email')
+                ?: 'pagos@sigesga.com';
+
+            $partesNombre = preg_split('/\s+/', trim($titular)) ?: [];
+            $firstName = $cotBloqueada->cliente?->nombre ?: ($partesNombre[0] ?? 'Cliente');
+            $lastName = $cotBloqueada->cliente?->apellido_paterno ?: (count($partesNombre) > 1 ? implode(' ', array_slice($partesNombre, 1)) : 'SIGESGA');
             $referencia = 'PAG-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6));
+            $montoStr = number_format($monto, 2, '.', '');
+            $requestPayload = [
+                'type' => 'online',
+                'processing_mode' => 'automatic',
+                'external_reference' => $referencia,
+                'description' => 'Cotizacion ' . ($cotBloqueada->folio ?? $cotBloqueada->id) . ' - SIGESGA',
+                'total_amount' => $montoStr,
+                'payer' => [
+                    'email' => $payerEmail,
+                    'first_name' => $firstName,
+                    'last_name' => $lastName,
+                ],
+                'transactions' => [
+                    'payments' => [[
+                        'amount' => $montoStr,
+                        'payment_method' => [
+                            'id' => $methodId,
+                            'type' => $paymentType,
+                            'token' => $mpToken,
+                            'installments' => $installments,
+                            'statement_descriptor' => 'SIGESGA',
+                        ],
+                    ]],
+                ],
+            ];
 
-            if ($usarMercadoPago) {
-                $payerEmail = $cotBloqueada->cliente?->email
-                    ?: $cotBloqueada->cliente?->usuario?->email
-                    ?: Usuario::whereKey($usuarioId)->value('email')
-                    ?: 'pagos@sigesga.com';
+            $intento = PagoCotizacionIntento::create([
+                'empresa_id' => $cotBloqueada->empresa_id,
+                'cotizacion_id' => $cotBloqueada->id,
+                'idempotency_key' => $idempotencyKey,
+                'provider_idempotency_key' => (string) Str::uuid(),
+                'referencia' => $referencia,
+                'estado' => 'procesando',
+                'request_payload' => [
+                    'payload' => $requestPayload,
+                    'device_id' => $deviceId,
+                    'tarjeta' => [
+                        'titular' => $titular,
+                        'marca' => $marca,
+                        'ultimos4' => $ultimos4,
+                        'exp_mes' => $expMes,
+                        'exp_anio' => $expAnio,
+                    ],
+                    'usuario_id' => auth()->id(),
+                ],
+            ]);
 
-                $partesNombre = preg_split('/\s+/', trim($titular)) ?: [];
-                $firstName = $cotBloqueada->cliente?->nombre ?: ($partesNombre[0] ?? 'Cliente');
-                $lastName = $cotBloqueada->cliente?->apellido_paterno ?: (count($partesNombre) > 1 ? implode(' ', array_slice($partesNombre, 1)) : 'SIGESGA');
+            return ['pago' => null, 'intento' => $intento];
+        });
 
-                $resultadoMp = $this->cobrarConMercadoPagoOrders(
-                    accessToken: $mpConfig['access_token'],
-                    referencia: $referencia,
-                    descripcion: 'Cotizacion ' . ($cotBloqueada->folio ?? $cotBloqueada->id) . ' - SIGESGA',
-                    monto: $monto,
-                    payerEmail: $payerEmail,
-                    firstName: $firstName,
-                    lastName: $lastName,
-                    token: $mpToken,
-                    paymentMethodId: $methodId,
-                    paymentTypeId: $paymentType,
-                    installments: $installments,
-                    deviceId: $deviceId,
-                );
+        if ($reserva['pago'] instanceof PagoCotizacion) {
+            return $reserva['pago'];
+        }
 
-                $pasarela = 'mercadopago_orders';
-                $transaccionId = $resultadoMp['transaccion_id'];
-            } else {
-                $pasarela = 'pasarela_interna';
-                $transaccionId = 'TXN-' . strtoupper(Str::random(12));
+        /** @var PagoCotizacionIntento $intento */
+        $intento = $reserva['intento'];
+        $payloadGuardado = $intento->request_payload;
+
+        $resultadoMp = $this->enviarOrdenMercadoPago(
+            accessToken: $mpConfig['access_token'],
+            payload: $payloadGuardado['payload'],
+            providerIdempotencyKey: $intento->provider_idempotency_key,
+            deviceId: $payloadGuardado['device_id'] ?? '',
+        );
+
+        if ($resultadoMp['estado'] === 'incierto') {
+            $intento->update([
+                'estado' => 'incierto',
+                'mercadopago_order_id' => $resultadoMp['order_id'],
+                'mensaje_error' => $resultadoMp['mensaje'],
+            ]);
+
+            throw ValidationException::withMessages([
+                'tarjeta' => $resultadoMp['mensaje'],
+                'mp_attempt_status' => 'uncertain',
+            ]);
+        }
+
+        if ($resultadoMp['estado'] === 'rechazado') {
+            $intento->update([
+                'estado' => 'rechazado',
+                'mercadopago_order_id' => $resultadoMp['order_id'],
+                'mercadopago_payment_id' => $resultadoMp['payment_id'],
+                'request_payload' => null,
+                'mensaje_error' => $resultadoMp['mensaje'],
+            ]);
+
+            throw ValidationException::withMessages([
+                'tarjeta' => $resultadoMp['mensaje'],
+                'mp_attempt_status' => 'rejected',
+            ]);
+        }
+
+        return DB::transaction(function () use ($cotizacion, $intento, $resultadoMp, $usuarioId): PagoCotizacion {
+            $intentoBloqueado = PagoCotizacionIntento::whereKey($intento->id)->lockForUpdate()->firstOrFail();
+            if ($intentoBloqueado->estado === 'aprobado' && $intentoBloqueado->pago) {
+                return $intentoBloqueado->pago;
             }
 
+            $cotBloqueada = Cotizacione::where('empresa_id', $cotizacion->empresa_id)
+                ->lockForUpdate()
+                ->findOrFail($cotizacion->id);
+
+            $pagoExistente = PagoCotizacion::where('cotizacion_id', $cotBloqueada->id)
+                ->where('estatus', 'pagado')
+                ->first();
+            if ($pagoExistente) {
+                $intentoBloqueado->update([
+                    'estado' => 'aprobado',
+                    'pago_cotizacion_id' => $pagoExistente->id,
+                    'request_payload' => null,
+                ]);
+
+                return $pagoExistente;
+            }
+
+            $payloadIntento = $intentoBloqueado->request_payload;
+            $datosTarjeta = $payloadIntento['tarjeta'];
             $pago = PagoCotizacion::create([
                 'empresa_id' => $cotBloqueada->empresa_id,
                 'cotizacion_id' => $cotBloqueada->id,
                 'cliente_id' => $cotBloqueada->cliente_id,
-                'usuario_id' => $usuarioId,
-                'referencia' => $referencia,
+                'usuario_id' => $payloadIntento['usuario_id'] ?? $usuarioId,
+                'referencia' => $intentoBloqueado->referencia,
                 'metodo' => 'tarjeta',
-                'pasarela' => $pasarela,
-                'pasarela_transaccion_id' => $transaccionId,
-                'monto' => $monto,
+                'pasarela' => 'mercadopago_orders',
+                'pasarela_transaccion_id' => $resultadoMp['payment_id'] ?: $resultadoMp['order_id'],
+                'monto' => (float) $cotBloqueada->costo_total,
                 'moneda' => 'MXN',
-                'tarjeta_titular' => $titular,
-                'tarjeta_marca' => $marca,
-                'tarjeta_ultimos4' => $ultimos4,
-                'tarjeta_exp_mes' => $expMes,
-                'tarjeta_exp_anio' => $expAnio,
+                'tarjeta_titular' => $datosTarjeta['titular'],
+                'tarjeta_marca' => $datosTarjeta['marca'],
+                'tarjeta_ultimos4' => $datosTarjeta['ultimos4'],
+                'tarjeta_exp_mes' => $datosTarjeta['exp_mes'],
+                'tarjeta_exp_anio' => $datosTarjeta['exp_anio'],
                 'estatus' => 'pagado',
                 'pagado_en' => now(),
             ]);
@@ -285,56 +363,28 @@ class PagoTarjetaService
                 'cliente_aprobada_at' => $cotBloqueada->cliente_aprobada_at ?? now(),
             ]);
 
+            $intentoBloqueado->update([
+                'estado' => 'aprobado',
+                'pago_cotizacion_id' => $pago->id,
+                'mercadopago_order_id' => $resultadoMp['order_id'],
+                'mercadopago_payment_id' => $resultadoMp['payment_id'],
+                'request_payload' => null,
+                'mensaje_error' => null,
+            ]);
+
             return $pago;
         });
     }
 
-    /** Envía la orden de cobro a Mercado Pago Checkout API (API de Orders: POST /v1/orders). */
-    private function cobrarConMercadoPagoOrders(
+    /** Envía o reintenta exactamente la misma orden usando la clave idempotente persistida. */
+    private function enviarOrdenMercadoPago(
         string $accessToken,
-        string $referencia,
-        string $descripcion,
-        float $monto,
-        string $payerEmail,
-        string $firstName,
-        string $lastName,
-        string $token,
-        string $paymentMethodId,
-        string $paymentTypeId,
-        int $installments,
-        string $deviceId = ''
+        array $payload,
+        string $providerIdempotencyKey,
+        string $deviceId = '',
     ): array {
-        $montoStr = number_format($monto, 2, '.', '');
-
-        $payload = [
-            'type' => 'online',
-            'processing_mode' => 'automatic',
-            'external_reference' => $referencia,
-            'description' => $descripcion,
-            'total_amount' => $montoStr,
-            'payer' => [
-                'email' => $payerEmail,
-                'first_name' => $firstName,
-                'last_name' => $lastName,
-            ],
-            'transactions' => [
-                'payments' => [
-                    [
-                        'amount' => $montoStr,
-                        'payment_method' => [
-                            'id' => $paymentMethodId,
-                            'type' => $paymentTypeId,
-                            'token' => $token,
-                            'installments' => $installments,
-                            'statement_descriptor' => 'SIGESGA',
-                        ],
-                    ],
-                ],
-            ],
-        ];
-
         $headers = [
-            'X-Idempotency-Key' => (string) Str::uuid(),
+            'X-Idempotency-Key' => $providerIdempotencyKey,
             'Content-Type' => 'application/json',
         ];
         if ($deviceId !== '') {
@@ -348,9 +398,13 @@ class PagoTarjetaService
                 ->post('https://api.mercadopago.com/v1/orders', $payload);
         } catch (\Throwable $e) {
             Log::error('Error de conexión con Mercado Pago Orders API', ['error' => $e->getMessage()]);
-            throw ValidationException::withMessages([
-                'tarjeta' => 'No se pudo conectar con Mercado Pago en este momento. Intenta de nuevo.',
-            ]);
+
+            return [
+                'estado' => 'incierto',
+                'mensaje' => 'Mercado Pago no confirmó el resultado. Reintenta este mismo intento; no inicies otro pago.',
+                'order_id' => null,
+                'payment_id' => null,
+            ];
         }
 
         $body = $response->json() ?? [];
@@ -361,9 +415,23 @@ class PagoTarjetaService
 
         $aprobado = $response->successful()
             && in_array($orderStatus, ['processed', 'paid', 'approved'], true)
-            && ($paymentStatus === '' || in_array($paymentStatus, ['processed', 'approved', 'accredited'], true));
+            && in_array($paymentStatus, ['processed', 'approved', 'accredited'], true);
 
-        if (!$aprobado) {
+        if ($aprobado) {
+            return [
+                'estado' => 'aprobado',
+                'mensaje' => '',
+                'order_id' => isset($body['id']) ? (string) $body['id'] : null,
+                'payment_id' => isset($payment['id']) ? (string) $payment['id'] : null,
+            ];
+        }
+
+        $definitivamenteRechazado = $response->clientError()
+            || in_array($orderStatus, ['rejected', 'cancelled', 'canceled'], true)
+            || $paymentStatus === 'rejected'
+            || str_contains($statusDetail, 'rejected');
+
+        if ($definitivamenteRechazado) {
             Log::error('Pago rechazado por Mercado Pago Orders API', [
                 'http_status' => $response->status(),
                 'order_status' => $orderStatus,
@@ -373,16 +441,19 @@ class PagoTarjetaService
                 'message' => $body['message'] ?? null,
             ]);
 
-            throw ValidationException::withMessages([
-                'tarjeta' => $this->traducirErrorMercadoPago($body, $statusDetail),
-            ]);
+            return [
+                'estado' => 'rechazado',
+                'mensaje' => $this->traducirErrorMercadoPago($body, $statusDetail),
+                'order_id' => isset($body['id']) ? (string) $body['id'] : null,
+                'payment_id' => isset($payment['id']) ? (string) $payment['id'] : null,
+            ];
         }
 
-        $transaccionId = (string) ($payment['id'] ?? $body['id'] ?? ('MP-' . strtoupper(Str::random(10))));
-
         return [
-            'transaccion_id' => $transaccionId,
-            'order_id' => $body['id'] ?? null,
+            'estado' => 'incierto',
+            'mensaje' => 'Mercado Pago todavía no confirma el resultado del pago. Reintenta este mismo intento; no inicies otro pago.',
+            'order_id' => isset($body['id']) ? (string) $body['id'] : null,
+            'payment_id' => isset($payment['id']) ? (string) $payment['id'] : null,
         ];
     }
 

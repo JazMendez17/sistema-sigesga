@@ -82,6 +82,9 @@ class HandleInertiaRequests extends Middleware
                 ->where('usuario_id', $user->id)
                 ->where('estado', '!=', 'leido')
                 ->count() : 0,
+            'latestNotificationId' => $user ? (int) (Notificacione::where('empresa_id', $user->empresa_id)
+                ->where('usuario_id', $user->id)
+                ->max('id') ?? 0) : 0,
         ];
     }
 }

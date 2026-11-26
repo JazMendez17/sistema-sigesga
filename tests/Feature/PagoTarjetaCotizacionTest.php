@@ -11,10 +11,14 @@ use App\Models\Empresa;
 use App\Models\EmpresaIntegracione;
 use App\Models\Operadore;
 use App\Models\PagoCotizacion;
+use App\Models\Notificacione;
 use App\Models\Unidade;
 use App\Models\Usuario;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Http\Client\ConnectionException;
+use App\Mail\PagoConfirmadoMail;
 use Tests\TestCase;
 
 class PagoTarjetaCotizacionTest extends TestCase
@@ -28,6 +32,7 @@ class PagoTarjetaCotizacionTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Mail::fake();
 
         $this->empresa = Empresa::create([
             'nombre' => 'Grúas SIGESGA',
@@ -53,6 +58,8 @@ class PagoTarjetaCotizacionTest extends TestCase
             'empresa_id' => $this->empresa->id,
             'rol' => 'cliente',
         ]);
+        $superadmin = Usuario::factory()->superadmin()->create(['empresa_id' => $this->empresa->id]);
+        $cotizador = Usuario::factory()->create(['empresa_id' => $this->empresa->id, 'rol' => 'cotizador']);
 
         $clienteParticular = Cliente::create([
             'empresa_id' => $this->empresa->id,
@@ -86,7 +93,7 @@ class PagoTarjetaCotizacionTest extends TestCase
             ->assertSessionHas('error');
         $this->assertNull($cotizacion->fresh()->cliente_aprobada_at);
 
-        // 2. Tarjeta inválida (falla Luhn) es rechazada
+        // 2. Nunca se aceptan los datos de tarjeta directamente en el servidor.
         $this->actingAs($clienteUser)
             ->post("/panel/cliente/cotizaciones/{$cotizacion->id}/pagar-tarjeta", [
                 'tarjeta_titular' => 'Carlos Particular',
@@ -95,27 +102,37 @@ class PagoTarjetaCotizacionTest extends TestCase
                 'tarjeta_exp_anio' => now()->year + 2,
                 'tarjeta_cvv' => '123',
             ])
-            ->assertSessionHasErrors('tarjeta_numero');
+            ->assertSessionHasErrors('mp_token');
 
-        // 3. Tarjeta vencida es rechazada
+        // 3. Una tarjeta vencida se rechaza aunque llegue un token válido.
         $this->actingAs($clienteUser)
             ->post("/panel/cliente/cotizaciones/{$cotizacion->id}/pagar-tarjeta", [
-                'tarjeta_titular' => 'Carlos Particular',
-                'tarjeta_numero' => '4242 4242 4242 4242',
+                ...$this->datosTarjetaTokenizada('Carlos Particular'),
                 'tarjeta_exp_mes' => 1,
                 'tarjeta_exp_anio' => now()->year - 1,
-                'tarjeta_cvv' => '123',
             ])
             ->assertSessionHasErrors('tarjeta_exp_anio');
 
-        // 4. Tarjeta válida procesa el cobro y aprueba la cotización del cliente
+        // 4. No se registra ningún pago si las credenciales de la pasarela no están configuradas.
         $this->actingAs($clienteUser)
             ->post("/panel/cliente/cotizaciones/{$cotizacion->id}/pagar-tarjeta", [
-                'tarjeta_titular' => 'Carlos Particular',
-                'tarjeta_numero' => '4242 4242 4242 4242',
+                ...$this->datosTarjetaTokenizada('Carlos Particular'),
                 'tarjeta_exp_mes' => 12,
                 'tarjeta_exp_anio' => now()->year + 3,
-                'tarjeta_cvv' => '456',
+            ])
+            ->assertSessionHasErrors('tarjeta');
+        $this->assertDatabaseCount('pagos_cotizacion', 0);
+
+        $this->configurarMercadoPago();
+        $notificacionesAntes = Notificacione::count();
+        $ultimaNotificacionAntes = (int) (Notificacione::max('id') ?? 0);
+
+        // 5. Tarjeta tokenizada aprobada por Mercado Pago confirma y aprueba la cotización.
+        $this->actingAs($clienteUser)
+            ->post("/panel/cliente/cotizaciones/{$cotizacion->id}/pagar-tarjeta", [
+                ...$this->datosTarjetaTokenizada('Carlos Particular'),
+                'tarjeta_exp_mes' => 12,
+                'tarjeta_exp_anio' => now()->year + 3,
             ])
             ->assertSessionHasNoErrors()
             ->assertSessionHas('success');
@@ -133,19 +150,39 @@ class PagoTarjetaCotizacionTest extends TestCase
         $this->assertStringStartsWith('PAG-', $pago->referencia);
         $this->assertArrayNotHasKey('tarjeta_numero', $pago->getAttributes());
         $this->assertArrayNotHasKey('tarjeta_cvv', $pago->getAttributes());
+        $this->assertDatabaseHas('notificaciones', ['usuario_id' => $clienteUser->id, 'canal' => 'sistema_push']);
+        $this->assertDatabaseHas('notificaciones', ['usuario_id' => $this->admin->id, 'canal' => 'sistema_push']);
+        $this->assertDatabaseHas('notificaciones', ['usuario_id' => $superadmin->id, 'canal' => 'sistema_push']);
+        $this->assertDatabaseHas('notificaciones', ['usuario_id' => $cotizador->id, 'canal' => 'sistema_push']);
+        Mail::assertSent(PagoConfirmadoMail::class, 4);
 
-        // 5. No permite doble cobro
+        $respuestaPush = $this->actingAs($clienteUser)
+            ->getJson('/panel/notificaciones/no-leidas?after=' . $ultimaNotificacionAntes)
+            ->assertOk();
+        $this->assertStringContainsString(
+            'Pago realizado con éxito',
+            $respuestaPush->json('notifications.0.mensaje')
+        );
+
+        $this->actingAs($clienteUser)
+            ->get("/panel/pagos/{$pago->id}/comprobante")
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+
+        // 6. Repetir el mismo intento devuelve el pago registrado sin cobrar ni notificar dos veces.
         $this->actingAs($clienteUser)
             ->post("/panel/cliente/cotizaciones/{$cotizacion->id}/pagar-tarjeta", [
-                'tarjeta_titular' => 'Carlos Particular',
-                'tarjeta_numero' => '4242 4242 4242 4242',
+                ...$this->datosTarjetaTokenizada('Carlos Particular'),
                 'tarjeta_exp_mes' => 12,
                 'tarjeta_exp_anio' => now()->year + 3,
-                'tarjeta_cvv' => '456',
             ])
-            ->assertSessionHasErrors('tarjeta');
+            ->assertSessionHas('success');
+        $this->assertDatabaseCount('pagos_cotizacion', 1);
+        $this->assertSame($notificacionesAntes + 4, Notificacione::count());
+        Mail::assertSent(PagoConfirmadoMail::class, 4);
+        Http::assertSentCount(1);
 
-        // 6. Una vez pagada, el administrador puede aprobar internamente y crear el servicio
+        // 7. Una vez pagada, el administrador puede aprobar internamente y crear el servicio
         $emp = Empleado::create([
             'empresa_id' => $this->empresa->id,
             'nombre' => 'Operador Uno',
@@ -232,13 +269,12 @@ class PagoTarjetaCotizacionTest extends TestCase
         $this->assertNotNull($cotizacion->fresh()->cliente_aprobada_at);
 
         // Un cliente con aseguradora también puede optar por pagar con tarjeta si lo desea
+        $this->configurarMercadoPago();
         $this->actingAs($clienteUser)
             ->post("/panel/cliente/cotizaciones/{$cotizacion->id}/pagar-tarjeta", [
-                'tarjeta_titular' => 'Ana Asegurada',
-                'tarjeta_numero' => '4242 4242 4242 4242',
+                ...$this->datosTarjetaTokenizada('Ana Asegurada'),
                 'tarjeta_exp_mes' => 12,
                 'tarjeta_exp_anio' => now()->year + 2,
-                'tarjeta_cvv' => '321',
             ])
             ->assertSessionHasNoErrors()
             ->assertSessionHas('success');
@@ -248,32 +284,7 @@ class PagoTarjetaCotizacionTest extends TestCase
 
     public function test_cobro_con_mercadopago_orders_api_y_consulta_por_roles(): void
     {
-        EmpresaIntegracione::create([
-            'empresa_id' => $this->empresa->id,
-            'proveedor' => 'mercadopago',
-            'api_key' => 'TEST-ACCESS-TOKEN-123',
-            'configuracion_json' => [
-                'public_key' => 'TEST-PUBLIC-KEY-456',
-                'descripcion' => 'Mercado Pago',
-            ],
-            'activo' => true,
-        ]);
-
-        Http::fake([
-            'https://api.mercadopago.com/v1/orders' => Http::response([
-                'id' => 'ORD01MP999888',
-                'status' => 'processed',
-                'transactions' => [
-                    'payments' => [
-                        [
-                            'id' => 'PAY01MP777666',
-                            'status' => 'processed',
-                            'status_detail' => 'accredited',
-                        ],
-                    ],
-                ],
-            ], 201),
-        ]);
+        $this->configurarMercadoPago();
 
         $clienteUser = Usuario::factory()->create(['empresa_id' => $this->empresa->id, 'rol' => 'cliente']);
         $cliente = Cliente::create([
@@ -304,15 +315,9 @@ class PagoTarjetaCotizacionTest extends TestCase
 
         $this->actingAs($clienteUser)
             ->post("/panel/cliente/cotizaciones/{$cot->id}/pagar-tarjeta", [
-                'tarjeta_titular' => 'Lucia MP',
+                ...$this->datosTarjetaTokenizada('Lucia MP', '3704', 'Mastercard', 'master'),
                 'tarjeta_exp_mes' => 11,
                 'tarjeta_exp_anio' => now()->year + 2,
-                'tarjeta_ultimos4' => '3704',
-                'tarjeta_marca' => 'Mastercard',
-                'mp_token' => 'tok_mp_1234567890abcdef',
-                'mp_payment_method_id' => 'master',
-                'mp_payment_type_id' => 'credit_card',
-                'mp_installments' => 1,
             ])
             ->assertSessionHasNoErrors()
             ->assertSessionHas('success');
@@ -343,5 +348,208 @@ class PagoTarjetaCotizacionTest extends TestCase
         $this->actingAs($cotizador)->get('/panel/pagos')->assertOk();
         $this->actingAs($operador)->get('/panel/pagos')->assertForbidden();
         $this->actingAs($clienteUser)->get('/panel/pagos')->assertForbidden();
+    }
+
+    public function test_rechazo_notifica_solo_al_cliente_y_no_duplica_el_aviso_al_reintentar(): void
+    {
+        $this->crearIntegracionMercadoPago();
+        Http::fake([
+            'https://api.mercadopago.com/v1/orders' => Http::response([
+                'id' => 'ORD-RECHAZADA',
+                'status' => 'rejected',
+                'transactions' => [
+                    'payments' => [[
+                        'id' => 'PAY-RECHAZADO',
+                        'status' => 'rejected',
+                        'status_detail' => 'cc_rejected_insufficient_amount',
+                    ]],
+                ],
+            ], 201),
+        ]);
+
+        [$clienteUser, $cotizacion] = $this->crearCotizacionDeCliente('COT-RECHAZO');
+        $superadmin = Usuario::factory()->superadmin()->create(['empresa_id' => $this->empresa->id]);
+        $cotizador = Usuario::factory()->create(['empresa_id' => $this->empresa->id, 'rol' => 'cotizador']);
+        $datos = [
+            ...$this->datosTarjetaTokenizada('Cliente Rechazo'),
+            'tarjeta_exp_mes' => 12,
+            'tarjeta_exp_anio' => now()->year + 2,
+        ];
+
+        $this->actingAs($clienteUser)
+            ->post("/panel/cliente/cotizaciones/{$cotizacion->id}/pagar-tarjeta", $datos)
+            ->assertSessionHasErrors('tarjeta');
+
+        $this->assertDatabaseCount('notificaciones', 1);
+        $this->assertDatabaseHas('notificaciones', [
+            'usuario_id' => $clienteUser->id,
+            'canal' => 'sistema_push',
+        ]);
+        $this->assertDatabaseMissing('notificaciones', ['usuario_id' => $this->admin->id]);
+        $this->assertDatabaseMissing('notificaciones', ['usuario_id' => $superadmin->id]);
+        $this->assertDatabaseMissing('notificaciones', ['usuario_id' => $cotizador->id]);
+        $this->assertDatabaseHas('pagos_cotizacion_intentos', ['estado' => 'rechazado']);
+        $this->assertDatabaseCount('pagos_cotizacion', 0);
+
+        $this->actingAs($clienteUser)
+            ->post("/panel/cliente/cotizaciones/{$cotizacion->id}/pagar-tarjeta", $datos)
+            ->assertSessionHasErrors('tarjeta');
+
+        $this->assertDatabaseCount('notificaciones', 1);
+        Http::assertSentCount(1);
+    }
+
+    public function test_timeout_reintenta_payload_y_clave_del_proveedor_sin_generar_otro_cargo(): void
+    {
+        $this->crearIntegracionMercadoPago();
+        $solicitudes = [];
+        Http::fake(function ($request) use (&$solicitudes) {
+            $solicitudes[] = [
+                'idempotency_key' => implode('', $request->header('X-Idempotency-Key')),
+                'payload' => $request->data(),
+            ];
+            if (count($solicitudes) === 1) {
+                throw new ConnectionException('timeout simulado');
+            }
+
+            return Http::response([
+                'id' => 'ORD-REINTENTO',
+                'status' => 'processed',
+                'transactions' => ['payments' => [[
+                    'id' => 'PAY-REINTENTO',
+                    'status' => 'processed',
+                    'status_detail' => 'accredited',
+                ]]],
+            ], 201);
+        });
+
+        [$clienteUser, $cotizacion] = $this->crearCotizacionDeCliente('COT-REINTENTO');
+        $datos = [
+            ...$this->datosTarjetaTokenizada('Cliente Reintento'),
+            'tarjeta_exp_mes' => 12,
+            'tarjeta_exp_anio' => now()->year + 2,
+        ];
+
+        $this->actingAs($clienteUser)
+            ->post("/panel/cliente/cotizaciones/{$cotizacion->id}/pagar-tarjeta", $datos)
+            ->assertSessionHasErrors('tarjeta');
+        $this->assertDatabaseHas('pagos_cotizacion_intentos', ['estado' => 'incierto']);
+
+        $this->actingAs($clienteUser)
+            ->post("/panel/cliente/cotizaciones/{$cotizacion->id}/pagar-tarjeta", $datos)
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('success');
+
+        $this->assertCount(2, $solicitudes);
+        $this->assertSame($solicitudes[0]['idempotency_key'], $solicitudes[1]['idempotency_key']);
+        $this->assertSame($solicitudes[0]['payload'], $solicitudes[1]['payload']);
+        $this->assertDatabaseCount('pagos_cotizacion', 1);
+        $this->assertDatabaseHas('pagos_cotizacion_intentos', ['estado' => 'aprobado']);
+    }
+
+    public function test_credenciales_de_mercado_pago_deben_corresponder_al_modo_seleccionado(): void
+    {
+        EmpresaIntegracione::create([
+            'empresa_id' => $this->empresa->id,
+            'proveedor' => 'mercadopago',
+            'api_key' => 'APP_USR-LIVE-TOKEN',
+            'configuracion_json' => [
+                'public_key' => 'TEST-PUBLIC-KEY',
+                'modo' => 'pruebas',
+            ],
+            'activo' => true,
+        ]);
+
+        $config = \App\Services\PagoTarjetaService::obtenerConfigMercadoPago($this->empresa->id);
+
+        $this->assertFalse($config['activo']);
+        $this->assertFalse($config['ambiente_valido']);
+        $this->assertNull($config['public_key']);
+        $this->assertNull($config['access_token']);
+    }
+
+    private function configurarMercadoPago(): void
+    {
+        $this->crearIntegracionMercadoPago();
+
+        Http::fake([
+            'https://api.mercadopago.com/v1/orders' => Http::response([
+                'id' => 'ORD01MP999888',
+                'status' => 'processed',
+                'transactions' => [
+                    'payments' => [
+                        [
+                            'id' => 'PAY01MP777666',
+                            'status' => 'processed',
+                            'status_detail' => 'accredited',
+                        ],
+                    ],
+                ],
+            ], 201),
+        ]);
+    }
+
+    private function crearIntegracionMercadoPago(): void
+    {
+        EmpresaIntegracione::create([
+            'empresa_id' => $this->empresa->id,
+            'proveedor' => 'mercadopago',
+            'api_key' => 'TEST-ACCESS-TOKEN-123',
+            'configuracion_json' => [
+                'public_key' => 'TEST-PUBLIC-KEY-456',
+                'descripcion' => 'Mercado Pago',
+                'modo' => 'pruebas',
+            ],
+            'activo' => true,
+        ]);
+    }
+
+    private function datosTarjetaTokenizada(
+        string $titular,
+        string $ultimos4 = '4242',
+        string $marca = 'Visa',
+        string $metodo = 'visa'
+    ): array {
+        return [
+            'tarjeta_titular' => $titular,
+            'tarjeta_ultimos4' => $ultimos4,
+            'tarjeta_marca' => $marca,
+            'mp_token' => 'tok_mp_1234567890abcdef',
+            'mp_idempotency_key' => 'c9bf9e57-1685-4c89-bafb-ff5af830be8a',
+            'mp_payment_method_id' => $metodo,
+            'mp_payment_type_id' => 'credit_card',
+            'mp_installments' => 1,
+        ];
+    }
+
+    private function crearCotizacionDeCliente(string $folio): array
+    {
+        $clienteUser = Usuario::factory()->create(['empresa_id' => $this->empresa->id, 'rol' => 'cliente']);
+        $cliente = Cliente::create([
+            'empresa_id' => $this->empresa->id,
+            'usuario_id' => $clienteUser->id,
+            'nombre' => 'Cliente de prueba',
+            'email' => 'cliente@prueba.test',
+            'tipo_cliente' => 'persona_fisica',
+            'nacionalidad' => 'Mexicana',
+        ]);
+        $cotizacion = Cotizacione::create([
+            'empresa_id' => $this->empresa->id,
+            'cliente_id' => $cliente->id,
+            'tipo_servicio_id' => $this->servicioCat->id,
+            'usuario_creador_id' => $this->admin->id,
+            'folio' => $folio,
+            'origen_direccion' => 'Origen de prueba',
+            'destino_direccion' => 'Destino de prueba',
+            'distancia_km' => 10,
+            'costo_banderazo' => 500,
+            'costo_km' => 25,
+            'costo_total' => 750,
+            'estatus' => 'pendiente',
+            'requiere_pago_tarjeta' => true,
+            'estatus_pago' => 'pendiente',
+        ]);
+
+        return [$clienteUser, $cotizacion];
     }
 }

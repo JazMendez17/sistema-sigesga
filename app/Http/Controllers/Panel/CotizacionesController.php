@@ -19,6 +19,7 @@ use App\Models\ConvenioTarifa;
 use App\Models\Cotizacione;
 use App\Models\Notificacione;
 use App\Models\Operadore;
+use App\Models\PagoCotizacionIntento;
 use App\Models\Servicio;
 use App\Models\TarifasEmpresa;
 use App\Models\Unidade;
@@ -257,6 +258,7 @@ class CotizacionesController extends Controller
                 'estatus_pago' => $estatusPago,
                 'pagada_at' => $cotizacion->pagada_at?->format('d/m/Y H:i'),
                 'pago' => $ultimoPago ? [
+                    'id' => $ultimoPago->id,
                     'referencia' => $ultimoPago->referencia,
                     'clave_rastreo' => $ultimoPago->pasarela_transaccion_id,
                     'pasarela' => $ultimoPago->pasarela,
@@ -462,71 +464,124 @@ class CotizacionesController extends Controller
 
         $cotizacion = $query->findOrFail($id);
 
-        $pago = $pagoService->cobrar($cotizacion, $request->validated(), $usuario->id);
+        $datosPago = $request->validated();
+        try {
+            $pago = $pagoService->cobrar($cotizacion, $datosPago, $usuario->id);
+        } catch (ValidationException $e) {
+            $estadoIntento = $e->errors()['mp_attempt_status'][0] ?? null;
+            if ($estadoIntento === 'rejected') {
+                $this->notificarRechazoPagoCliente($cotizacion, $datosPago, $e);
+            }
+
+            throw $e;
+        }
+
         $cotizacion->load(['cliente.usuario', 'cliente.aseguradora', 'tipoServicio']);
 
-        // Notificar a superadmin, admin y cotizador (notificación en sistema + correo)
-        $usuariosGestion = Usuario::where(function ($q) use ($cotizacion) {
-            $q->where('rol', 'superadmin')
-                ->orWhere(function ($q2) use ($cotizacion) {
-                    $q2->where('empresa_id', $cotizacion->empresa_id)
-                        ->whereIn('rol', ['admin', 'cotizador']);
-                });
-            if ($cotizacion->usuario_creador_id) {
-                $q->orWhere('id', $cotizacion->usuario_creador_id);
-            }
-        })->get()->unique('id');
+        if ($pago->wasRecentlyCreated) {
+            // Notificar a superadmin, admin y cotizador (notificación del sistema + correo con comprobante).
+            $usuariosGestion = Usuario::where(function ($q) use ($cotizacion) {
+                $q->where('rol', 'superadmin')
+                    ->orWhere(function ($q2) use ($cotizacion) {
+                        $q2->where('empresa_id', $cotizacion->empresa_id)
+                            ->whereIn('rol', ['admin', 'cotizador']);
+                    });
+                if ($cotizacion->usuario_creador_id) {
+                    $q->orWhere('id', $cotizacion->usuario_creador_id);
+                }
+            })->get()->unique('id');
 
-        $montoFmt = number_format((float) $pago->monto, 2);
-        $rastreo = $pago->pasarela_transaccion_id ?: $pago->referencia;
+            $montoFmt = number_format((float) $pago->monto, 2);
+            $rastreo = $pago->pasarela_transaccion_id ?: $pago->referencia;
 
-        foreach ($usuariosGestion as $dest) {
-            $this->crearNotificacion(
-                $cotizacion->empresa_id,
-                $dest->id,
-                "Pago con tarjeta confirmado (\${$montoFmt} MXN · {$pago->tarjeta_marca} •••• {$pago->tarjeta_ultimos4} · Rastreo: {$rastreo}) para la cotización {$cotizacion->folio}."
-            );
+            foreach ($usuariosGestion as $dest) {
+                $empresaDestinoId = $dest->rol === 'superadmin'
+                    ? (int) ($dest->empresa_id ?: $cotizacion->empresa_id)
+                    : (int) $cotizacion->empresa_id;
+                $this->crearNotificacion(
+                    $empresaDestinoId,
+                    $dest->id,
+                    "Pago confirmado por el cliente (\${$montoFmt} MXN · {$pago->tarjeta_marca} •••• {$pago->tarjeta_ultimos4} · Rastreo: {$rastreo}) para la cotización {$cotizacion->folio}."
+                );
 
-            if (!empty($dest->email)) {
-                try {
-                    Mail::to($dest->email)->send(new PagoConfirmadoMail($cotizacion, $pago, paraEquipo: true));
-                } catch (\Throwable $e) {
-                    Log::error('Error al enviar correo de pago al equipo', ['usuario_id' => $dest->id, 'error' => $e->getMessage()]);
+                if (!empty($dest->email)) {
+                    try {
+                        Mail::to($dest->email)->send(new PagoConfirmadoMail($cotizacion, $pago, paraEquipo: true));
+                    } catch (\Throwable $e) {
+                        Log::error('Error al enviar correo de pago al equipo', ['usuario_id' => $dest->id, 'error' => $e->getMessage()]);
+                    }
                 }
             }
-        }
 
-        // Notificar al cliente (notificación en sistema + correo de confirmación + WhatsApp)
-        if ($cotizacion->cliente?->usuario_id) {
-            $this->crearNotificacion(
-                $cotizacion->empresa_id,
-                $cotizacion->cliente->usuario_id,
-                "Se confirmó tu pago con tarjeta por \${$montoFmt} MXN ({$pago->tarjeta_marca} •••• {$pago->tarjeta_ultimos4} · Rastreo: {$rastreo}) para la cotización {$cotizacion->folio}."
-            );
-        }
+            // Notificar al cliente y enviarle el mismo comprobante por correo.
+            if ($cotizacion->cliente?->usuario_id) {
+                $this->crearNotificacion(
+                    $cotizacion->empresa_id,
+                    $cotizacion->cliente->usuario_id,
+                    "Pago realizado con éxito por \${$montoFmt} MXN ({$pago->tarjeta_marca} •••• {$pago->tarjeta_ultimos4} · Rastreo: {$rastreo}) para la cotización {$cotizacion->folio}."
+                );
+            }
 
-        $correoCliente = $cotizacion->cliente?->email ?: $cotizacion->cliente?->usuario?->email;
-        if ($correoCliente) {
-            try {
-                Mail::to($correoCliente)->send(new PagoConfirmadoMail($cotizacion, $pago, paraEquipo: false));
-            } catch (\Throwable $e) {
-                Log::error('Error al enviar correo de confirmación de pago al cliente', [
-                    'cotizacion_id' => $cotizacion->id,
-                    'error' => $e->getMessage(),
-                ]);
+            $correoCliente = $cotizacion->cliente?->email ?: $cotizacion->cliente?->usuario?->email;
+            if ($correoCliente) {
+                try {
+                    Mail::to($correoCliente)->send(new PagoConfirmadoMail($cotizacion, $pago, paraEquipo: false));
+                } catch (\Throwable $e) {
+                    Log::error('Error al enviar correo de confirmación de pago al cliente', [
+                        'cotizacion_id' => $cotizacion->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            $telefonoCliente = $cotizacion->cliente?->telefono ?: $cotizacion->cliente?->usuario?->telefono;
+            if ($telefonoCliente) {
+                app(WhatsAppService::class)->enviarTexto(
+                    (int) $cotizacion->empresa_id,
+                    $telefonoCliente,
+                    "SIGESGA: Confirmamos tu pago con tarjeta por \${$montoFmt} MXN ({$pago->tarjeta_marca} •••• {$pago->tarjeta_ultimos4}) para la cotización {$cotizacion->folio}. Clave de rastreo: {$rastreo}."
+                );
             }
         }
 
-        $telefonoCliente = $cotizacion->cliente?->telefono ?: $cotizacion->cliente?->usuario?->telefono;
-        if ($telefonoCliente) {
-            app(WhatsAppService::class)->enviarTexto(
-                (int) $cotizacion->empresa_id,
-                $telefonoCliente,
-                "SIGESGA: Confirmamos tu pago con tarjeta por \${$montoFmt} MXN ({$pago->tarjeta_marca} •••• {$pago->tarjeta_ultimos4}) para la cotización {$cotizacion->folio}. Clave de rastreo: {$rastreo}."
-            );
+        $mensaje = $pago->wasRecentlyCreated
+            ? "Pago con tarjeta aprobado (Ref: {$pago->referencia}). Se envió la confirmación con comprobante por correo."
+            : "El pago ya estaba confirmado (Ref: {$pago->referencia}).";
+
+        return back()->with('success', $mensaje);
+    }
+
+    private function notificarRechazoPagoCliente(Cotizacione $cotizacion, array $datosPago, ValidationException $exception): void
+    {
+        $usuarioClienteId = $cotizacion->cliente?->usuario_id;
+        if (!$usuarioClienteId) {
+            return;
         }
 
-        return back()->with('success', "Pago con tarjeta aprobado (Ref: {$pago->referencia}). Se envió la confirmación por correo.");
+        $intento = PagoCotizacionIntento::where('idempotency_key', $datosPago['mp_idempotency_key'] ?? '')
+            ->where('cotizacion_id', $cotizacion->id)
+            ->first();
+        if (!$intento) {
+            return;
+        }
+
+        $motivo = $exception->errors()['tarjeta'][0] ?? 'Mercado Pago rechazó el pago. Verifica los datos e intenta con otra tarjeta.';
+        DB::transaction(function () use ($intento, $cotizacion, $usuarioClienteId, $motivo): void {
+            $intentoBloqueado = PagoCotizacionIntento::whereKey($intento->id)->lockForUpdate()->first();
+            if (!$intentoBloqueado || $intentoBloqueado->rechazo_notificado_en) {
+                return;
+            }
+
+            Notificacione::create([
+                'empresa_id' => $cotizacion->empresa_id,
+                'usuario_id' => $usuarioClienteId,
+                'mensaje' => "Pago no procesado para la cotización {$cotizacion->folio}: {$motivo}",
+                'canal' => 'sistema_push',
+                'estado' => 'pendiente',
+            ]);
+
+            $intentoBloqueado->update(['rechazo_notificado_en' => now()]);
+        });
     }
 
     protected function crearNotificacion(int $empresaId, int $usuarioId, string $mensaje): void

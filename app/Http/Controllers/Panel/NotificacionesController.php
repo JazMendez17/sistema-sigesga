@@ -68,12 +68,21 @@ class NotificacionesController extends Controller
     public function unreadCount()
     {
         $user = Auth::user();
+        $after = max(0, (int) request()->query('after', 0));
+        $nuevas = Notificacione::where('empresa_id', $user->empresa_id)
+            ->where('usuario_id', $user->id)
+            ->where('canal', 'sistema_push')
+            ->where('id', '>', $after)
+            ->orderBy('id')
+            ->limit(50)
+            ->get(['id', 'mensaje']);
 
         return response()->json([
             'count' => Notificacione::where('empresa_id', $user->empresa_id)
                 ->where('usuario_id', $user->id)
                 ->where('estado', '!=', 'leido')
                 ->count(),
+            'notifications' => $nuevas,
         ]);
     }
 

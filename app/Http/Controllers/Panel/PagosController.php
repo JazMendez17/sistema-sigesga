@@ -5,12 +5,43 @@
 namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
+use App\Models\Cliente;
 use App\Models\PagoCotizacion;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class PagosController extends Controller
 {
+    public function comprobante($id)
+    {
+        $user = Auth::user();
+        abort_unless(in_array($user->rol, ['superadmin', 'admin', 'cotizador', 'cliente'], true), 403);
+
+        $query = PagoCotizacion::with(['cotizacion.cliente.usuario', 'cotizacion.tipoServicio', 'cliente'])
+            ->where('estatus', 'pagado');
+
+        if (!$user->isSuperAdmin()) {
+            $query->where('empresa_id', $user->empresa_id);
+        }
+
+        if ($user->rol === 'cliente') {
+            $cliente = Cliente::where('empresa_id', $user->empresa_id)
+                ->where('usuario_id', $user->id)
+                ->firstOrFail();
+            $query->where('cliente_id', $cliente->id);
+        }
+
+        $pago = $query->findOrFail($id);
+        $folio = $pago->cotizacion?->folio
+            ?? ('COT-' . str_pad((string) $pago->cotizacion_id, 5, '0', STR_PAD_LEFT));
+
+        return Pdf::loadView('emails.pago_comprobante_pdf', [
+            'cotizacion' => $pago->cotizacion,
+            'pago' => $pago,
+        ])->download("Comprobante-{$folio}.pdf");
+    }
+
     public function index()
     {
         $user = Auth::user();

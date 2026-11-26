@@ -6,8 +6,10 @@ namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
 use App\Models\EmpresaIntegracione;
+use App\Services\PagoTarjetaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class IntegracionesController extends Controller
@@ -61,6 +63,14 @@ class IntegracionesController extends Controller
                         // Mercado Pago
                         'public_key' => $cfg['public_key'] ?? '',
                         'modo' => $cfg['modo'] ?? 'pruebas',
+                        'ambiente_valido' => $i->proveedor !== 'mercadopago'
+                            || empty($cfg['public_key'])
+                            || empty($i->api_key)
+                            || PagoTarjetaService::credencialesCoincidenConModo(
+                                (string) $cfg['public_key'],
+                                (string) $i->api_key,
+                                (string) ($cfg['modo'] ?? 'pruebas')
+                            ),
                         // Gmail
                         'correo' => $cfg['correo'] ?? '',
                         'nombre_remitente' => $cfg['nombre_remitente'] ?? (Auth::user()->empresa?->siglas ?: 'SIGESGA'),
@@ -126,6 +136,26 @@ class IntegracionesController extends Controller
             }
         }
 
+        if ($integracion->proveedor === 'mercadopago') {
+            $apiKey = $request->filled('api_key') ? trim((string) $data['api_key']) : (string) ($integracion->api_key ?? '');
+            $publicKey = (string) ($cfg['public_key'] ?? '');
+            $modo = (string) ($cfg['modo'] ?? 'pruebas');
+            $activo = $request->has('activo') ? $request->boolean('activo') : (bool) $integracion->activo;
+
+            if ($activo && ($apiKey === '' || $publicKey === '')) {
+                throw ValidationException::withMessages([
+                    'api_key' => 'Para activar Mercado Pago debes guardar la llave pública y el Access Token.',
+                ]);
+            }
+
+            if ($apiKey !== '' && $publicKey !== ''
+                && !PagoTarjetaService::credencialesCoincidenConModo($publicKey, $apiKey, $modo)) {
+                throw ValidationException::withMessages([
+                    'modo' => 'La llave pública y el Access Token no corresponden al entorno seleccionado. Usa ambas llaves de Pruebas (TEST-) o ambas de Producción (APP_USR-).',
+                ]);
+            }
+        }
+
         if ($cambioConfig) {
             $update['configuracion_json'] = $cfg;
         }
@@ -142,7 +172,12 @@ class IntegracionesController extends Controller
         }
 
         return match ($integracion->proveedor) {
-            'mercadopago' => !empty($cfg['public_key']),
+            'mercadopago' => !empty($cfg['public_key'])
+                && PagoTarjetaService::credencialesCoincidenConModo(
+                    (string) $cfg['public_key'],
+                    (string) $integracion->api_key,
+                    (string) ($cfg['modo'] ?? 'pruebas')
+                ),
             'gmail' => !empty($cfg['correo']),
             'whatsapp' => !empty($cfg['phone_number_id']) || !empty($cfg['telefono']),
             default => true,
