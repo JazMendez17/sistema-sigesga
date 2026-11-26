@@ -325,10 +325,13 @@ class PagoTarjetaCotizacionTest extends TestCase
         Http::assertSent(function ($request) {
             return $request->url() === 'https://api.mercadopago.com/v1/orders'
                 && $request->hasHeader('X-Idempotency-Key')
-                && $request->hasHeader('Authorization', 'Bearer TEST-ACCESS-TOKEN-123')
+                && $request->hasHeader('Authorization', 'Bearer APP_USR-TEST-ACCESS-TOKEN-123')
                 && ($request['type'] ?? null) === 'online'
                 && ($request['processing_mode'] ?? null) === 'automatic'
-                && ($request['transactions']['payments'][0]['payment_method']['token'] ?? null) === 'tok_mp_1234567890abcdef'
+                && ($request['capture_mode'] ?? null) === 'automatic'
+                && ($request['items'][0]['unit_price'] ?? null) === '638.00'
+                && ($request['payer']['email'] ?? null) === 'lucia@cliente.test'
+                && ($request['transactions']['payments'][0]['payment_method']['token'] ?? null) === '12345678901234567890123456789012'
                 && ($request['transactions']['payments'][0]['payment_method']['installments'] ?? null) === 1;
         });
 
@@ -399,6 +402,88 @@ class PagoTarjetaCotizacionTest extends TestCase
         Http::assertSentCount(1);
     }
 
+    public function test_estado_failed_de_orders_api_se_registra_como_rechazo_final(): void
+    {
+        $this->crearIntegracionMercadoPago();
+        Http::fake([
+            'https://api.mercadopago.com/v1/orders' => Http::response([
+                'id' => 'ORD-FAILED',
+                'status' => 'failed',
+                'status_detail' => 'insufficient_amount',
+                'transactions' => ['payments' => [[
+                    'id' => 'PAY-FAILED',
+                    'status' => 'failed',
+                    'status_detail' => 'insufficient_amount',
+                ]]],
+            ], 201),
+        ]);
+
+        [$clienteUser, $cotizacion] = $this->crearCotizacionDeCliente('COT-FAILED');
+        $this->actingAs($clienteUser)
+            ->post("/panel/cliente/cotizaciones/{$cotizacion->id}/pagar-tarjeta", [
+                ...$this->datosTarjetaTokenizada('Cliente Fallido'),
+                'tarjeta_exp_mes' => 12,
+                'tarjeta_exp_anio' => now()->year + 2,
+            ])
+            ->assertSessionHasErrors('tarjeta');
+
+        $this->assertDatabaseHas('pagos_cotizacion_intentos', ['estado' => 'rechazado']);
+        $this->assertDatabaseCount('pagos_cotizacion', 0);
+        $this->assertDatabaseHas('notificaciones', ['usuario_id' => $clienteUser->id]);
+    }
+
+    public function test_error_de_solicitud_orders_no_se_notifica_como_rechazo_bancario(): void
+    {
+        $this->crearIntegracionMercadoPago();
+        Http::fake([
+            'https://api.mercadopago.com/v1/orders' => Http::response([
+                'errors' => [[
+                    'code' => 'property_value',
+                    'message' => 'Invalid request property.',
+                ]],
+            ], 400),
+        ]);
+
+        [$clienteUser, $cotizacion] = $this->crearCotizacionDeCliente('COT-ERROR-API');
+        $this->actingAs($clienteUser)
+            ->post("/panel/cliente/cotizaciones/{$cotizacion->id}/pagar-tarjeta", [
+                ...$this->datosTarjetaTokenizada('Cliente Error'),
+                'tarjeta_exp_mes' => 12,
+                'tarjeta_exp_anio' => now()->year + 2,
+            ])
+            ->assertSessionHasErrors('tarjeta');
+
+        $this->assertDatabaseHas('pagos_cotizacion_intentos', ['estado' => 'error']);
+        $this->assertDatabaseCount('notificaciones', 0);
+        $this->assertDatabaseCount('pagos_cotizacion', 0);
+    }
+
+    public function test_solicitud_orders_no_acepta_tokens_cortos_ni_tarjetas_prepagadas(): void
+    {
+        [$clienteUser, $cotizacion] = $this->crearCotizacionDeCliente('COT-TOKEN-INVALIDO');
+        $datos = [
+            ...$this->datosTarjetaTokenizada('Cliente Token'),
+            'tarjeta_exp_mes' => 12,
+            'tarjeta_exp_anio' => now()->year + 2,
+        ];
+
+        $this->actingAs($clienteUser)
+            ->post("/panel/cliente/cotizaciones/{$cotizacion->id}/pagar-tarjeta", [
+                ...$datos,
+                'mp_token' => 'token-corto',
+            ])
+            ->assertSessionHasErrors('mp_token');
+
+        $this->actingAs($clienteUser)
+            ->post("/panel/cliente/cotizaciones/{$cotizacion->id}/pagar-tarjeta", [
+                ...$datos,
+                'mp_payment_type_id' => 'prepaid_card',
+            ])
+            ->assertSessionHasErrors('mp_payment_type_id');
+
+        $this->assertDatabaseCount('pagos_cotizacion_intentos', 0);
+    }
+
     public function test_timeout_reintenta_payload_y_clave_del_proveedor_sin_generar_otro_cargo(): void
     {
         $this->crearIntegracionMercadoPago();
@@ -452,9 +537,9 @@ class PagoTarjetaCotizacionTest extends TestCase
         EmpresaIntegracione::create([
             'empresa_id' => $this->empresa->id,
             'proveedor' => 'mercadopago',
-            'api_key' => 'APP_USR-LIVE-TOKEN',
+            'api_key' => 'APP_USR-TEST-ACCESS-TOKEN',
             'configuracion_json' => [
-                'public_key' => 'TEST-PUBLIC-KEY',
+                'public_key' => 'APP_USR-PRODUCTION-PUBLIC-KEY',
                 'modo' => 'pruebas',
             ],
             'activo' => true,
@@ -466,6 +551,17 @@ class PagoTarjetaCotizacionTest extends TestCase
         $this->assertFalse($config['ambiente_valido']);
         $this->assertNull($config['public_key']);
         $this->assertNull($config['access_token']);
+
+        $this->assertTrue(\App\Services\PagoTarjetaService::credencialesCoincidenConModo(
+            'TEST-PUBLIC-KEY',
+            'APP_USR-TEST-ACCESS-TOKEN',
+            'pruebas'
+        ));
+        $this->assertTrue(\App\Services\PagoTarjetaService::credencialesCoincidenConModo(
+            'APP_USR-PRODUCTION-PUBLIC-KEY',
+            'APP_USR-PRODUCTION-ACCESS-TOKEN',
+            'produccion'
+        ));
     }
 
     private function configurarMercadoPago(): void
@@ -494,7 +590,7 @@ class PagoTarjetaCotizacionTest extends TestCase
         EmpresaIntegracione::create([
             'empresa_id' => $this->empresa->id,
             'proveedor' => 'mercadopago',
-            'api_key' => 'TEST-ACCESS-TOKEN-123',
+            'api_key' => 'APP_USR-TEST-ACCESS-TOKEN-123',
             'configuracion_json' => [
                 'public_key' => 'TEST-PUBLIC-KEY-456',
                 'descripcion' => 'Mercado Pago',
@@ -514,7 +610,7 @@ class PagoTarjetaCotizacionTest extends TestCase
             'tarjeta_titular' => $titular,
             'tarjeta_ultimos4' => $ultimos4,
             'tarjeta_marca' => $marca,
-            'mp_token' => 'tok_mp_1234567890abcdef',
+            'mp_token' => '12345678901234567890123456789012',
             'mp_idempotency_key' => 'c9bf9e57-1685-4c89-bafb-ff5af830be8a',
             'mp_payment_method_id' => $metodo,
             'mp_payment_type_id' => 'credit_card',

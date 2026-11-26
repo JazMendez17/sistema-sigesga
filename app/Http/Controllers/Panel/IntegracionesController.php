@@ -151,7 +151,7 @@ class IntegracionesController extends Controller
             if ($apiKey !== '' && $publicKey !== ''
                 && !PagoTarjetaService::credencialesCoincidenConModo($publicKey, $apiKey, $modo)) {
                 throw ValidationException::withMessages([
-                    'modo' => 'La llave pública y el Access Token no corresponden al entorno seleccionado. Usa ambas llaves de Pruebas (TEST-) o ambas de Producción (APP_USR-).',
+                    'modo' => 'Las credenciales no corresponden al entorno seleccionado. En Pruebas usa la Public Key TEST- y el Access Token APP_USR- de la sección Prueba; en Producción usa ambas credenciales APP_USR- de la sección Producción.',
                 ]);
             }
         }

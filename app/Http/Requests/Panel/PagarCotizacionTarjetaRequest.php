@@ -51,10 +51,10 @@ class PagarCotizacionTarjetaRequest extends FormRequest
                     }
                 },
             ],
-            'mp_token' => ['required', 'string', 'min:10', 'max:128'],
+            'mp_token' => ['required', 'string', 'min:32', 'max:33'],
             'mp_idempotency_key' => ['required', 'uuid'],
             'mp_payment_method_id' => ['required', 'string', 'max:40'],
-            'mp_payment_type_id' => ['required', 'string', 'in:credit_card,debit_card,prepaid_card'],
+            'mp_payment_type_id' => ['required', 'string', 'in:credit_card,debit_card'],
             'mp_installments' => ['required', 'integer', 'between:1,12'],
             'mp_device_id' => ['nullable', 'string', 'max:255'],
             'tarjeta_ultimos4' => ['required', 'digits:4'],

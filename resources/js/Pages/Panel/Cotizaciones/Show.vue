@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { router, useForm, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Pages/Panel/AppLayout.vue'
 import Badge from '@/Components/Badge.vue'
@@ -16,6 +16,7 @@ const unidades = computed(() => page.props.unidades ?? [])
 const mostrarModal = ref(false)
 const tokenizandoMp = ref(false)
 const errorMp = ref('')
+let mercadoPagoSdkPromise = null
 
 const form = useForm({
   operador_id: '',
@@ -115,40 +116,50 @@ function aprobarCliente() {
   }
 }
 
-function cargarSeguridadMercadoPago() {
-  if (typeof window === 'undefined' || !props.mercadoPagoPublicKey) return
-  if (document.getElementById('mp-security-js')) return
-  const script = document.createElement('script')
-  script.id = 'mp-security-js'
-  script.src = 'https://www.mercadopago.com/v2/security.js'
-  script.setAttribute('view', 'checkout')
-  script.async = true
-  document.head.appendChild(script)
-}
-
-onMounted(() => {
-  cargarSeguridadMercadoPago()
-})
-
 function cargarSdkMercadoPago() {
   if (typeof window === 'undefined') return Promise.reject(new Error('Navegador no disponible'))
   if (window.MercadoPago) return Promise.resolve(window.MercadoPago)
+  if (mercadoPagoSdkPromise) return mercadoPagoSdkPromise
 
-  return new Promise((resolve, reject) => {
-    const existing = document.getElementById('mp-sdk-v2')
-    if (existing) {
-      existing.addEventListener('load', () => resolve(window.MercadoPago))
-      existing.addEventListener('error', () => reject(new Error('No se pudo cargar el SDK de Mercado Pago.')))
+  mercadoPagoSdkPromise = new Promise((resolve, reject) => {
+    let script = document.getElementById('mp-sdk-v2')
+    const alCargar = () => {
+      if (!window.MercadoPago) {
+        mercadoPagoSdkPromise = null
+        script.remove()
+        reject(new Error('No se pudo inicializar el SDK de Mercado Pago.'))
+        return
+      }
+      script.dataset.loaded = 'true'
+      resolve(window.MercadoPago)
+    }
+    const alFallar = () => {
+      mercadoPagoSdkPromise = null
+      script.remove()
+      reject(new Error('No se pudo cargar el SDK de Mercado Pago.'))
+    }
+
+    if (!script) {
+      script = document.createElement('script')
+      script.id = 'mp-sdk-v2'
+      script.src = 'https://sdk.mercadopago.com/js/v2'
+      script.async = true
+      script.addEventListener('load', alCargar, { once: true })
+      script.addEventListener('error', alFallar, { once: true })
+      document.head.appendChild(script)
       return
     }
-    const script = document.createElement('script')
-    script.id = 'mp-sdk-v2'
-    script.src = 'https://sdk.mercadopago.com/js/v2'
-    script.async = true
-    script.onload = () => resolve(window.MercadoPago)
-    script.onerror = () => reject(new Error('No se pudo cargar el SDK de Mercado Pago.'))
-    document.head.appendChild(script)
+
+    if (script.dataset.loaded === 'true') {
+      alCargar()
+      return
+    }
+
+    script.addEventListener('load', alCargar, { once: true })
+    script.addEventListener('error', alFallar, { once: true })
   })
+
+  return mercadoPagoSdkPromise
 }
 
 async function procesarPagoTarjeta() {
@@ -176,7 +187,7 @@ async function procesarPagoTarjeta() {
 
       const pmRes = await mp.getPaymentMethods({ bin: soloDigitos.slice(0, 6) })
       const paymentMethod = pmRes?.results?.find((method) =>
-        ['credit_card', 'debit_card', 'prepaid_card'].includes(method.payment_type_id),
+        ['credit_card', 'debit_card'].includes(method.payment_type_id),
       )
       if (!paymentMethod?.id || !paymentMethod.payment_type_id) {
         throw new Error('Mercado Pago no reconoce esta tarjeta. Verifica los datos o intenta con otra tarjeta.')
@@ -213,7 +224,7 @@ async function procesarPagoTarjeta() {
           renovarClaveIdempotencia()
         },
         onError: (errors) => {
-          if (errors.mp_attempt_status === 'rejected') renovarClaveIdempotencia()
+          if (['rejected', 'technical_error'].includes(errors.mp_attempt_status)) renovarClaveIdempotencia()
         },
         onFinish: () => {
           pagoForm.tarjeta_numero = ''

@@ -45,15 +45,16 @@ class PagoTarjetaService
 
     public static function credencialesCoincidenConModo(string $publicKey, string $accessToken, string $modo): bool
     {
-        $prefijoEsperado = match ($modo) {
+        $prefijoLlavePublica = match ($modo) {
             'pruebas' => 'TEST-',
             'produccion' => 'APP_USR-',
             default => null,
         };
 
-        return $prefijoEsperado !== null
-            && str_starts_with($publicKey, $prefijoEsperado)
-            && str_starts_with($accessToken, $prefijoEsperado);
+        // Orders API test and production Access Tokens both use the APP_USR prefix.
+        return $prefijoLlavePublica !== null
+            && str_starts_with($publicKey, $prefijoLlavePublica)
+            && str_starts_with($accessToken, 'APP_USR-');
     }
 
     /** Mapea el payment_method_id de Mercado Pago a una marca legible. */
@@ -211,25 +212,37 @@ class PagoTarjetaService
 
             $payerEmail = $cotBloqueada->cliente?->email
                 ?: $cotBloqueada->cliente?->usuario?->email
-                ?: Usuario::whereKey($usuarioId)->value('email')
-                ?: 'pagos@sigesga.com';
+                ?: Usuario::whereKey($usuarioId)->value('email');
 
-            $partesNombre = preg_split('/\s+/', trim($titular)) ?: [];
-            $firstName = $cotBloqueada->cliente?->nombre ?: ($partesNombre[0] ?? 'Cliente');
-            $lastName = $cotBloqueada->cliente?->apellido_paterno ?: (count($partesNombre) > 1 ? implode(' ', array_slice($partesNombre, 1)) : 'SIGESGA');
+            $partesNombre = preg_split('/\s+/', $titular, 2) ?: [];
+            $firstName = $partesNombre[0] ?? 'Cliente';
+            $lastName = $partesNombre[1] ?? '';
             $referencia = 'PAG-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6));
             $montoStr = number_format($monto, 2, '.', '');
+            $folio = (string) ($cotBloqueada->folio ?? $cotBloqueada->id);
+            $payer = [
+                'first_name' => $firstName,
+            ];
+            if ($lastName !== '') {
+                $payer['last_name'] = $lastName;
+            }
+            if (filter_var($payerEmail, FILTER_VALIDATE_EMAIL)) {
+                $payer['email'] = $payerEmail;
+            }
             $requestPayload = [
                 'type' => 'online',
                 'processing_mode' => 'automatic',
+                'capture_mode' => 'automatic',
                 'external_reference' => $referencia,
-                'description' => 'Cotizacion ' . ($cotBloqueada->folio ?? $cotBloqueada->id) . ' - SIGESGA',
+                'description' => 'Cotizacion ' . $folio . ' - SIGESGA',
                 'total_amount' => $montoStr,
-                'payer' => [
-                    'email' => $payerEmail,
-                    'first_name' => $firstName,
-                    'last_name' => $lastName,
-                ],
+                'payer' => $payer,
+                'items' => [[
+                    'title' => 'Servicio de grua - Cotizacion ' . $folio,
+                    'description' => 'Servicio de grua cotizado por SIGESGA.',
+                    'quantity' => 1,
+                    'unit_price' => $montoStr,
+                ]],
                 'transactions' => [
                     'payments' => [[
                         'amount' => $montoStr,
@@ -308,6 +321,21 @@ class PagoTarjetaService
             throw ValidationException::withMessages([
                 'tarjeta' => $resultadoMp['mensaje'],
                 'mp_attempt_status' => 'rejected',
+            ]);
+        }
+
+        if ($resultadoMp['estado'] === 'error') {
+            $intento->update([
+                'estado' => 'error',
+                'mercadopago_order_id' => $resultadoMp['order_id'],
+                'mercadopago_payment_id' => $resultadoMp['payment_id'],
+                'request_payload' => null,
+                'mensaje_error' => $resultadoMp['mensaje'],
+            ]);
+
+            throw ValidationException::withMessages([
+                'tarjeta' => $resultadoMp['mensaje'],
+                'mp_attempt_status' => 'technical_error',
             ]);
         }
 
@@ -426,9 +454,9 @@ class PagoTarjetaService
             ];
         }
 
-        $definitivamenteRechazado = $response->clientError()
-            || in_array($orderStatus, ['rejected', 'cancelled', 'canceled'], true)
-            || $paymentStatus === 'rejected'
+        $definitivamenteRechazado = $response->status() === 402
+            || in_array($orderStatus, ['rejected', 'failed', 'cancelled', 'canceled'], true)
+            || in_array($paymentStatus, ['rejected', 'failed', 'cancelled', 'canceled'], true)
             || str_contains($statusDetail, 'rejected');
 
         if ($definitivamenteRechazado) {
@@ -449,9 +477,28 @@ class PagoTarjetaService
             ];
         }
 
+        if ($response->clientError() && $response->status() !== 429) {
+            Log::error('Mercado Pago rechazó la solicitud de creación de orden', [
+                'http_status' => $response->status(),
+                'errors' => $body['errors'] ?? null,
+                'message' => $body['message'] ?? null,
+            ]);
+
+            return [
+                'estado' => 'error',
+                'mensaje' => in_array($response->status(), [401, 403], true)
+                    ? 'Mercado Pago no autorizó esta operación. El administrador debe revisar las credenciales y permisos de la integración.'
+                    : 'Mercado Pago no aceptó los datos técnicos de la solicitud. No se registró el pago; contacta al administrador para revisar la integración.',
+                'order_id' => isset($body['id']) ? (string) $body['id'] : null,
+                'payment_id' => isset($payment['id']) ? (string) $payment['id'] : null,
+            ];
+        }
+
         return [
             'estado' => 'incierto',
-            'mensaje' => 'Mercado Pago todavía no confirma el resultado del pago. Reintenta este mismo intento; no inicies otro pago.',
+            'mensaje' => $response->status() === 429
+                ? 'Mercado Pago está limitando temporalmente los intentos. Espera un momento y vuelve a intentar este mismo pago.'
+                : 'Mercado Pago todavía no confirma el resultado del pago. Reintenta este mismo intento; no inicies otro pago.',
             'order_id' => isset($body['id']) ? (string) $body['id'] : null,
             'payment_id' => isset($payment['id']) ? (string) $payment['id'] : null,
         ];
@@ -461,6 +508,7 @@ class PagoTarjetaService
     {
         $porDetalle = match (strtolower($detail)) {
             'cc_rejected_insufficient_amount', 'insufficient_amount' => 'Tu tarjeta no cuenta con fondos suficientes para realizar este pago.',
+            'rejected_by_issuer' => 'Tu banco rechazó el cobro. Verifica que tu tarjeta esté habilitada para compras en línea (o usa tu tarjeta digital) e intenta de nuevo.',
             'cc_rejected_bad_filled_security_code', 'bad_filled_security_code' => 'El código de seguridad (CVV) es incorrecto. Verifícalo e intenta de nuevo.',
             'cc_rejected_bad_filled_date', 'bad_filled_date' => 'La fecha de vencimiento de tu tarjeta es incorrecta.',
             'cc_rejected_bad_filled_card_number', 'bad_filled_card_number' => 'El número de tarjeta es incorrecto. Revísalo e intenta nuevamente.',
@@ -482,6 +530,7 @@ class PagoTarjetaService
             (string) ($body['errors'][0]['message'] ?? ''),
             (string) ($body['errors'][0]['details'][0] ?? ''),
             (string) ($body['message'] ?? ''),
+            $detail,
         ])));
 
         if (str_contains($textoCrudo, 'high_risk')) {
@@ -505,7 +554,6 @@ class PagoTarjetaService
         if (str_contains($textoCrudo, 'payer') || str_contains($textoCrudo, 'email')) {
             return 'Verifica que el correo electrónico del cliente sea válido para procesar el pago.';
         }
-
         return 'No se pudo completar el pago con tu tarjeta. Verifica los datos ingresados o intenta con otra tarjeta.';
     }
 }

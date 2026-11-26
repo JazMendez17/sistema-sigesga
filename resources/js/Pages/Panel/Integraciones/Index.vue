@@ -178,7 +178,7 @@ function guardarConfig() {
                 placeholder="APP_USR-... o TEST-..."
                 class="w-full bg-[#E8EDF2] text-gray-800 rounded-2xl px-4 py-2.5 text-sm shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
               />
-              <p class="text-[11px] text-gray-500 mt-1">Se copia desde Mercado Pago Developers → Credenciales.</p>
+              <p class="text-[11px] text-gray-500 mt-1">Pruebas: usa la Public Key TEST- de la sección Prueba. Producción: usa la Public Key APP_USR- de Producción.</p>
             </div>
 
             <div>
@@ -189,7 +189,7 @@ function guardarConfig() {
                 :placeholder="editando.configurado ? 'Dejar vacío para conservar el token actual' : 'Pega aquí tu Access Token privado'"
                 class="w-full bg-[#E8EDF2] text-gray-800 rounded-2xl px-4 py-2.5 text-sm shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
               />
-              <p class="text-[11px] text-gray-500 mt-1">Se guarda cifrado y nunca se vuelve a mostrar por seguridad.</p>
+              <p class="text-[11px] text-gray-500 mt-1">Orders API usa Access Tokens APP_USR- en ambos entornos. Copia el token desde el entorno seleccionado; se guarda cifrado y no se vuelve a mostrar.</p>
             </div>
           </template>
 
