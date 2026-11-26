@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { router, useForm, usePage } from '@inertiajs/vue3'
 import AppLayout from '@/Pages/Panel/AppLayout.vue'
 import Badge from '@/Components/Badge.vue'
@@ -15,9 +15,6 @@ const operadores = computed(() => page.props.operadores ?? [])
 const unidades = computed(() => page.props.unidades ?? [])
 const mostrarModal = ref(false)
 const tokenizandoMp = ref(false)
-const cargandoTiposIdentificacion = ref(false)
-const tiposIdentificacion = ref([])
-const errorTiposIdentificacion = ref('')
 const errorMp = ref('')
 let mercadoPagoSdkPromise = null
 
@@ -60,8 +57,6 @@ function renovarClaveIdempotencia() {
 
 const pagoForm = useForm({
   tarjeta_titular: '',
-  tarjeta_tipo_identificacion: '',
-  tarjeta_numero_identificacion: '',
   tarjeta_numero: '',
   tarjeta_exp_mes: '',
   tarjeta_exp_anio: '',
@@ -167,36 +162,6 @@ function cargarSdkMercadoPago() {
   return mercadoPagoSdkPromise
 }
 
-async function cargarTiposIdentificacion() {
-  if (!props.mercadoPagoPublicKey) return
-
-  cargandoTiposIdentificacion.value = true
-  errorTiposIdentificacion.value = ''
-
-  try {
-    const MercadoPago = await cargarSdkMercadoPago()
-    const mp = new MercadoPago(props.mercadoPagoPublicKey, { locale: 'es-MX' })
-    const tipos = await mp.getIdentificationTypes()
-
-    if (!Array.isArray(tipos) || tipos.length === 0) {
-      throw new Error('Mercado Pago no devolvió tipos de identificación.')
-    }
-
-    tiposIdentificacion.value = tipos
-  } catch {
-    tiposIdentificacion.value = []
-    errorTiposIdentificacion.value = 'No se pudieron cargar los tipos de identificación de Mercado Pago. Intenta de nuevo.'
-  } finally {
-    cargandoTiposIdentificacion.value = false
-  }
-}
-
-onMounted(() => {
-  if (props.cotizacion?.puede_pagar_tarjeta && props.mercadoPagoPublicKey) {
-    void cargarTiposIdentificacion()
-  }
-})
-
 async function procesarPagoTarjeta() {
   errorMp.value = ''
   const ruta = props.cotizacion?.es_cliente
@@ -204,18 +169,6 @@ async function procesarPagoTarjeta() {
     : route('panel.cotizaciones.pagar', { id: props.cotizacion.id })
 
   if (props.mercadoPagoPublicKey) {
-    if (cargandoTiposIdentificacion.value || tiposIdentificacion.value.length === 0) {
-      errorMp.value = errorTiposIdentificacion.value || 'Espera a que carguen los tipos de identificación de Mercado Pago.'
-      return
-    }
-
-    const tipoIdentificacion = pagoForm.tarjeta_tipo_identificacion
-    const numeroIdentificacion = (pagoForm.tarjeta_numero_identificacion || '').trim()
-    if (!tiposIdentificacion.value.some((tipo) => tipo.id === tipoIdentificacion) || !numeroIdentificacion) {
-      errorMp.value = 'Selecciona el tipo de identificación e ingresa el número del titular de la tarjeta.'
-      return
-    }
-
     if (!pagoForm.mp_idempotency_key) {
       errorMp.value = 'Tu navegador no puede crear una clave segura para el pago. Actualiza el navegador e intenta de nuevo.'
       return
@@ -240,20 +193,13 @@ async function procesarPagoTarjeta() {
         throw new Error('Mercado Pago no reconoce esta tarjeta. Verifica los datos o intenta con otra tarjeta.')
       }
 
-      let tokenRes
-      try {
-        tokenRes = await mp.createCardToken({
-          cardNumber: soloDigitos,
-          cardholderName: pagoForm.tarjeta_titular,
-          identificationType: tipoIdentificacion,
-          identificationNumber: numeroIdentificacion,
-          cardExpirationMonth: mes,
-          cardExpirationYear: anio,
-          securityCode: (pagoForm.tarjeta_cvv || '').replace(/\D/g, ''),
-        })
-      } finally {
-        pagoForm.tarjeta_numero_identificacion = ''
-      }
+      const tokenRes = await mp.createCardToken({
+        cardNumber: soloDigitos,
+        cardholderName: pagoForm.tarjeta_titular,
+        cardExpirationMonth: mes,
+        cardExpirationYear: anio,
+        securityCode: (pagoForm.tarjeta_cvv || '').replace(/\D/g, ''),
+      })
 
       if (!tokenRes?.id) {
         throw new Error('No se pudo tokenizar la tarjeta con Mercado Pago. Revisa los datos ingresados.')
@@ -439,40 +385,6 @@ function moneda(val) { return Number(val || 0).toFixed(2) }
                 <p v-if="pagoForm.errors.tarjeta_titular" class="text-xs text-red-500 mt-1">{{ pagoForm.errors.tarjeta_titular }}</p>
               </div>
 
-              <div class="grid grid-cols-2 gap-2.5">
-                <div>
-                  <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Tipo de identificación</label>
-                  <select
-                    v-model="pagoForm.tarjeta_tipo_identificacion"
-                    required
-                    :disabled="cargandoTiposIdentificacion || tiposIdentificacion.length === 0"
-                    autocomplete="off"
-                    class="w-full bg-[#E8EDF2] text-gray-800 rounded-2xl px-3 py-2.5 text-sm shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                  >
-                    <option value="">Selecciona</option>
-                    <option v-for="tipo in tiposIdentificacion" :key="tipo.id" :value="tipo.id">{{ tipo.name }}</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Número de identificación</label>
-                  <input
-                    v-model="pagoForm.tarjeta_numero_identificacion"
-                    type="text"
-                    required
-                    autocomplete="off"
-                    maxlength="30"
-                    placeholder="Número del titular"
-                    class="w-full bg-[#E8EDF2] text-gray-800 rounded-2xl px-4 py-2.5 text-sm shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                  />
-                </div>
-              </div>
-              <p v-if="cargandoTiposIdentificacion" class="text-xs text-gray-500">Cargando tipos de identificación...</p>
-              <div v-if="errorTiposIdentificacion" class="flex items-center justify-between gap-2 text-xs text-red-500">
-                <span>{{ errorTiposIdentificacion }}</span>
-                <button type="button" class="font-semibold underline" @click="cargarTiposIdentificacion">Reintentar</button>
-              </div>
-              <p class="text-[11px] text-gray-500">La identificación se envía directamente a Mercado Pago para crear el token y no se guarda en SIGESGA.</p>
-
               <div>
                 <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Número de tarjeta</label>
                 <input
@@ -534,7 +446,7 @@ function moneda(val) { return Number(val || 0).toFixed(2) }
               <p v-if="pagoForm.errors.tarjeta" class="text-xs text-red-500">{{ pagoForm.errors.tarjeta }}</p>
               <p v-if="errorMp" class="text-xs text-red-500">{{ errorMp }}</p>
 
-              <NeumorphicButton type="submit" :disabled="cargandoTiposIdentificacion || tiposIdentificacion.length === 0" :loading="pagoForm.processing || tokenizandoMp || cargandoTiposIdentificacion" class="w-full">
+              <NeumorphicButton type="submit" :loading="pagoForm.processing || tokenizandoMp" class="w-full">
                 Pagar ${{ moneda(cotizacion?.total_estimado) }} MXN y Aprobar
               </NeumorphicButton>
 
