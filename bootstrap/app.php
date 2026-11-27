@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->redirectUsersTo('/panel/dashboard');
+        $middleware->validateCsrfTokens(except: ['mercadopago/webhook/*']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->dontFlash([

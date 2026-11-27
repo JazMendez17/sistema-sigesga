@@ -13,8 +13,8 @@ const form = useForm({
   activo: true,
   api_key: '',
   // Mercado Pago
-  public_key: '',
   modo: 'pruebas',
+  webhook_secret: '',
   // Gmail
   correo: '',
   nombre_remitente: '',
@@ -36,9 +36,12 @@ function iconPath(item) {
 function resumenItem(item) {
   const c = item.config || {}
   if (item.proveedor === 'mercadopago') {
-    if (c.ambiente_valido === false) return 'Las llaves no corresponden al entorno seleccionado.'
-    if (!item.configurado) return 'Aún sin llaves guardadas.'
-    return `Modo: ${c.modo === 'produccion' ? 'Producción (cobros reales)' : 'Pruebas (Sandbox)'}`
+    if (c.ambiente_valido === false) return 'El Access Token debe comenzar con APP_USR- y el entorno debe ser Pruebas o Producción.'
+    if (!item.configurado) return 'Aún sin Access Token guardado.'
+    const modo = `Modo: ${c.modo === 'produccion' ? 'Producción (cobros reales)' : 'Pruebas (Sandbox)'}`
+    if (!c.webhook_https) return `${modo}. Falta HTTPS para recibir webhooks.`
+    if (!c.webhook_secret_configurada) return `${modo}. Falta configurar la firma del webhook.`
+    return `${modo}. Webhook listo.`
   }
   if (item.proveedor === 'gmail') {
     return c.correo ? `Remitente: ${c.nombre_remitente || 'SIGESGA'} (${c.correo})` : 'Aún sin correo configurado.'
@@ -59,8 +62,8 @@ function abrirConfig(item) {
   form.clearErrors()
   form.activo = Boolean(item.activo)
   form.api_key = ''
-  form.public_key = c.public_key || ''
   form.modo = c.modo || 'pruebas'
+  form.webhook_secret = ''
   form.correo = c.correo || ''
   form.nombre_remitente = c.nombre_remitente || ''
   form.telefono = c.telefono || ''
@@ -75,7 +78,8 @@ function guardarConfig() {
   if (form.api_key) payload.api_key = form.api_key
 
   if (proveedor === 'mercadopago') {
-    payload = { ...payload, public_key: form.public_key, modo: form.modo }
+    payload = { ...payload, modo: form.modo }
+    if (form.webhook_secret) payload.webhook_secret = form.webhook_secret
   } else if (proveedor === 'gmail') {
     payload = {
       ...payload,
@@ -171,17 +175,6 @@ function guardarConfig() {
             </div>
 
             <div>
-              <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Llave pública (Public Key)</label>
-              <input
-                v-model="form.public_key"
-                type="text"
-                placeholder="APP_USR-... o TEST-..."
-                class="w-full bg-[#E8EDF2] text-gray-800 rounded-2xl px-4 py-2.5 text-sm shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
-              />
-              <p class="text-[11px] text-gray-500 mt-1">Pruebas: usa la Public Key TEST- de la sección Prueba. Producción: usa la Public Key APP_USR- de Producción.</p>
-            </div>
-
-            <div>
               <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Token privado (Access Token)</label>
               <input
                 v-model="form.api_key"
@@ -189,7 +182,34 @@ function guardarConfig() {
                 :placeholder="editando.configurado ? 'Dejar vacío para conservar el token actual' : 'Pega aquí tu Access Token privado'"
                 class="w-full bg-[#E8EDF2] text-gray-800 rounded-2xl px-4 py-2.5 text-sm shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
               />
-              <p class="text-[11px] text-gray-500 mt-1">Orders API usa Access Tokens APP_USR- en ambos entornos. Copia el token desde el entorno seleccionado; se guarda cifrado y no se vuelve a mostrar.</p>
+              <p class="text-[11px] text-gray-500 mt-1">Checkout Pro usa el Access Token APP_USR- de la aplicación. Selecciona Pruebas o Producción según el panel del que copiaste el token; se guarda cifrado y no se vuelve a mostrar.</p>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Secreto del webhook</label>
+              <input
+                v-model="form.webhook_secret"
+                type="password"
+                :placeholder="editando.config.webhook_secret_configurada ? 'Dejar vacío para conservar el secreto actual' : 'Pega aquí la clave generada por Mercado Pago'"
+                class="w-full bg-[#E8EDF2] text-gray-800 rounded-2xl px-4 py-2.5 text-sm shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              />
+              <p v-if="form.errors.webhook_secret" class="text-xs text-red-500 mt-1">{{ form.errors.webhook_secret }}</p>
+              <p class="text-[11px] text-gray-500 mt-1">En Mercado Pago: Tu aplicación → Webhooks → Configurar notificación. Revela y copia la clave generada. Se guarda cifrada.</p>
+            </div>
+
+            <div class="rounded-2xl border border-indigo-100 bg-white/60 p-3.5 text-xs text-gray-600 space-y-2">
+              <p class="font-semibold text-gray-800">URL de notificaciones</p>
+              <template v-if="editando.config.webhook_url">
+                <code class="block break-all rounded-lg bg-gray-100 p-2 text-[10px] text-indigo-700">{{ editando.config.webhook_url }}</code>
+                <template v-if="editando.config.webhook_tiene_intento">
+                  <p>Esta es la URL real del último intento. Úsala para simular una notificación Payments desde el panel de Mercado Pago.</p>
+                </template>
+                <template v-else>
+                  <p>Esta URL es una plantilla: no configures REFERENCIA literalmente. Crea primero un intento de pago para obtener una URL real.</p>
+                </template>
+                <p>SIGESGA envía automáticamente la URL real de cada intento al crear la preferencia. Activa el evento Payments. En pruebas, el retorno automático también reconcilia el pago; si Mercado Pago no envía notificaciones, usa la simulación con la URL real.</p>
+              </template>
+              <p v-else class="text-amber-700">APP_URL debe usar HTTPS para que Mercado Pago acepte el webhook. En producción configura https://www.sigesga.com.</p>
             </div>
           </template>
 

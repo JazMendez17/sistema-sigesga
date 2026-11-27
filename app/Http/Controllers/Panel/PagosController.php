@@ -1,6 +1,6 @@
 <?php
 
-// Controlador de consulta de pagos con tarjeta para superadmin, admin y cotizador
+// Controlador de consulta de pagos para superadmin, admin, cotizador y cliente.
 
 namespace App\Http\Controllers\Panel;
 
@@ -62,16 +62,21 @@ class PagosController extends Controller
             'folio_cotizacion' => $p->cotizacion?->folio ?? ('COT-' . str_pad((string) $p->cotizacion_id, 5, '0', STR_PAD_LEFT)),
             'cliente' => $p->cliente?->nombre ?? '—',
             'titular' => $p->tarjeta_titular,
+            'tiene_tarjeta' => $p->tieneTarjeta(),
+            'metodo' => $p->metodo,
+            'metodo_descripcion' => $p->descripcionMetodo(),
             'tarjeta_marca' => $p->tarjeta_marca,
             'tarjeta_ultimos4' => $p->tarjeta_ultimos4,
-            'tarjeta_resumen' => trim($p->tarjeta_marca . ' •••• ' . $p->tarjeta_ultimos4),
-            'tarjeta_vigencia' => str_pad((string) $p->tarjeta_exp_mes, 2, '0', STR_PAD_LEFT) . '/' . $p->tarjeta_exp_anio,
+            'tarjeta_resumen' => $p->descripcionMetodo(),
+            'tarjeta_vigencia' => $p->tarjeta_exp_mes && $p->tarjeta_exp_anio
+                ? str_pad((string) $p->tarjeta_exp_mes, 2, '0', STR_PAD_LEFT) . '/' . $p->tarjeta_exp_anio
+                : null,
             'monto' => (float) $p->monto,
             'moneda' => $p->moneda ?? 'MXN',
             'referencia' => $p->referencia,
             'clave_rastreo' => $p->pasarela_transaccion_id ?? '—',
             'pasarela' => match ($p->pasarela) {
-                'mercadopago_orders' => 'Mercado Pago',
+                'mercadopago_orders', 'mercadopago_pro' => 'Mercado Pago',
                 'stripe' => 'Stripe',
                 default => 'Pasarela interna',
             },

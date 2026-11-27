@@ -35,18 +35,18 @@ defineProps({ cotizaciones: Array })
               <td class="px-4 py-3"><Badge :variant="c.estatus === 'aprobado' ? 'success' : c.estatus === 'rechazado' ? 'danger' : 'warning'">{{ $etiqueta(c.estatus) }}</Badge></td>
               <td class="px-4 py-3">
                 <Badge v-if="c.estatus_pago === 'pagado'" variant="success">Pagado</Badge>
-                <Badge v-else-if="c.requiere_pago_tarjeta" variant="warning">Requiere tarjeta</Badge>
-                <Badge v-else variant="info">Convenio / Tarjeta</Badge>
+                <Badge v-else-if="c.requiere_pago_tarjeta" variant="warning">Requiere pago</Badge>
+                <Badge v-else variant="info">Convenio / Pago opcional</Badge>
               </td>
               <td class="px-4 py-3">{{ c.fecha }}</td>
               <td class="px-4 py-3 text-right">
                 <div class="inline-flex items-center gap-2">
                   <button
-                    v-if="c.puede_pagar_tarjeta"
+                    v-if="c.puede_pagar"
                     @click="router.visit(route('panel.cotizaciones.show.cliente', { id: c.id }))"
                     class="rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-all hover:bg-indigo-700"
                   >
-                    Pagar con tarjeta
+                    Pagar en línea
                   </button>
                   <button @click="router.visit(route('panel.cotizaciones.show.cliente', { id: c.id }))" class="rounded-lg bg-[#EEF2F7] p-2 text-gray-500 shadow-[3px_3px_6px_#d0d5da,-3px_-3px_6px_#ffffff] transition-all hover:text-[#4F46E5]" title="Ver detalle">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>

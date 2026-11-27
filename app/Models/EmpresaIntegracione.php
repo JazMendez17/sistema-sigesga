@@ -19,12 +19,14 @@ class EmpresaIntegracione extends Model
         'empresa_id',
         'proveedor',
         'api_key',
+        'webhook_secret',
         'configuracion_json',
         'activo',
     ];
 
     protected $hidden = [
         'api_key',
+        'webhook_secret',
     ];
 
     protected function casts(): array
@@ -43,6 +45,26 @@ class EmpresaIntegracione extends Model
                 if ($value === null || $value === '') {
                     return null;
                 }
+                try {
+                    return Crypt::decryptString($value);
+                } catch (DecryptException) {
+                    return $value;
+                }
+            },
+            set: fn (?string $value): ?string => ($value === null || $value === '')
+                ? null
+                : Crypt::encryptString($value),
+        );
+    }
+
+    protected function webhookSecret(): Attribute
+    {
+        return Attribute::make(
+            get: function (?string $value): ?string {
+                if ($value === null || $value === '') {
+                    return null;
+                }
+
                 try {
                     return Crypt::decryptString($value);
                 } catch (DecryptException) {

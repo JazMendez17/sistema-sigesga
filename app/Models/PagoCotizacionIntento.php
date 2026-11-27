@@ -17,6 +17,8 @@ class PagoCotizacionIntento extends Model
         'provider_idempotency_key',
         'referencia',
         'estado',
+        'mercadopago_preference_id',
+        'checkout_url',
         'mercadopago_order_id',
         'mercadopago_payment_id',
         'request_payload',
@@ -29,6 +31,7 @@ class PagoCotizacionIntento extends Model
         return [
             'request_payload' => 'encrypted:array',
             'rechazo_notificado_en' => 'datetime',
+            'ultimo_evento_en' => 'datetime',
         ];
     }
 

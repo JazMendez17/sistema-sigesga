@@ -19,7 +19,7 @@
 <body>
     <div class="header">
         <h1>SIGESGA</h1>
-        <p>Comprobante de pago con tarjeta</p>
+        <p>Comprobante de pago</p>
         <p>Cotización <strong>{{ $cotizacion->folio ?: 'COT-' . str_pad((string) $cotizacion->id, 5, '0', STR_PAD_LEFT) }}</strong></p>
     </div>
 
@@ -38,9 +38,11 @@
         <tr><td>Fecha y hora</td><td>{{ $pago->pagado_en?->format('d/m/Y H:i:s') ?? '—' }}</td></tr>
         <tr><td>Referencia SIGESGA</td><td>{{ $pago->referencia }}</td></tr>
         <tr><td>Clave de rastreo Mercado Pago</td><td>{{ $pago->pasarela_transaccion_id ?: '—' }}</td></tr>
-        <tr><td>Tarjeta</td><td>{{ $pago->tarjeta_marca }} terminación {{ $pago->tarjeta_ultimos4 }}</td></tr>
-        <tr><td>Titular</td><td>{{ $pago->tarjeta_titular }}</td></tr>
-        <tr><td>Pasarela</td><td>{{ $pago->pasarela === 'mercadopago_orders' ? 'Mercado Pago' : $pago->pasarela }}</td></tr>
+        <tr><td>Método de pago</td><td>{{ $pago->descripcionMetodo() }}</td></tr>
+        @if($pago->tieneTarjeta())
+            <tr><td>Titular</td><td>{{ $pago->tarjeta_titular ?: '—' }}</td></tr>
+        @endif
+        <tr><td>Pasarela</td><td>{{ str_starts_with($pago->pasarela, 'mercadopago') ? 'Mercado Pago' : $pago->pasarela }}</td></tr>
     </table>
 
     <div class="footer">Comprobante generado automáticamente por SIGESGA. No contiene el número completo de la tarjeta ni el CVV.</div>

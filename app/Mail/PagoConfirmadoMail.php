@@ -28,7 +28,7 @@ class PagoConfirmadoMail extends Mailable
         $folio = $this->cotizacion->folio ?? ('COT-' . str_pad((string) $this->cotizacion->id, 5, '0', STR_PAD_LEFT));
         $asunto = $this->paraEquipo
             ? "Pago confirmado - Cotización {$folio} - SIGESGA"
-            : "Confirmación de pago con tarjeta - Cotización {$folio} - SIGESGA";
+            : "Confirmación de pago - Cotización {$folio} - SIGESGA";
 
         return new Envelope(subject: $asunto);
     }

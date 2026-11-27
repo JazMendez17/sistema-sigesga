@@ -6,10 +6,9 @@ namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Panel\BuscarRutasCotizacionRequest;
-use App\Http\Requests\Panel\PagarCotizacionTarjetaRequest;
+use App\Http\Requests\Panel\CrearPreferenciaPagoRequest;
 use App\Http\Requests\Panel\StoreCotizacionRequest;
 use App\Mail\CotizacionMail;
-use App\Mail\PagoConfirmadoMail;
 use App\Models\BitacoraTiemposServicio;
 use App\Models\CatalogoServicio;
 use App\Models\Cliente;
@@ -25,7 +24,8 @@ use App\Models\TarifasEmpresa;
 use App\Models\Unidade;
 use App\Models\Usuario;
 use App\Services\GoogleMapsService;
-use App\Services\PagoTarjetaService;
+use App\Services\MercadoPagoService;
+use App\Services\PagoCotizacionService;
 use App\Services\WhatsAppService;
 use App\Support\Auditoria;
 use Illuminate\Http\Request;
@@ -243,10 +243,10 @@ class CotizacionesController extends Controller
         $requierePagoTarjeta = $cotizacion->necesitaPagoTarjeta();
         $estatusPago = $cotizacion->estatus_pago ?: ($requierePagoTarjeta ? 'pendiente' : 'no_requerido');
         $ultimoPago = $cotizacion->ultimoPago;
-        $mpConfig = PagoTarjetaService::obtenerConfigMercadoPago((int) $cotizacion->empresa_id);
+        $mpConfig = MercadoPagoService::obtenerConfigMercadoPago((int) $cotizacion->empresa_id);
 
         return Inertia::render('Panel/Cotizaciones/Show', [
-            'mercadoPagoPublicKey' => $mpConfig['activo'] ? $mpConfig['public_key'] : null,
+            'mercadoPagoActivo' => $mpConfig['activo'],
             'cotizacion' => [
                 'id' => $cotizacion->id,
                 'folio' => $cotizacion->folio ?? 'COT-' . str_pad((string) $cotizacion->id, 5, '0', STR_PAD_LEFT),
@@ -267,6 +267,8 @@ class CotizacionesController extends Controller
                     'tarjeta_marca' => $ultimoPago->tarjeta_marca,
                     'tarjeta_ultimos4' => $ultimoPago->tarjeta_ultimos4,
                     'tarjeta_titular' => $ultimoPago->tarjeta_titular,
+                    'tiene_tarjeta' => $ultimoPago->tieneTarjeta(),
+                    'metodo_descripcion' => $ultimoPago->descripcionMetodo(),
                     'pagado_en' => $ultimoPago->pagado_en?->format('d/m/Y H:i'),
                     'estatus' => $ultimoPago->estatus,
                 ] : null,
@@ -295,8 +297,9 @@ class CotizacionesController extends Controller
                 'puede_aprobar_cliente' => $user->rol === 'cliente'
                     && !$cotizacion->cliente_aprobada_at
                     && $cotizacion->estatus === 'pendiente',
-                'puede_pagar_tarjeta' => $estatusPago !== 'pagado'
-                    && $cotizacion->estatus !== 'rechazado',
+                'puede_pagar' => $estatusPago !== 'pagado'
+                    && $cotizacion->estatus !== 'rechazado'
+                    && round((float) $cotizacion->costo_total, 2) > 0,
                 'es_cliente' => $user->rol === 'cliente',
             ],
             'operadores' => $user->rol === 'cliente' ? [] : Operadore::with('empleado')
@@ -436,7 +439,7 @@ class CotizacionesController extends Controller
         });
 
         if ($estadoResultado === 'requiere_pago') {
-            return back()->with('error', 'Esta cotización no cuenta con convenio de aseguradora. Ingresa los datos de tu tarjeta para realizar el cobro y aprobarla.');
+            return back()->with('error', 'Esta cotización no cuenta con convenio de aseguradora. Completa el pago en línea con Mercado Pago para aprobarla.');
         }
 
         if ($estadoResultado !== 'ok') {
@@ -446,8 +449,7 @@ class CotizacionesController extends Controller
         return back()->with('success', 'Cotización aprobada. El equipo interno continuará con la autorización.');
     }
 
-    /** Procesa el cobro con tarjeta para cotizaciones sin convenio de aseguradora y aprueba la cotización del cliente. */
-    public function pagarTarjeta(PagarCotizacionTarjetaRequest $request, $id, PagoTarjetaService $pagoService)
+    public function pagar(CrearPreferenciaPagoRequest $request, $id, MercadoPagoService $mercadoPago)
     {
         $usuario = auth()->user();
         abort_unless(in_array($usuario->rol, ['superadmin', 'admin', 'cotizador', 'cliente'], true), 403);
@@ -463,125 +465,123 @@ class CotizacionesController extends Controller
         }
 
         $cotizacion = $query->findOrFail($id);
+        $intento = $mercadoPago->crearPreferencia(
+            $cotizacion,
+            (string) $request->validated('mp_idempotency_key'),
+            $usuario->id
+        );
 
-        $datosPago = $request->validated();
-        try {
-            $pago = $pagoService->cobrar($cotizacion, $datosPago, $usuario->id);
-        } catch (ValidationException $e) {
-            $estadoIntento = $e->errors()['mp_attempt_status'][0] ?? null;
-            if ($estadoIntento === 'rejected') {
-                $this->notificarRechazoPagoCliente($cotizacion, $datosPago, $e);
-            }
-
-            throw $e;
+        if ($intento->estado === 'aprobado' || !$intento->checkout_url) {
+            return redirect()
+                ->route($usuario->rol === 'cliente' ? 'panel.cotizaciones.show.cliente' : 'panel.cotizaciones.show', $cotizacion->id)
+                ->with('success', 'Esta cotización ya cuenta con un pago confirmado.');
         }
 
-        $cotizacion->load(['cliente.usuario', 'cliente.aseguradora', 'tipoServicio']);
-
-        if ($pago->wasRecentlyCreated) {
-            // Notificar a superadmin, admin y cotizador (notificación del sistema + correo con comprobante).
-            $usuariosGestion = Usuario::where(function ($q) use ($cotizacion) {
-                $q->where('rol', 'superadmin')
-                    ->orWhere(function ($q2) use ($cotizacion) {
-                        $q2->where('empresa_id', $cotizacion->empresa_id)
-                            ->whereIn('rol', ['admin', 'cotizador']);
-                    });
-                if ($cotizacion->usuario_creador_id) {
-                    $q->orWhere('id', $cotizacion->usuario_creador_id);
-                }
-            })->get()->unique('id');
-
-            $montoFmt = number_format((float) $pago->monto, 2);
-            $rastreo = $pago->pasarela_transaccion_id ?: $pago->referencia;
-
-            foreach ($usuariosGestion as $dest) {
-                $empresaDestinoId = $dest->rol === 'superadmin'
-                    ? (int) ($dest->empresa_id ?: $cotizacion->empresa_id)
-                    : (int) $cotizacion->empresa_id;
-                $this->crearNotificacion(
-                    $empresaDestinoId,
-                    $dest->id,
-                    "Pago confirmado por el cliente (\${$montoFmt} MXN · {$pago->tarjeta_marca} •••• {$pago->tarjeta_ultimos4} · Rastreo: {$rastreo}) para la cotización {$cotizacion->folio}."
-                );
-
-                if (!empty($dest->email)) {
-                    try {
-                        Mail::to($dest->email)->send(new PagoConfirmadoMail($cotizacion, $pago, paraEquipo: true));
-                    } catch (\Throwable $e) {
-                        Log::error('Error al enviar correo de pago al equipo', ['usuario_id' => $dest->id, 'error' => $e->getMessage()]);
-                    }
-                }
-            }
-
-            // Notificar al cliente y enviarle el mismo comprobante por correo.
-            if ($cotizacion->cliente?->usuario_id) {
-                $this->crearNotificacion(
-                    $cotizacion->empresa_id,
-                    $cotizacion->cliente->usuario_id,
-                    "Pago realizado con éxito por \${$montoFmt} MXN ({$pago->tarjeta_marca} •••• {$pago->tarjeta_ultimos4} · Rastreo: {$rastreo}) para la cotización {$cotizacion->folio}."
-                );
-            }
-
-            $correoCliente = $cotizacion->cliente?->email ?: $cotizacion->cliente?->usuario?->email;
-            if ($correoCliente) {
-                try {
-                    Mail::to($correoCliente)->send(new PagoConfirmadoMail($cotizacion, $pago, paraEquipo: false));
-                } catch (\Throwable $e) {
-                    Log::error('Error al enviar correo de confirmación de pago al cliente', [
-                        'cotizacion_id' => $cotizacion->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
-
-            $telefonoCliente = $cotizacion->cliente?->telefono ?: $cotizacion->cliente?->usuario?->telefono;
-            if ($telefonoCliente) {
-                app(WhatsAppService::class)->enviarTexto(
-                    (int) $cotizacion->empresa_id,
-                    $telefonoCliente,
-                    "SIGESGA: Confirmamos tu pago con tarjeta por \${$montoFmt} MXN ({$pago->tarjeta_marca} •••• {$pago->tarjeta_ultimos4}) para la cotización {$cotizacion->folio}. Clave de rastreo: {$rastreo}."
-                );
-            }
-        }
-
-        $mensaje = $pago->wasRecentlyCreated
-            ? "Pago con tarjeta aprobado (Ref: {$pago->referencia}). Se envió la confirmación con comprobante por correo."
-            : "El pago ya estaba confirmado (Ref: {$pago->referencia}).";
-
-        return back()->with('success', $mensaje);
+        return Inertia::location($intento->checkout_url);
     }
 
-    private function notificarRechazoPagoCliente(Cotizacione $cotizacion, array $datosPago, ValidationException $exception): void
-    {
-        $usuarioClienteId = $cotizacion->cliente?->usuario_id;
-        if (!$usuarioClienteId) {
-            return;
+    public function retornoPago(
+        Request $request,
+        string $referencia,
+        MercadoPagoService $mercadoPago,
+        PagoCotizacionService $pagos
+    ) {
+        $usuario = auth()->user();
+        abort_unless(in_array($usuario->rol, ['superadmin', 'admin', 'cotizador', 'cliente'], true), 403);
+
+        $query = PagoCotizacionIntento::with('cotizacion')
+            ->where('empresa_id', $usuario->empresa_id)
+            ->where('referencia', $referencia);
+
+        if ($usuario->rol === 'cliente') {
+            $cliente = Cliente::where('empresa_id', $usuario->empresa_id)
+                ->where('usuario_id', $usuario->id)
+                ->firstOrFail();
+            $query->whereHas('cotizacion', fn ($cotizacion) => $cotizacion->where('cliente_id', $cliente->id));
         }
 
-        $intento = PagoCotizacionIntento::where('idempotency_key', $datosPago['mp_idempotency_key'] ?? '')
-            ->where('cotizacion_id', $cotizacion->id)
-            ->first();
-        if (!$intento) {
-            return;
-        }
+        $intento = $query->firstOrFail();
+        $rutaCotizacion = $usuario->rol === 'cliente'
+            ? route('panel.cotizaciones.show.cliente', $intento->cotizacion_id)
+            : route('panel.cotizaciones.show', $intento->cotizacion_id);
 
-        $motivo = $exception->errors()['tarjeta'][0] ?? 'Mercado Pago rechazó el pago. Verifica los datos e intenta con otra tarjeta.';
-        DB::transaction(function () use ($intento, $cotizacion, $usuarioClienteId, $motivo): void {
-            $intentoBloqueado = PagoCotizacionIntento::whereKey($intento->id)->lockForUpdate()->first();
-            if (!$intentoBloqueado || $intentoBloqueado->rechazo_notificado_en) {
-                return;
+        try {
+            $pagoMp = $mercadoPago->buscarPagoPorReferencia($intento);
+
+            if ($pagoMp === null) {
+                return redirect($rutaCotizacion)->with(
+                    'error',
+                    'Mercado Pago todavía no registra un pago para este intento. No cambies de método hasta confirmar su estado.'
+                );
             }
 
-            Notificacione::create([
-                'empresa_id' => $cotizacion->empresa_id,
-                'usuario_id' => $usuarioClienteId,
-                'mensaje' => "Pago no procesado para la cotización {$cotizacion->folio}: {$motivo}",
-                'canal' => 'sistema_push',
-                'estado' => 'pendiente',
+            if (!$mercadoPago->pagoCorrespondeAlIntento($intento, $pagoMp)) {
+                $pagos->marcarInconsistencia(
+                    $intento,
+                    'La referencia, el monto, la moneda o el entorno del pago no coinciden.'
+                );
+
+                return redirect($rutaCotizacion)->with(
+                    'error',
+                    'No se pudo verificar el pago porque los datos no coinciden con la cotización. Contacta al administrador.'
+                );
+            }
+
+            if (($pagoMp['status'] ?? null) === 'approved') {
+                $pago = $pagos->confirmar($intento, $pagoMp);
+                if ($pago === null) {
+                    return redirect($rutaCotizacion)->with(
+                        'error',
+                        'Mercado Pago reportó un segundo pago para esta cotización. No se duplicó el registro; contacta al administrador para revisarlo.'
+                    );
+                }
+
+                return redirect($rutaCotizacion)->with(
+                    'success',
+                    "Pago confirmado (Ref: {$pago->referencia}). Ya puedes continuar con la cotización."
+                );
+            }
+
+            $estado = $pagos->registrarNoAprobado($intento, $pagoMp);
+
+            return redirect($rutaCotizacion)->with(
+                $estado === 'rechazado' ? 'error' : 'info',
+                $estado === 'rechazado'
+                    ? 'Mercado Pago no aprobó el pago. Puedes intentar con otro método.'
+                    : 'El pago sigue pendiente de confirmación. Mercado Pago te avisará cuando cambie su estado.'
+            );
+        } catch (\Throwable $exception) {
+            Log::error('No se pudo reconciliar el retorno de Mercado Pago', [
+                'intento_id' => $intento->id,
+                'error' => $exception->getMessage(),
             ]);
 
-            $intentoBloqueado->update(['rechazo_notificado_en' => now()]);
-        });
+            return redirect($rutaCotizacion)->with(
+                'error',
+                'No fue posible consultar el estado oficial del pago. Intenta de nuevo en unos momentos.'
+            );
+        }
+    }
+
+    private function tienePagoEnCurso(Cotizacione $cotizacion): bool
+    {
+        return PagoCotizacionIntento::where('cotizacion_id', $cotizacion->id)
+            ->whereIn('estado', ['creando', 'pendiente', 'rechazado'])
+            ->get(['estado', 'request_payload', 'updated_at'])
+            ->contains(function (PagoCotizacionIntento $intento): bool {
+                if ($intento->estado === 'pendiente') {
+                    return true;
+                }
+
+                if ($intento->estado === 'creando') {
+                    return $intento->updated_at?->greaterThan(now()->subMinutes(10)) ?? false;
+                }
+
+                $snapshot = is_array($intento->request_payload) ? $intento->request_payload : [];
+
+                return isset($snapshot['expira_en'])
+                    && \Carbon\Carbon::parse($snapshot['expira_en'])->greaterThan(now());
+            });
     }
 
     protected function crearNotificacion(int $empresaId, int $usuarioId, string $mensaje): void
@@ -611,9 +611,12 @@ class CotizacionesController extends Controller
             ->where('empresa_id', $empresaId)
             ->findOrFail($id);
 
-        if ($cotizacion->estatus === 'aprobado' || $cotizacion->servicio || $cotizacion->estatus_pago === 'pagado') {
+        if ($cotizacion->estatus === 'aprobado'
+            || $cotizacion->servicio
+            || $cotizacion->estatus_pago === 'pagado'
+            || $this->tienePagoEnCurso($cotizacion)) {
             return redirect()->route('panel.cotizaciones.show', $cotizacion->id)
-                ->with('error', 'No se puede editar una cotización ya aprobada, pagada o con servicio asociado.');
+                ->with('error', 'No se puede editar una cotización aprobada, pagada, con servicio asociado o con un pago en curso.');
         }
 
         return Inertia::render('Panel/Cotizaciones/Create', [
@@ -630,9 +633,12 @@ class CotizacionesController extends Controller
             ->where('empresa_id', auth()->user()->empresa_id)
             ->findOrFail($id);
 
-        if ($cotizacion->estatus === 'aprobado' || $cotizacion->servicio || $cotizacion->estatus_pago === 'pagado') {
+        if ($cotizacion->estatus === 'aprobado'
+            || $cotizacion->servicio
+            || $cotizacion->estatus_pago === 'pagado'
+            || $this->tienePagoEnCurso($cotizacion)) {
             return redirect()->route('panel.cotizaciones.index')
-                ->with('error', 'No se puede modificar una cotización aprobada, pagada o con servicio asignado.');
+                ->with('error', 'No se puede modificar una cotización aprobada, pagada, con servicio asignado o con un pago en curso.');
         }
 
         $data = $this->recalcularMontos($request->validated());
@@ -691,8 +697,8 @@ class CotizacionesController extends Controller
             ->where('empresa_id', auth()->user()->empresa_id)
             ->findOrFail($id);
 
-        if ($cotizacion->servicio) {
-            return back()->with('error', 'No se puede eliminar una cotización que ya tiene un servicio asociado.');
+        if ($cotizacion->servicio || $this->tienePagoEnCurso($cotizacion)) {
+            return back()->with('error', 'No se puede eliminar una cotización con servicio asociado o con un pago en curso.');
         }
 
         DB::transaction(function () use ($cotizacion) {
@@ -715,12 +721,13 @@ class CotizacionesController extends Controller
             return Inertia::render('Panel/ClienteCotizaciones', ['cotizaciones' => []]);
         }
 
+        $mpConfig = MercadoPagoService::obtenerConfigMercadoPago((int) $user->empresa_id);
         $cotizaciones = Cotizacione::where('empresa_id', $user->empresa_id)
             ->where('cliente_id', $cliente->id)
             ->with(['tipoServicio', 'cliente'])
             ->latest()
             ->get()
-            ->map(function ($c) {
+            ->map(function ($c) use ($mpConfig) {
                 $requierePago = $c->necesitaPagoTarjeta();
                 $estatusPago = $c->estatus_pago ?: ($requierePago ? 'pendiente' : 'no_requerido');
 
@@ -733,7 +740,10 @@ class CotizacionesController extends Controller
                     'estatus' => $c->estatus,
                     'estatus_pago' => $estatusPago,
                     'requiere_pago_tarjeta' => $requierePago,
-                    'puede_pagar_tarjeta' => $estatusPago !== 'pagado' && $c->estatus !== 'rechazado',
+                    'puede_pagar' => $mpConfig['activo']
+                        && $estatusPago !== 'pagado'
+                        && $c->estatus !== 'rechazado'
+                        && round((float) $c->costo_total, 2) > 0,
                     'fecha' => $c->created_at?->format('d/m/Y'),
                     'total' => '$' . number_format($c->costo_total ?? 0, 2),
                 ];

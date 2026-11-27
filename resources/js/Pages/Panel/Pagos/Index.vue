@@ -24,6 +24,7 @@ const pagosFiltrados = computed(() => {
       p.titular,
       p.tarjeta_ultimos4,
       p.tarjeta_marca,
+      p.metodo_descripcion,
       p.pasarela,
     ]
       .filter(Boolean)
@@ -42,8 +43,8 @@ function moneda(val) {
     <div class="space-y-6">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 class="text-2xl font-bold text-gray-800">Pagos con Tarjeta</h1>
-          <p class="text-sm text-gray-500 mt-1">Consulta cobros realizados, terminación de tarjeta, referencia y clave de rastreo.</p>
+          <h1 class="text-2xl font-bold text-gray-800">Pagos</h1>
+          <p class="text-sm text-gray-500 mt-1">Consulta cobros realizados, método de pago, referencia y clave de rastreo.</p>
         </div>
       </div>
 
@@ -69,7 +70,7 @@ function moneda(val) {
           <input
             v-model="busqueda"
             type="text"
-            placeholder="Buscar por clave de rastreo, referencia, folio, cliente o terminación..."
+            placeholder="Buscar por clave de rastreo, referencia, folio, cliente o método..."
             class="w-full sm:max-w-md rounded-2xl bg-[#E8EDF2] px-4 py-2.5 text-sm text-gray-700 shadow-[inset_4px_4px_8px_#d0d5da,inset_-4px_-4px_8px_#ffffff] focus:outline-none focus:ring-2 focus:ring-indigo-300"
           />
           <span class="text-xs text-gray-500">{{ pagosFiltrados.length }} pago(s)</span>
@@ -82,7 +83,7 @@ function moneda(val) {
                 <th class="px-3 py-3">Fecha</th>
                 <th class="px-3 py-3">Cotización</th>
                 <th class="px-3 py-3">Cliente / Titular</th>
-                <th class="px-3 py-3">Tarjeta</th>
+                <th class="px-3 py-3">Método de Pago</th>
                 <th class="px-3 py-3">Monto</th>
                 <th class="px-3 py-3">Referencia / Clave Rastreo</th>
                 <th class="px-3 py-3">Pasarela</th>
@@ -104,11 +105,11 @@ function moneda(val) {
                 </td>
                 <td class="px-3 py-3">
                   <p class="font-medium text-gray-800">{{ p.cliente }}</p>
-                  <p class="text-xs text-gray-500">Titular: {{ p.titular }}</p>
+                  <p v-if="p.titular" class="text-xs text-gray-500">Titular: {{ p.titular }}</p>
                 </td>
                 <td class="px-3 py-3 whitespace-nowrap">
                   <p class="font-mono font-semibold text-gray-800">{{ p.tarjeta_resumen }}</p>
-                  <p class="text-xs text-gray-500">Vig: {{ p.tarjeta_vigencia }}</p>
+                  <p v-if="p.tarjeta_vigencia" class="text-xs text-gray-500">Vig: {{ p.tarjeta_vigencia }}</p>
                 </td>
                 <td class="px-3 py-3 whitespace-nowrap font-bold text-emerald-700">
                   ${{ moneda(p.monto) }} {{ p.moneda }}
@@ -139,7 +140,7 @@ function moneda(val) {
             </tbody>
           </table>
         </div>
-        <p v-else class="py-12 text-center text-gray-400">Aún no hay pagos con tarjeta registrados.</p>
+        <p v-else class="py-12 text-center text-gray-400">Aún no hay pagos registrados.</p>
       </div>
 
       <!-- Modal de comprobante completo -->
@@ -152,9 +153,9 @@ function moneda(val) {
           <div class="rounded-2xl bg-white/80 p-4 space-y-2 text-sm">
             <div class="flex justify-between gap-2"><span class="text-gray-500">Cotización:</span><strong class="text-gray-800">{{ detalle.folio_cotizacion }}</strong></div>
             <div class="flex justify-between gap-2"><span class="text-gray-500">Cliente:</span><span class="font-medium text-gray-800">{{ detalle.cliente }}</span></div>
-            <div class="flex justify-between gap-2"><span class="text-gray-500">Titular tarjeta:</span><span class="font-medium text-gray-800">{{ detalle.titular }}</span></div>
-            <div class="flex justify-between gap-2"><span class="text-gray-500">Tarjeta:</span><strong class="font-mono text-gray-800">{{ detalle.tarjeta_resumen }}</strong></div>
-            <div class="flex justify-between gap-2"><span class="text-gray-500">Vigencia:</span><span class="text-gray-800">{{ detalle.tarjeta_vigencia }}</span></div>
+            <div v-if="detalle.titular" class="flex justify-between gap-2"><span class="text-gray-500">Titular:</span><span class="font-medium text-gray-800">{{ detalle.titular }}</span></div>
+            <div class="flex justify-between gap-2"><span class="text-gray-500">Método:</span><strong class="text-gray-800">{{ detalle.metodo_descripcion }}</strong></div>
+            <div v-if="detalle.tarjeta_vigencia" class="flex justify-between gap-2"><span class="text-gray-500">Vigencia:</span><span class="text-gray-800">{{ detalle.tarjeta_vigencia }}</span></div>
             <div class="flex justify-between gap-2"><span class="text-gray-500">Monto:</span><strong class="text-emerald-700">${{ moneda(detalle.monto) }} {{ detalle.moneda }}</strong></div>
             <div class="flex justify-between gap-2"><span class="text-gray-500">Referencia interna:</span><strong class="font-mono text-xs text-gray-800">{{ detalle.referencia }}</strong></div>
             <div class="flex justify-between gap-2"><span class="text-gray-500">Clave de rastreo:</span><strong class="font-mono text-xs text-gray-800 break-all text-right">{{ detalle.clave_rastreo }}</strong></div>

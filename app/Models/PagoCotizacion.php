@@ -61,4 +61,24 @@ class PagoCotizacion extends Model
     {
         return $this->belongsTo(Usuario::class);
     }
+
+    public function tieneTarjeta(): bool
+    {
+        return $this->tarjeta_ultimos4 !== null && $this->tarjeta_ultimos4 !== '';
+    }
+
+    public function descripcionMetodo(): string
+    {
+        if ($this->tieneTarjeta()) {
+            return trim(($this->tarjeta_marca ?: 'Tarjeta') . ' •••• ' . $this->tarjeta_ultimos4);
+        }
+
+        return match ($this->metodo) {
+            'credit_card', 'debit_card' => 'Tarjeta',
+            'account_money' => 'Saldo Mercado Pago',
+            'bank_transfer' => 'Transferencia bancaria',
+            'ticket' => 'Efectivo',
+            default => 'Mercado Pago',
+        };
+    }
 }

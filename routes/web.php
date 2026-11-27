@@ -4,6 +4,7 @@
 
 use App\Http\Controllers\ContactoController;
 use App\Http\Controllers\LandingController;
+use App\Http\Controllers\MercadoPagoWebhookController;
 use App\Http\Controllers\Panel\AseguradorasController;
 use App\Http\Controllers\Panel\AutorizacionesCancelacionController;
 use App\Http\Controllers\Panel\ClientesController;
@@ -53,10 +54,18 @@ Route::get('/rastrear', [LandingController::class, 'rastrear'])
     ->name('rastrear');
 Route::get('/soporte', [LandingController::class, 'soporte'])->name('soporte');
 
+Route::post('/mercadopago/webhook/{referencia}', MercadoPagoWebhookController::class)
+    ->where('referencia', '[A-Za-z0-9-]+')
+    ->middleware('throttle:120,1')
+    ->name('mercadopago.webhook');
+
 // === Rutas protegidas del panel ===
 Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/mercadopago/retorno/{referencia}', [CotizacionesController::class, 'retornoPago'])
+        ->where('referencia', '[A-Za-z0-9-]+')
+        ->name('mercadopago.retorno');
     Route::get('/pagos/{id}/comprobante', [PagosController::class, 'comprobante'])
         ->whereNumber('id')
         ->name('pagos.comprobante');
@@ -81,7 +90,7 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
         Route::delete('/cotizaciones/{id}', [CotizacionesController::class, 'destroy'])->whereNumber('id')->name('cotizaciones.destroy');
         Route::post('/cotizaciones/{id}/aprobar', [CotizacionesController::class, 'aprobar'])->whereNumber('id')->name('cotizaciones.aprobar');
         Route::post('/cotizaciones/{id}/rechazar', [CotizacionesController::class, 'rechazar'])->whereNumber('id')->name('cotizaciones.rechazar');
-        Route::post('/cotizaciones/{id}/pagar-tarjeta', [CotizacionesController::class, 'pagarTarjeta'])
+        Route::post('/cotizaciones/{id}/pagar', [CotizacionesController::class, 'pagar'])
             ->whereNumber('id')
             ->middleware('throttle:10,1')
             ->name('cotizaciones.pagar');
@@ -300,7 +309,7 @@ Route::middleware(['auth'])->prefix('panel')->name('panel.')->group(function () 
         Route::get('/cliente/servicios/{id}', [ServiciosController::class, 'show'])->whereNumber('id')->name('servicios.show.cliente');
         Route::get('/cliente/cotizaciones/{id}', [CotizacionesController::class, 'show'])->whereNumber('id')->name('cotizaciones.show.cliente');
         Route::post('/cliente/cotizaciones/{id}/aprobar', [CotizacionesController::class, 'aprobarCliente'])->whereNumber('id')->name('cotizaciones.aprobar.cliente');
-        Route::post('/cliente/cotizaciones/{id}/pagar-tarjeta', [CotizacionesController::class, 'pagarTarjeta'])
+        Route::post('/cliente/cotizaciones/{id}/pagar', [CotizacionesController::class, 'pagar'])
             ->whereNumber('id')
             ->middleware('throttle:10,1')
             ->name('cotizaciones.pagar.cliente');

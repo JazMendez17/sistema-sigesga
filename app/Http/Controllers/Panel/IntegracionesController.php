@@ -6,7 +6,8 @@ namespace App\Http\Controllers\Panel;
 
 use App\Http\Controllers\Controller;
 use App\Models\EmpresaIntegracione;
-use App\Services\PagoTarjetaService;
+use App\Models\PagoCotizacionIntento;
+use App\Services\MercadoPagoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -19,9 +20,12 @@ class IntegracionesController extends Controller
     {
         $user = Auth::user();
         $empresaId = $user->empresa_id;
+        $ultimaReferenciaPago = PagoCotizacionIntento::where('empresa_id', $empresaId)
+            ->latest('id')
+            ->value('referencia');
 
         $base = [
-            'mercadopago' => 'Cobros con tarjeta mediante Mercado Pago Checkout API (Orders).',
+            'mercadopago' => 'Cobros en línea mediante Mercado Pago Checkout Pro con pago alojado.',
             'gmail' => 'Envío de cotizaciones, facturas, códigos de desbloqueo y correos del sistema.',
             'whatsapp' => 'Envío de notificaciones y comprobantes por WhatsApp Business.',
         ];
@@ -43,14 +47,16 @@ class IntegracionesController extends Controller
             ->whereIn('proveedor', array_keys($base))
             ->orderByRaw("CASE proveedor WHEN 'mercadopago' THEN 0 WHEN 'gmail' THEN 1 ELSE 2 END")
             ->get()
-            ->map(function (EmpresaIntegracione $i) use ($titulos) {
+            ->map(function (EmpresaIntegracione $i) use ($titulos, $base, $ultimaReferenciaPago) {
                 $cfg = is_array($i->configuracion_json) ? $i->configuracion_json : [];
 
                 return [
                     'id' => $i->id,
                     'proveedor' => $i->proveedor,
                     'titulo' => $titulos[$i->proveedor] ?? ucfirst($i->proveedor),
-                    'descripcion' => $cfg['descripcion'] ?? '',
+                    'descripcion' => $i->proveedor === 'mercadopago'
+                        ? $base['mercadopago']
+                        : ($cfg['descripcion'] ?? ''),
                     'icono' => match ($i->proveedor) {
                         'mercadopago' => 'card',
                         'gmail' => 'mail',
@@ -61,13 +67,18 @@ class IntegracionesController extends Controller
                     'configurado' => $this->estaConfigurada($i, $cfg),
                     'config' => [
                         // Mercado Pago
-                        'public_key' => $cfg['public_key'] ?? '',
                         'modo' => $cfg['modo'] ?? 'pruebas',
+                        'webhook_secret_configurada' => $i->proveedor === 'mercadopago'
+                            && !empty($i->webhook_secret),
+                        'webhook_url' => $i->proveedor === 'mercadopago'
+                            ? MercadoPagoService::urlWebhook($ultimaReferenciaPago ?: 'REFERENCIA')
+                            : null,
+                        'webhook_tiene_intento' => $ultimaReferenciaPago !== null,
+                        'webhook_https' => $i->proveedor !== 'mercadopago'
+                            || MercadoPagoService::urlWebhook('REFERENCIA') !== null,
                         'ambiente_valido' => $i->proveedor !== 'mercadopago'
-                            || empty($cfg['public_key'])
                             || empty($i->api_key)
-                            || PagoTarjetaService::credencialesCoincidenConModo(
-                                (string) $cfg['public_key'],
+                            || MercadoPagoService::credencialesCoincidenConModo(
                                 (string) $i->api_key,
                                 (string) ($cfg['modo'] ?? 'pruebas')
                             ),
@@ -95,8 +106,8 @@ class IntegracionesController extends Controller
             'activo' => 'nullable|boolean',
             'api_key' => 'nullable|string|max:500',
             // Mercado Pago
-            'public_key' => 'nullable|string|max:500',
             'modo' => 'nullable|in:pruebas,produccion',
+            'webhook_secret' => 'nullable|string|min:16|max:500',
             // Gmail / Correo
             'correo' => 'nullable|email|max:255',
             'nombre_remitente' => 'nullable|string|max:120',
@@ -118,10 +129,14 @@ class IntegracionesController extends Controller
             $update['api_key'] = trim((string) $data['api_key']);
         }
 
+        if ($integracion->proveedor === 'mercadopago' && $request->filled('webhook_secret')) {
+            $update['webhook_secret'] = trim((string) $data['webhook_secret']);
+        }
+
         $cfg = is_array($integracion->configuracion_json) ? $integracion->configuracion_json : [];
 
         $camposOpcionales = match ($integracion->proveedor) {
-            'mercadopago' => ['public_key', 'modo'],
+            'mercadopago' => ['modo'],
             'gmail' => ['correo', 'nombre_remitente'],
             'whatsapp' => ['telefono', 'phone_number_id'],
             default => [],
@@ -138,20 +153,18 @@ class IntegracionesController extends Controller
 
         if ($integracion->proveedor === 'mercadopago') {
             $apiKey = $request->filled('api_key') ? trim((string) $data['api_key']) : (string) ($integracion->api_key ?? '');
-            $publicKey = (string) ($cfg['public_key'] ?? '');
             $modo = (string) ($cfg['modo'] ?? 'pruebas');
             $activo = $request->has('activo') ? $request->boolean('activo') : (bool) $integracion->activo;
 
-            if ($activo && ($apiKey === '' || $publicKey === '')) {
+            if ($activo && $apiKey === '') {
                 throw ValidationException::withMessages([
-                    'api_key' => 'Para activar Mercado Pago debes guardar la llave pública y el Access Token.',
+                    'api_key' => 'Para activar Mercado Pago debes guardar el Access Token de la aplicación.',
                 ]);
             }
 
-            if ($apiKey !== '' && $publicKey !== ''
-                && !PagoTarjetaService::credencialesCoincidenConModo($publicKey, $apiKey, $modo)) {
+            if ($apiKey !== '' && !MercadoPagoService::credencialesCoincidenConModo($apiKey, $modo)) {
                 throw ValidationException::withMessages([
-                    'modo' => 'Las credenciales no corresponden al entorno seleccionado. En Pruebas usa la Public Key TEST- y el Access Token APP_USR- de la sección Prueba; en Producción usa ambas credenciales APP_USR- de la sección Producción.',
+                    'modo' => 'El Access Token no es válido para Checkout Pro. Usa el token APP_USR- de la aplicación y selecciona el mismo entorno del panel de Mercado Pago.',
                 ]);
             }
         }
@@ -172,9 +185,8 @@ class IntegracionesController extends Controller
         }
 
         return match ($integracion->proveedor) {
-            'mercadopago' => !empty($cfg['public_key'])
-                && PagoTarjetaService::credencialesCoincidenConModo(
-                    (string) $cfg['public_key'],
+            'mercadopago' => !empty($integracion->api_key)
+                && MercadoPagoService::credencialesCoincidenConModo(
                     (string) $integracion->api_key,
                     (string) ($cfg['modo'] ?? 'pruebas')
                 ),
