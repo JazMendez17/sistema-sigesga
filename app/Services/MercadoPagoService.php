@@ -314,7 +314,7 @@ class MercadoPagoService
             $response = Http::withToken($config['access_token'])
                 ->acceptJson()
                 ->timeout(25)
-                ->post(self::API_URL . '/v1/preferences', $payload);
+                ->post(self::API_URL . '/checkout/preferences', $payload);
         } catch (ConnectionException $exception) {
             $this->marcarError($intento, 'No se pudo conectar con Mercado Pago. Intenta de nuevo.');
             Log::warning('Error de conexión al crear preferencia de Mercado Pago', [

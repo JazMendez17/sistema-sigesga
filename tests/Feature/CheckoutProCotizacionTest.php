@@ -96,7 +96,7 @@ class CheckoutProCotizacionTest extends TestCase
     {
         $this->configurarMercadoPago();
         Http::fake([
-            'https://api.mercadopago.com/v1/preferences' => function (Request $request) {
+            'https://api.mercadopago.com/checkout/preferences' => function (Request $request) {
                 $payload = $request->data();
 
                 return Http::response([
@@ -127,7 +127,7 @@ class CheckoutProCotizacionTest extends TestCase
         Http::assertSent(function (Request $request) use ($intento) {
             $payload = $request->data();
 
-            return $request->url() === 'https://api.mercadopago.com/v1/preferences'
+            return $request->url() === 'https://api.mercadopago.com/checkout/preferences'
                 && $request->hasHeader('Authorization', 'Bearer APP_USR-TEST-ACCESS-TOKEN')
                 && $payload['external_reference'] === $intento->referencia
                 && $payload['items'][0]['unit_price'] === 750.0
@@ -171,7 +171,7 @@ class CheckoutProCotizacionTest extends TestCase
     {
         $this->configurarMercadoPago();
         Http::fake([
-            'https://api.mercadopago.com/v1/preferences' => Http::response([
+            'https://api.mercadopago.com/checkout/preferences' => Http::response([
                 'id' => 'PREF-REINTENTO-001',
                 'sandbox_init_point' => 'https://sandbox.mercadopago.com/checkout/v1/pay/PREF-REINTENTO-001',
             ], 201),
@@ -200,7 +200,7 @@ class CheckoutProCotizacionTest extends TestCase
     {
         $this->configurarMercadoPago('produccion');
         Http::fake([
-            'https://api.mercadopago.com/v1/preferences' => Http::response([
+            'https://api.mercadopago.com/checkout/preferences' => Http::response([
                 'id' => 'PREF-PROD-001',
                 'sandbox_init_point' => 'https://sandbox.mercadopago.com/checkout/v1/pay/PREF-PROD-001',
                 'init_point' => 'https://www.mercadopago.com/checkout/v1/pay/PREF-PROD-001',
